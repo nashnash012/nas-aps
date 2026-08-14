@@ -9,6 +9,7 @@ function saveDemo() {
     const state = {
       users, nextUserId, cashAdvances, bonusTypes, nextBonusId, auth: USERS_AUTH,
       deductionCategories, nextDedCatId, payrollRecords, bonusPayouts,
+      sssTable, philData, pagData, birData, bonusExemptionLimit: BONUS_EXEMPTION_LIMIT,
       profile: { empPhone: document.getElementById('empPhone')?.value, empAddr: document.getElementById('empAddr')?.value }
     };
     localStorage.setItem(DEMO_KEY, JSON.stringify(state));
@@ -99,3 +100,8 @@ let currentRole = 'employee';
 
 // ── FORMAT ───────────────────────────────────────────────────
 const fmt = n => '₱' + parseFloat(n).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+// ── DEMO LABEL ───────────────────────────────────────────────
+const DEMO_EMAILS = ['admin@rcc.edu.ph', 'finance@rcc.edu.ph', 'employee@rcc.edu.ph'];
+function isDemoUser(u) { return !!u && DEMO_EMAILS.includes((u.email || '').toLowerCase()); }
+function displayName(u) { return u ? `${u.first} ${u.last}` + (isDemoUser(u) ? ' (demo)' : '') : ''; }

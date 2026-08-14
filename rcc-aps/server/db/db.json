@@ -40,138 +40,13 @@
       "hireDate": "2025-06-01",
       "hourlyRate": 190,
       "hoursWorked": 150
-    },
-    {
-      "id": 4,
-      "first": "Ana",
-      "last": "Cruz",
-      "email": "ana@rcc.edu.ph",
-      "role": "Employee",
-      "status": "Active",
-      "date": "Feb 5, 2026",
-      "salary": 22000,
-      "classification": "Non-Teaching",
-      "department": "Accounting Office",
-      "hireDate": "2023-08-15"
-    },
-    {
-      "id": 5,
-      "first": "Roberto",
-      "last": "Lim",
-      "email": "roberto@rcc.edu.ph",
-      "role": "Finance Officer",
-      "status": "Inactive",
-      "date": "Feb 12, 2026",
-      "salary": 35000,
-      "classification": "Non-Teaching",
-      "department": "Finance Office",
-      "hireDate": "2018-01-20",
-      "endDate": "2026-05-31"
-    },
-    {
-      "id": 6,
-      "first": "Luz",
-      "last": "Reyes",
-      "email": "luz@rcc.edu.ph",
-      "role": "Employee",
-      "status": "Active",
-      "date": "Mar 3, 2026",
-      "salary": 32500,
-      "classification": "Teaching",
-      "department": "College of Education",
-      "hireDate": "2022-06-01",
-      "hourlyRate": 217,
-      "hoursWorked": 150
-    },
-    {
-      "id": 7,
-      "first": "Carlo",
-      "last": "Mendoza",
-      "email": "carlo@rcc.edu.ph",
-      "role": "Employee",
-      "status": "Active",
-      "date": "Mar 15, 2026",
-      "salary": 20000,
-      "classification": "Non-Teaching",
-      "department": "Maintenance Office",
-      "hireDate": "2024-02-01"
-    },
-    {
-      "id": 8,
-      "first": "Sofia",
-      "last": "Garcia",
-      "email": "sofia@rcc.edu.ph",
-      "role": "Employee",
-      "status": "Inactive",
-      "date": "Apr 1, 2026",
-      "salary": 25000,
-      "classification": "Teaching",
-      "department": "College of Arts & Sciences",
-      "hireDate": "2025-11-03",
-      "endDate": "2026-03-31",
-      "hourlyRate": 167,
-      "hoursWorked": 150
-    },
-    {
-      "id": 9,
-      "first": "Maricel",
-      "last": "Dela Cruz",
-      "email": "maricel@rcc.edu.ph",
-      "role": "Employee",
-      "status": "Active",
-      "date": "Apr 14, 2026",
-      "salary": 27000,
-      "classification": "Non-Teaching",
-      "department": "Registrar Office",
-      "hireDate": "2023-01-16"
-    },
-    {
-      "id": 10,
-      "first": "Rey",
-      "last": "Santos",
-      "email": "rey@rcc.edu.ph",
-      "role": "Employee",
-      "status": "Active",
-      "date": "Apr 22, 2026",
-      "salary": 31000,
-      "classification": "Teaching",
-      "department": "College of Business & Accountancy",
-      "hireDate": "2021-06-01",
-      "hourlyRate": 207,
-      "hoursWorked": 150
-    },
-    {
-      "id": 11,
-      "first": "Jennifer",
-      "last": "Torres",
-      "email": "jennifer@rcc.edu.ph",
-      "role": "Employee",
-      "status": "Active",
-      "date": "May 5, 2026",
-      "salary": 24000,
-      "classification": "Non-Teaching",
-      "department": "Guidance Office",
-      "hireDate": "2024-07-01"
-    },
-    {
-      "id": 12,
-      "first": "Edwin",
-      "last": "Navarro",
-      "email": "edwin@rcc.edu.ph",
-      "role": "Employee",
-      "status": "Active",
-      "date": "May 12, 2026",
-      "salary": 33000,
-      "classification": "Teaching",
-      "department": "College of Criminal Justice",
-      "hireDate": "2019-06-01",
-      "hourlyRate": 220,
-      "hoursWorked": 150
     }
   ],
-  "nextUserId": 13,
+  "nextUserId": 4,
   "cashAdvances": {
-    "1": 0
+    "1": 0,
+    "2": 1000,
+    "3": 0
   },
   "bonusTypes": [
     {
@@ -240,9 +115,404 @@
       "cash": 0,
       "bonuses": [],
       "date": "Aug 7, 2026"
+    },
+    {
+      "empId": 2,
+      "name": "John Cabigting",
+      "month": 12,
+      "monthName": "December",
+      "year": 2026,
+      "period": "December 2026",
+      "gross": 38000,
+      "deMinimisSum": 0,
+      "thirteenth": 38000,
+      "thirteenTaxable": 0,
+      "thirteenExempt": 38000,
+      "thirteenTax": 0,
+      "net": 70951.67,
+      "sss": 1750,
+      "phil": 950,
+      "pag": 100,
+      "bir": 2248.33,
+      "cash": 0,
+      "bonuses": [],
+      "date": "Aug 15, 2026"
+    },
+    {
+      "empId": 2,
+      "name": "John Cabigting",
+      "month": 1,
+      "monthName": "January",
+      "year": 2026,
+      "period": "January 2026",
+      "gross": 38000,
+      "deMinimisSum": 0,
+      "thirteenth": 0,
+      "thirteenTaxable": 0,
+      "thirteenExempt": 0,
+      "thirteenTax": 0,
+      "net": 31951.67,
+      "sss": 1750,
+      "phil": 950,
+      "pag": 100,
+      "bir": 2248.33,
+      "cash": 1000,
+      "bonuses": [],
+      "date": "Aug 15, 2026"
     }
   ],
   "bonusPayouts": {},
+  "sssTable": [
+    {
+      "range": "Below ₱5,250",
+      "emp": 250,
+      "er": 500
+    },
+    {
+      "range": "₱5,250 – ₱5,749",
+      "emp": 275,
+      "er": 550
+    },
+    {
+      "range": "₱5,750 – ₱6,249",
+      "emp": 300,
+      "er": 600
+    },
+    {
+      "range": "₱6,250 – ₱6,749",
+      "emp": 325,
+      "er": 650
+    },
+    {
+      "range": "₱6,750 – ₱7,249",
+      "emp": 350,
+      "er": 700
+    },
+    {
+      "range": "₱7,250 – ₱7,749",
+      "emp": 375,
+      "er": 750
+    },
+    {
+      "range": "₱7,750 – ₱8,249",
+      "emp": 400,
+      "er": 800
+    },
+    {
+      "range": "₱8,250 – ₱8,749",
+      "emp": 425,
+      "er": 850
+    },
+    {
+      "range": "₱8,750 – ₱9,249",
+      "emp": 450,
+      "er": 900
+    },
+    {
+      "range": "₱9,250 – ₱9,749",
+      "emp": 475,
+      "er": 950
+    },
+    {
+      "range": "₱9,750 – ₱10,249",
+      "emp": 500,
+      "er": 1000
+    },
+    {
+      "range": "₱10,250 – ₱10,749",
+      "emp": 525,
+      "er": 1050
+    },
+    {
+      "range": "₱10,750 – ₱11,249",
+      "emp": 550,
+      "er": 1100
+    },
+    {
+      "range": "₱11,250 – ₱11,749",
+      "emp": 575,
+      "er": 1150
+    },
+    {
+      "range": "₱11,750 – ₱12,249",
+      "emp": 600,
+      "er": 1200
+    },
+    {
+      "range": "₱12,250 – ₱12,749",
+      "emp": 625,
+      "er": 1250
+    },
+    {
+      "range": "₱12,750 – ₱13,249",
+      "emp": 650,
+      "er": 1300
+    },
+    {
+      "range": "₱13,250 – ₱13,749",
+      "emp": 675,
+      "er": 1350
+    },
+    {
+      "range": "₱13,750 – ₱14,249",
+      "emp": 700,
+      "er": 1400
+    },
+    {
+      "range": "₱14,250 – ₱14,749",
+      "emp": 725,
+      "er": 1450
+    },
+    {
+      "range": "₱14,750 – ₱15,249",
+      "emp": 750,
+      "er": 1500
+    },
+    {
+      "range": "₱15,250 – ₱15,749",
+      "emp": 775,
+      "er": 1550
+    },
+    {
+      "range": "₱15,750 – ₱16,249",
+      "emp": 800,
+      "er": 1600
+    },
+    {
+      "range": "₱16,250 – ₱16,749",
+      "emp": 825,
+      "er": 1650
+    },
+    {
+      "range": "₱16,750 – ₱17,249",
+      "emp": 850,
+      "er": 1700
+    },
+    {
+      "range": "₱17,250 – ₱17,749",
+      "emp": 875,
+      "er": 1750
+    },
+    {
+      "range": "₱17,750 – ₱18,249",
+      "emp": 900,
+      "er": 1800
+    },
+    {
+      "range": "₱18,250 – ₱18,749",
+      "emp": 925,
+      "er": 1850
+    },
+    {
+      "range": "₱18,750 – ₱19,249",
+      "emp": 950,
+      "er": 1900
+    },
+    {
+      "range": "₱19,250 – ₱19,749",
+      "emp": 975,
+      "er": 1950
+    },
+    {
+      "range": "₱19,750 – ₱20,249",
+      "emp": 1000,
+      "er": 2000
+    },
+    {
+      "range": "₱20,250 – ₱20,749",
+      "emp": 1025,
+      "er": 2050
+    },
+    {
+      "range": "₱20,750 – ₱21,249",
+      "emp": 1050,
+      "er": 2100
+    },
+    {
+      "range": "₱21,250 – ₱21,749",
+      "emp": 1075,
+      "er": 2150
+    },
+    {
+      "range": "₱21,750 – ₱22,249",
+      "emp": 1100,
+      "er": 2200
+    },
+    {
+      "range": "₱22,250 – ₱22,749",
+      "emp": 1125,
+      "er": 2250
+    },
+    {
+      "range": "₱22,750 – ₱23,249",
+      "emp": 1150,
+      "er": 2300
+    },
+    {
+      "range": "₱23,250 – ₱23,749",
+      "emp": 1175,
+      "er": 2350
+    },
+    {
+      "range": "₱23,750 – ₱24,249",
+      "emp": 1200,
+      "er": 2400
+    },
+    {
+      "range": "₱24,250 – ₱24,749",
+      "emp": 1225,
+      "er": 2450
+    },
+    {
+      "range": "₱24,750 – ₱25,249",
+      "emp": 1250,
+      "er": 2500
+    },
+    {
+      "range": "₱25,250 – ₱25,749",
+      "emp": 1275,
+      "er": 2550
+    },
+    {
+      "range": "₱25,750 – ₱26,249",
+      "emp": 1300,
+      "er": 2600
+    },
+    {
+      "range": "₱26,250 – ₱26,749",
+      "emp": 1325,
+      "er": 2650
+    },
+    {
+      "range": "₱26,750 – ₱27,249",
+      "emp": 1350,
+      "er": 2700
+    },
+    {
+      "range": "₱27,250 – ₱27,749",
+      "emp": 1375,
+      "er": 2750
+    },
+    {
+      "range": "₱27,750 – ₱28,249",
+      "emp": 1400,
+      "er": 2800
+    },
+    {
+      "range": "₱28,250 – ₱28,749",
+      "emp": 1425,
+      "er": 2850
+    },
+    {
+      "range": "₱28,750 – ₱29,249",
+      "emp": 1450,
+      "er": 2900
+    },
+    {
+      "range": "₱29,250 – ₱29,749",
+      "emp": 1475,
+      "er": 2950
+    },
+    {
+      "range": "₱29,750 – ₱30,249",
+      "emp": 1500,
+      "er": 3000
+    },
+    {
+      "range": "₱30,250 – ₱30,749",
+      "emp": 1525,
+      "er": 3050
+    },
+    {
+      "range": "₱30,750 – ₱31,249",
+      "emp": 1550,
+      "er": 3100
+    },
+    {
+      "range": "₱31,250 – ₱31,749",
+      "emp": 1575,
+      "er": 3150
+    },
+    {
+      "range": "₱31,750 – ₱32,249",
+      "emp": 1600,
+      "er": 3200
+    },
+    {
+      "range": "₱32,250 – ₱32,749",
+      "emp": 1625,
+      "er": 3250
+    },
+    {
+      "range": "₱32,750 – ₱33,249",
+      "emp": 1650,
+      "er": 3300
+    },
+    {
+      "range": "₱33,250 – ₱33,749",
+      "emp": 1675,
+      "er": 3350
+    },
+    {
+      "range": "₱33,750 – ₱34,249",
+      "emp": 1700,
+      "er": 3400
+    },
+    {
+      "range": "₱34,250 – ₱34,749",
+      "emp": 1725,
+      "er": 3450
+    },
+    {
+      "range": "₱34,750 and above",
+      "emp": 1750,
+      "er": 3500
+    }
+  ],
+  "philData": {
+    "rate": 5,
+    "min": 500,
+    "max": 5000
+  },
+  "pagData": {
+    "rate1": 1,
+    "rate2": 2,
+    "empMax": 100,
+    "erMax": 100
+  },
+  "birData": [
+    {
+      "range": "Up to ₱250,000",
+      "base": 0,
+      "rate": 0
+    },
+    {
+      "range": "Over ₱250,000 – ₱400,000",
+      "base": 0,
+      "rate": 15
+    },
+    {
+      "range": "Over ₱400,000 – ₱800,000",
+      "base": 22500,
+      "rate": 20
+    },
+    {
+      "range": "Over ₱800,000 – ₱2,000,000",
+      "base": 102500,
+      "rate": 25
+    },
+    {
+      "range": "Over ₱2,000,000 – ₱8,000,000",
+      "base": 402500,
+      "rate": 30
+    },
+    {
+      "range": "Over ₱8,000,000",
+      "base": 2202500,
+      "rate": 35
+    }
+  ],
+  "bonusExemptionLimit": 90000,
   "profile": {
     "empPhone": "09171234567",
     "empAddr": "123 Mabini St., Angeles City, Pampanga"

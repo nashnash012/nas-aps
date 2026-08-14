@@ -1,25 +1,3 @@
-// ── EMPLOYEE FUNCTIONS ────────────────────────────────────────
-function renderEmpPayslips() {
-  const tbody = document.getElementById('empPayslipBody');
-  if (!tbody) return;
-  tbody.innerHTML = payslips.map(p=>`
-    <tr>
-      <td><strong>${p.period}</strong></td>
-      <td>${fmt(p.gross)}</td>
-      <td>${fmt(p.sss)}</td>
-      <td>${fmt(p.phil)}</td>
-      <td>${fmt(p.pag)}</td>
-      <td>${fmt(p.bir)}</td>
-      <td><strong style="color:var(--maroon-dark)">${fmt(p.net)}</strong></td>
-      <td><span class="badge ${p.status==='Released'?'b-green':'b-yellow'}">${p.status==='Released'?'✅':'⏳'} ${p.status}</span></td>
-      <td><button class="btn btn-outline btn-sm" onclick="downloadPayslip('${p.period}')">📥 PDF</button></td>
-    </tr>`).join('');
-}
-
-function downloadPayslip(period) {
-  showToast('📄', `Payslip for ${period} downloaded as PDF.`);
-}
-
 // ── FINANCE FUNCTIONS ─────────────────────────────────────────
 function updateFinStats() {
   const emps = users.filter(u=>u.status==='Active' && (u.role==='Employee' || u.role==='Finance Officer' || u.role==='System Admin') && u.salary>0);

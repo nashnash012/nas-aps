@@ -10,11 +10,8 @@ function onGovYearChange() {
   document.getElementById('govMonthLabel').style.color = year ? '#444' : '#BBB';
   document.getElementById('govReportOutput').style.display = 'none';
   if (!year) return;
-  const hasData = {2024:[1,2,3,4,5,6,7,8,9,10,11,12],2025:[1,2,3,4,5,6,7,8,9,10,11,12],2026:[1,2,3,4,5]};
-  const months = GOV_REPORT_MONTHS;
-  const dataMonths = hasData[parseInt(year)] || [];
   monthEl.innerHTML = `<option value="">— Select Month —</option>` +
-    months.map((m,i)=>{const n=i+1,ok=dataMonths.includes(n);return`<option value="${n}"${ok?'':' disabled'}>${m}${ok?'':' (no data)'}</option>`;}).join('');
+    GOV_REPORT_MONTHS.map((m, i) => `<option value="${i+1}">${m}</option>`).join('');
 }
 function onGovMonthChange() {
   const year  = parseInt(document.getElementById('govYear').value);
@@ -41,7 +38,7 @@ function renderGovReport(month, year) {
     const birTotal = d.bir + b13;
     tGross+=g; tSSS+=d.sss; tPhil+=d.phil; tPag+=d.pag; tBIR+=birTotal;
     return `<tr>
-      <td><strong>${emp.first} ${emp.last}</strong></td>
+      <td><strong>${displayName(emp)}</strong></td>
       <td><span class="badge ${EMP_CLASS[emp.classification]?.badge||'b-gray'}">${emp.classification||'Non-Teaching'}</span></td>
       <td>${fmt(g)}</td>
       <td>${fmt(d.sss)}</td>

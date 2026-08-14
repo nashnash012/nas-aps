@@ -133,7 +133,7 @@ function renderUserTable() {
     <tr>
       <td><div style="display:flex;align-items:center;gap:10px">
         <div style="width:34px;height:34px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${initials(u.first,u.last)}</div>
-        <div><div style="font-weight:600">${u.first} ${u.last} <span class="badge ${EMP_CLASS[u.classification||'Non-Teaching']?.badge||'b-gray'}" style="margin-left:6px;font-size:10px">${u.classification||'Non-Teaching'}</span></div><div style="font-size:11px;color:var(--text-muted)">#USR-00${u.id}</div></div>
+        <div><div style="font-weight:600">${displayName(u)} <span class="badge ${EMP_CLASS[u.classification||'Non-Teaching']?.badge||'b-gray'}" style="margin-left:6px;font-size:10px">${u.classification||'Non-Teaching'}</span></div><div style="font-size:11px;color:var(--text-muted)">#USR-00${u.id}</div></div>
       </div></td>
       <td>${u.email}</td>
       <td><span class="badge ${roleBadge[u.role]}">${u.role}</span></td>
@@ -172,7 +172,7 @@ function renderAdminRecentUsers() {
   const recent = users.slice(0,4);
   tbody.innerHTML = recent.map(u=>`
     <tr>
-      <td><strong>${u.first} ${u.last}</strong></td>
+      <td><strong>${displayName(u)}</strong></td>
       <td><span class="badge ${roleBadge[u.role]}">${u.role}</span></td>
       <td style="font-size:12px;color:var(--text-muted)">Apr 28, 2026</td>
       <td><span class="badge ${u.status==='Active'?'b-green':'b-gray'}">${u.status==='Active'?'● Active':'● Inactive'}</span></td>
@@ -270,7 +270,7 @@ function viewUser(id) {
   document.getElementById('viewUserBody').innerHTML = `
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
       <div style="width:56px;height:56px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700">${initials(u.first,u.last)}</div>
-      <div><div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--maroon-dark)">${u.first} ${u.last}</div><div style="font-size:12px;color:var(--text-muted)">#USR-00${u.id} &nbsp;·&nbsp; Added ${u.date}</div></div>
+      <div><div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--maroon-dark)">${displayName(u)}</div><div style="font-size:12px;color:var(--text-muted)">#USR-00${u.id} &nbsp;·&nbsp; Added ${u.date}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       ${infoBox('✉️ Email',u.email)}${infoBox('🏷️ Role',`<span class="badge ${roleBadge[u.role]}">${u.role}</span>`)}
@@ -350,9 +350,21 @@ function syncFromHris() {
           added++;
         }
       });
+      // Deactivate (NOT delete) any Active user missing from the HRIS pull,
+      // except the three seed accounts (one per role), so payroll history is preserved.
+      const hrisEmails = new Set((d.employees || []).map(h => (h.email || '').toLowerCase()));
+      const seedEmails = ['admin@rcc.edu.ph', 'finance@rcc.edu.ph', 'employee@rcc.edu.ph'];
+      let deactivated = 0;
+      users.forEach(u => {
+        if (u.status === 'Active' && !hrisEmails.has(u.email.toLowerCase()) && !seedEmails.includes(u.email.toLowerCase())) {
+          u.status = 'Inactive';
+          ensureAuth(u);
+          deactivated++;
+        }
+      });
       saveDemo();
       renderUserTable(); renderAdminRecentUsers(); updateAdminStats();
-      showToast('✅', `HRIS sync complete — ${added} added, ${updated} updated (source: ${d.source})`);
+      showToast('✅', `HRIS sync complete — ${added} added, ${updated} updated, ${deactivated} deactivated (source: ${d.source})`);
     })
     .catch(() => showToast('⚠️', 'HRIS sync failed. Make sure the server is running.'))
     .finally(() => { if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync from HRIS'; } });
@@ -426,13 +438,35 @@ let sssTable = [
 let philData = { rate:5.00, min:500.00, max:5000.00 };
 let pagData  = { rate1:1, rate2:2, empMax:100.00, erMax:100.00 };
 let birData  = [
-  {range:'Up to ₱250,000',            base:0,         rate:0},
-  {range:'₱250,001 – ₱400,000',       base:0,         rate:15},
-  {range:'₱400,001 – ₱800,000',       base:22500,     rate:20},
-  {range:'₱800,001 – ₱2,000,000',     base:102500,    rate:25},
-  {range:'₱2,000,001 – ₱8,000,000',   base:402500,    rate:30},
-  {range:'Above ₱8,000,000',          base:2202500,   rate:35},
+  {range:'Up to ₱250,000',             base:0,       rate:0},
+  {range:'Over ₱250,000 – ₱400,000',   base:0,       rate:15},
+  {range:'Over ₱400,000 – ₱800,000',   base:22500,   rate:20},
+  {range:'Over ₱800,000 – ₱2,000,000', base:102500,  rate:25},
+  {range:'Over ₱2,000,000 – ₱8,000,000', base:402500, rate:30},
+  {range:'Over ₱8,000,000',            base:2202500,  rate:35},
 ];
+// Converts legacy "₱250,001 – ₱400,000" / "Above ₱8,000,000" range phrasing
+// into the BIR-correct "Over ₱250,000 – ₱400,000" / "Over ₱8,000,000" form so
+// the "excess over" used in the tax formula matches the official brackets.
+function normalizeBIRTable(t) {
+  return (t || []).map(row => {
+    let r = row.range || '';
+    if (r.indexOf('Above') === 0) {
+      r = 'Over' + r.slice(r.indexOf('₱'));
+    } else if (r.indexOf('Up to') !== 0 && r.indexOf('Over') !== 0 && r.indexOf('–') > -1) {
+      const parts = r.split('–');
+      const low = parseFloat(String(parts[0]).replace(/[^\d.]/g, '')) || 0;
+      r = 'Over ₱' + (low - 1).toLocaleString('en-PH') + ' –' + parts[1];
+    }
+    return Object.assign({}, row, { range: r });
+  });
+}
+// Restore government tables edited by the Finance Officer so they persist
+// across sessions and keep the system compliant with the latest regulations.
+if (_savedDemo && Array.isArray(_savedDemo.sssTable) && _savedDemo.sssTable.length) sssTable = _savedDemo.sssTable;
+if (_savedDemo && _savedDemo.philData) philData = Object.assign({}, philData, _savedDemo.philData);
+if (_savedDemo && _savedDemo.pagData)  pagData  = Object.assign({}, pagData,  _savedDemo.pagData);
+if (_savedDemo && Array.isArray(_savedDemo.birData) && _savedDemo.birData.length) birData = normalizeBIRTable(_savedDemo.birData);
 
 function openDedModal(type) {
   const titles = {
@@ -627,6 +661,7 @@ function showDedPage(type) {
     page.style.display = 'block';
     if (type === 'SSS') renderSSSTable();
     if (type === 'PhilHealth') renderPhilHealthDisplay();
+    if (type === 'BIR') renderBIRTable();
   }
 }
 
@@ -660,6 +695,28 @@ function renderPhilHealthDisplay() {
   if (mx) mx.textContent = '₱' + philData.max.toLocaleString('en-PH', {minimumFractionDigits:2});
 }
 
+function renderBIRTable() {
+  const tbody = document.getElementById('birTableBody');
+  if (!tbody) return;
+  const num = s => parseFloat(String(s).match(/[\d,]+/)?.[0]?.replace(/,/g,'')) || 0;
+  tbody.innerHTML = birData.map((row, i) => {
+    const r = row.range;
+    const excess = r.indexOf('Over') === 0
+      ? '₱' + num(r).toLocaleString('en-PH')
+      : '—';
+    const baseCell = i === 0 && row.base === 0
+      ? '<span class="badge b-green">₱0 — Exempt</span>'
+      : '₱' + row.base.toLocaleString('en-PH', {minimumFractionDigits:2});
+    return `<tr>
+      <td>${i+1}</td>
+      <td>${r}</td>
+      <td>${baseCell}</td>
+      <td>${row.rate}%</td>
+      <td>${excess}</td>
+    </tr>`;
+  }).join('');
+}
+
 function updateSSSRow(i, field, val) {
   sssTable[i][field] = parseFloat(val) || 0;
   const total = sssTable[i].emp + sssTable[i].er;
@@ -690,8 +747,10 @@ function saveDedModal() {
   }
 
   closeModal('dedModal');
+  saveDemo();
   // Refresh the detail page display
   if (type === 'SSS') renderSSSTable();
   if (type === 'PhilHealth') renderPhilHealthDisplay();
+  if (type === 'BIR') renderBIRTable();
   showToast('✅', `${type} rates updated successfully! Changes will apply to the next payroll cycle.`);
 }

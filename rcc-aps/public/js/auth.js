@@ -109,8 +109,8 @@ document.addEventListener('keydown', e => { if (e.key==='Enter') handleLogin(); 
 // ── PAGE NAVIGATION ───────────────────────────────────────────
 function initPage(page) {
   setTopbarDates();
-  if (page === 'empPage')     { renderPayslipList(); }
-  if (page === 'financePage') { updateFinStats(); populateCalcEmployees(); renderPayrollSummary(); renderBonusModule(); renderAnalytics(); }
+  if (page === 'empPage')     { renderEmpDashboard(); renderPayslipList(); }
+  if (page === 'financePage') { updateFinStats(); renderFinRecentActivity(); populateCalcEmployees(); renderPayrollSummary(); renderBonusModule(); renderAnalytics(); }
   if (page === 'adminPage')   { updateAdminStats(); renderAdminRecentUsers(); renderUserTable(); }
 }
 function setTopbarDates() {
@@ -121,81 +121,154 @@ function setTopbarDates() {
   });
 }
 
-// ── PAYSLIP DATA PER ROLE ────────────────────────────────────
-const payslipPeriods = {
-  2026: [
-    {month:'December',status:'Pending'},
-    {month:'May',    status:'Pending'},
-    {month:'April',  status:'Released'},
-    {month:'March',  status:'Released'},
-    {month:'February',status:'Released'},
-    {month:'January',status:'Released'},
-  ],
-  2025: [
-    {month:'December', status:'Released'},{month:'November', status:'Released'},
-    {month:'October',  status:'Released'},{month:'September',status:'Released'},
-    {month:'August',   status:'Released'},{month:'July',     status:'Released'},
-    {month:'June',     status:'Released'},{month:'May',      status:'Released'},
-    {month:'April',    status:'Released'},{month:'March',    status:'Released'},
-    {month:'February', status:'Released'},{month:'January',  status:'Released'},
-  ],
-};
+// ── PAYSLIP DATA (from confirmed payroll records) ────────────
+// The employee record behind the currently logged-in account.
+function currentEmp() {
+  return users.find(u => u.id === (loggedInUser && loggedInUser.id));
+}
 
-function buildPayslipRows(tbodyId, salary, year, prefix) {
+// Fill a payslip year dropdown with years that have confirmed records.
+function populatePayslipYears(selectId, preferred) {
+  const emp = currentEmp();
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const years = emp ? payslipYearsFor(emp.id) : [];
+  if (!years.length) {
+    sel.innerHTML = '<option value="">— No payslips —</option>';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  sel.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+  sel.value = years.includes(preferred) ? preferred : years[years.length - 1];
+}
+
+function buildPayslipRows(tbodyId, year, prefix) {
   const tbody = document.getElementById(tbodyId);
   if (!tbody) return;
-  const periods = payslipPeriods[year] || [];
-  const empId = prefix==='emp'?3:prefix==='fin'?2:1;
-  const emp = users.find(u=>u.id===empId);
-  tbody.innerHTML = periods.map(p => {
-    const isDec = p.month === 'December';
-    const thirteenth = isDec && emp ? computeThirteenth(emp, year) : 0;
-    const taxable13 = splitBonusTaxable(thirteenth, 0).taxable13;
-    const d = computeDeductions(salary, 0, 0);
-    const tTax = thirteenthTaxSplit(d, salary, taxable13);
-    const totalDed = d.sss + d.phil + d.pag + d.bir + d.cash + tTax.annualTax;
-    const gross = salary + thirteenth;
-    const net = parseFloat((d.net + thirteenth - tTax.annualTax).toFixed(2));
+  const emp = currentEmp();
+  const records = emp ? payslipRecordsFor(emp.id, year) : [];
+  if (!records.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:32px">
+      <div style="font-size:30px;margin-bottom:8px">📭</div>
+      <div style="font-weight:600">No payslips available</div>
+      <div style="font-size:12px;color:#AAA;margin-top:4px">${year ? `No payroll released for ${year}.` : 'Payslips appear here once the Finance Officer releases your payroll.'}</div>
+    </td></tr>`;
+    return;
+  }
+  tbody.innerHTML = records.map(p => {
+    const isDec = p.monthNum === 12;
+    const totalDed = p.sss + p.phil + p.pag + p.bir + p.cash + p.thirteenTax;
     return `
     <tr>
-      <td><strong>${p.month} ${year}</strong>${isDec?' <span class="badge b-gold" style="margin-left:4px;font-size:10px">🎁 13th Mo.</span>':''}</td>
-      <td>${fmt(gross)}</td>
+      <td><strong>${p.period}</strong>${isDec?' <span class="badge b-gold" style="margin-left:4px;font-size:10px">🎁 13th Mo.</span>':''}</td>
+      <td>${fmt(p.gross)}</td>
       <td>${fmt(totalDed)}</td>
-      <td><strong style="color:var(--maroon-dark)">${fmt(net)}</strong></td>
-      <td><span class="badge ${p.status==='Released'?'b-green':'b-yellow'}">${p.status==='Released'?'✓ Released':'⏳ Pending'}</span></td>
-      <td><button class="btn btn-outline btn-sm" onclick="viewPayslipDetail('${p.month} ${year}',${salary},'${prefix}')" style="display:flex;align-items:center;gap:4px">👁 View</button></td>
+      <td><strong style="color:var(--maroon-dark)">${fmt(p.net)}</strong></td>
+      <td><span class="badge b-green">✓ Released</span></td>
+      <td><button class="btn btn-outline btn-sm" onclick="viewPayslipDetail('${p.period}',${emp.id})" style="display:flex;align-items:center;gap:4px">👁 View</button></td>
     </tr>`;
   }).join('');
 }
 
 function renderPayslipList() {
-  const year = parseInt(document.getElementById('psYear')?.value||2026);
-  buildPayslipRows('psListBody', 28500, year, 'emp');
+  const sel = document.getElementById('psYear');
+  if (!sel) return;
+  const preferred = parseInt(sel.value) || 0;
+  populatePayslipYears('psYear', preferred);
+  buildPayslipRows('psListBody', parseInt(sel.value) || 0, 'emp');
 }
 function renderFinPayslipList() {
-  const year = parseInt(document.getElementById('finPsYear')?.value||2026);
-  buildPayslipRows('finMyPayslipBody', 38000, year, 'fin');
+  const sel = document.getElementById('finPsYear');
+  if (!sel) return;
+  const preferred = parseInt(sel.value) || 0;
+  populatePayslipYears('finPsYear', preferred);
+  buildPayslipRows('finMyPayslipBody', parseInt(sel.value) || 0, 'fin');
 }
 function renderAdmPayslipList() {
-  const year = parseInt(document.getElementById('admPsYear')?.value||2026);
-  buildPayslipRows('admMyPayslipBody', 45000, year, 'adm');
+  const sel = document.getElementById('admPsYear');
+  if (!sel) return;
+  const preferred = parseInt(sel.value) || 0;
+  populatePayslipYears('admPsYear', preferred);
+  buildPayslipRows('admMyPayslipBody', parseInt(sel.value) || 0, 'adm');
 }
 
-function viewPayslipDetail(period, salary, prefix) {
-  const gross = parseFloat(salary) || 0;
-  const names = {emp:['Jhon Gerald','Batuaan','#USR-003','Employee','Teaching','150 hrs × ₱190.00'], fin:['John','Cabigting','#USR-002','Finance Officer','Non-Teaching','Monthly Base Salary'], adm:['Nash','Valencia','#USR-001','System Admin','Non-Teaching','Monthly Base Salary']};
-  const n = names[prefix] || names.emp;
-  const year = parseInt((period.match(/\d{4}/)||[])[0]) || new Date().getFullYear();
-  const isDec = period.startsWith('December');
-  const empId = prefix==='emp'?3:prefix==='fin'?2:1;
-  const emp = users.find(u=>u.id===empId);
-  const thirteenth = isDec && emp ? computeThirteenth(emp, year) : 0;
-  const thirteenSplit = splitBonusTaxable(thirteenth, 0);
-  const d = computeDeductions(gross, 0, 0);
-  const tTax = thirteenthTaxSplit(d, gross, thirteenSplit.taxable13);
-  const totalDed = d.sss + d.phil + d.pag + d.bir + d.cash + tTax.annualTax;
+// Employee dashboard: hero, stat cards and Recent Payslips from confirmed records.
+function renderEmpDashboard() {
+  const emp = currentEmp();
+  const el = id => document.getElementById(id);
+  if (!emp) return;
 
-  const docId = prefix==='adm'?'admPsDoc':'psDoc';
+  const years = payslipYearsFor(emp.id);
+  const allRecs = [];
+  years.forEach(y => allRecs.push(...payslipRecordsFor(emp.id, y)));
+  const latestRec = allRecs[allRecs.length - 1];
+  const base = empGrossPay(emp);
+
+  const heroName = el('empHeroName');
+  if (heroName) heroName.innerHTML = `Welcome back, ${emp.first}! 👋`;
+  const heroSub = el('empHeroSub');
+  if (heroSub) heroSub.textContent = latestRec
+    ? `Here is your payroll summary for ${latestRec.period}.`
+    : 'No payroll released yet. Payslips appear once the Finance Officer releases your payroll.';
+
+  let nextLabel = '—';
+  if (latestRec) {
+    let m = latestRec.monthNum + 1, y = latestRec.year;
+    if (m > 12) { m = 1; y += 1; }
+    nextLabel = `${MONTHS[m - 1].slice(0, 3)} ${y}`;
+  }
+
+  const set = (id, txt) => { const e = el(id); if (e) e.textContent = txt; };
+  set('empHeroBasic', fmt(base));
+  set('empHeroNet', latestRec ? fmt(latestRec.net) : '—');
+  set('empHeroNext', nextLabel);
+  set('empStatNet', latestRec ? fmt(latestRec.net) : '₱0.00');
+  set('empStatPayslips', allRecs.length);
+  set('empStatDed', latestRec ? fmt(latestRec.sss + latestRec.phil + latestRec.pag + latestRec.bir + latestRec.thirteenTax + latestRec.cash) : '₱0.00');
+  set('empStatNext', nextLabel);
+
+  const avatar = el('empAvatar');
+  if (avatar) avatar.textContent = (emp.first[0] || '') + (emp.last[0] || '');
+  const tbName = el('empTbName');
+  if (tbName) tbName.textContent = displayName(emp);
+
+  const tbody = el('empRecentPayslipBody');
+  if (tbody) {
+    tbody.innerHTML = allRecs.length
+      ? allRecs.slice(-4).reverse().map(p => `
+          <tr>
+            <td><strong>${p.period}</strong>${p.monthNum===12?' <span class="badge b-gold" style="margin-left:4px;font-size:10px">🎁 13th</span>':''}</td>
+            <td>${fmt(p.gross)}</td>
+            <td><strong style="color:var(--maroon-dark)">${fmt(p.net)}</strong></td>
+            <td><span class="badge b-green">✓ Released</span></td>
+          </tr>`).join('')
+      : `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:24px">📭 No payslips yet.</td></tr>`;
+  }
+}
+
+function viewPayslipDetail(period, empId) {
+  const emp = users.find(u => u.id === empId);
+  const year = parseInt((period.match(/\d{4}/) || [])[0]) || new Date().getFullYear();
+  const monthNum = MONTHS.indexOf(period.replace(` ${year}`, '')) + 1;
+  const rec = emp && payrollRecords.find(r => r.empId === emp.id && r.month === monthNum && r.year === year);
+  if (!emp || !rec) { showToast('⚠️', 'Payslip record not found.'); return; }
+
+  const grossTaxable = parseFloat(rec.gross) || 0;
+  const deMinimis    = parseFloat(rec.deMinimisSum) || 0;
+  const thirteenth   = parseFloat(rec.thirteenth) || 0;
+  const exempt13     = parseFloat(rec.thirteenExempt) || 0;
+  const taxable13    = parseFloat(rec.thirteenTaxable) || 0;
+  const thirteenTax  = parseFloat(rec.thirteenTax) || 0;
+  const sss = parseFloat(rec.sss)||0, phil = parseFloat(rec.phil)||0, pag = parseFloat(rec.pag)||0, bir = parseFloat(rec.bir)||0, cash = parseFloat(rec.cash)||0;
+  const totalDed  = sss + phil + pag + bir + cash + thirteenTax;
+  const totalGross = grossTaxable + deMinimis + thirteenth;
+  const earningLabel = emp.classification === 'Teaching'
+    ? `${emp.hoursWorked||0} hrs × ₱${(parseFloat(emp.hourlyRate)||0).toFixed(2)}`
+    : 'Monthly Base Salary';
+  const isDec = monthNum === 12;
+
+  const docId = empId === 3 ? 'psDoc' : empId === 2 ? 'finPsDoc' : 'admPsDoc';
   document.getElementById(docId).innerHTML = `
     <div style="text-align:center;margin-bottom:24px;padding-bottom:24px;border-bottom:2px solid var(--maroon-dark)">
       <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--maroon-dark)">Republic Central Colleges</div>
@@ -204,7 +277,7 @@ function viewPayslipDetail(period, salary, prefix) {
     </div>
     <div style="margin-bottom:20px">
       <div style="font-weight:700;font-size:13px;color:var(--maroon-dark);margin-bottom:12px">Employee Information</div>
-      ${[['Name',`${n[0]} ${n[1]}`],['Employee ID',n[2]],['Position',n[3]],['Classification',n[4]],['Department','Finance Department']].map(([l,v])=>`
+      ${[['Name', displayName(emp)],['Employee ID', '#USR-00' + emp.id],['Position', emp.role],['Classification', emp.classification || 'Non-Teaching'],['Department', emp.department || '—']].map(([l,v])=>`
         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
           <span style="color:var(--text-muted)">${l}</span><span style="font-weight:600">${v}</span>
         </div>`).join('')}
@@ -212,26 +285,29 @@ function viewPayslipDetail(period, salary, prefix) {
     <div style="margin-bottom:20px">
       <div style="font-weight:700;font-size:13px;color:var(--maroon-dark);margin-bottom:12px">Earnings</div>
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-        <span style="color:var(--text-muted)">${n[5]}</span><span style="font-weight:600">${fmt(gross)}</span>
+        <span style="color:var(--text-muted)">${earningLabel}</span><span style="font-weight:600">${fmt(grossTaxable)}</span>
       </div>
-      ${thirteenSplit.exempt13>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-        <span style="color:var(--text-muted)">🎁 13th Month Pay (RA 8515) <span style="font-size:10px;color:#2E7D32">— exempt (≤₱90,000/yr)</span></span><span style="font-weight:700;color:var(--maroon-dark)">${fmt(thirteenSplit.exempt13)}</span>
+      ${deMinimis>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
+        <span style="color:var(--text-muted)">De Minimis Benefits</span><span style="font-weight:600">${fmt(deMinimis)}</span>
       </div>`:''}
-      ${thirteenSplit.taxable13>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-        <span style="color:var(--text-muted)">⚠️ 13th Month excess <span style="font-size:10px;color:#C62828">— taxable (over ₱90,000)</span></span><span style="font-weight:700;color:#C62828">${fmt(thirteenSplit.taxable13)}</span>
+      ${exempt13>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
+        <span style="color:var(--text-muted)">🎁 13th Month Pay (RA 8515) <span style="font-size:10px;color:#2E7D32">— exempt (≤${fmt(BONUS_EXEMPTION_LIMIT)}/yr)</span></span><span style="font-weight:700;color:var(--maroon-dark)">${fmt(exempt13)}</span>
+      </div>`:''}
+      ${taxable13>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
+        <span style="color:var(--text-muted)">⚠️ 13th Month excess <span style="font-size:10px;color:#C62828">— taxable (over ${fmt(BONUS_EXEMPTION_LIMIT)})</span></span><span style="font-weight:700;color:#C62828">${fmt(taxable13)}</span>
       </div>`:''}
       <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700;color:var(--maroon-dark)">
-        <span>Total Earnings</span><span>${fmt(gross + thirteenth)}</span>
+        <span>Total Earnings</span><span>${fmt(totalGross)}</span>
       </div>
     </div>
     <div style="margin-bottom:20px">
       <div style="font-weight:700;font-size:13px;color:var(--maroon-dark);margin-bottom:12px">Deductions</div>
-      ${[['SSS Contribution',d.sss],['PhilHealth Premium',d.phil],['Pag-IBIG Contribution',d.pag],['BIR Withholding Tax',d.bir],['Cash Advance',d.cash]].map(([l,v])=>`
+      ${[['SSS Contribution',sss],['PhilHealth Premium',phil],['Pag-IBIG Contribution',pag],['BIR Withholding Tax',bir],['Cash Advance',cash]].map(([l,v])=>`
         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
           <span style="color:var(--text-muted)">${l}</span><span>${fmt(v)}</span>
         </div>`).join('')}
-      ${tTax.annualTax > 0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px;background:#FFF8E1">
-        <span style="color:#8D6E63">🧾 13th Month Excess Tax <span style="font-size:10px;color:#8D6E63">(over ₱90,000 exemption — withheld from 13th Month Pay)</span></span><span style="font-weight:700;color:#C62828">${fmt(tTax.annualTax)}</span>
+      ${thirteenTax>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px;background:#FFF8E1">
+        <span style="color:#8D6E63">🧾 13th Month Excess Tax <span style="font-size:10px;color:#8D6E63">(over ${fmt(BONUS_EXEMPTION_LIMIT)} exemption — withheld from 13th Month Pay)</span></span><span style="font-weight:700;color:#C62828">${fmt(thirteenTax)}</span>
       </div>`:''}
       <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700;color:#C62828">
         <span>Total Deductions</span><span>${fmt(totalDed)}</span>
@@ -239,46 +315,50 @@ function viewPayslipDetail(period, salary, prefix) {
     </div>
     <div style="background:linear-gradient(135deg,var(--maroon-dark),var(--maroon));border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
       <span style="font-weight:700;color:#fff;letter-spacing:1px">NET PAY</span>
-      <span style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#fff">${fmt(d.net + thirteenth - tTax.annualTax)}</span>
+      <span style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#fff">${fmt(rec.net)}</span>
     </div>
     <div style="text-align:center;font-size:11px;color:#AAA">This is a computer-generated payslip. No signature required.</div>
   `;
 
-  // Show detail page based on prefix
-  if (prefix==='emp') {
+  // Show detail page based on role
+  if (empId === 3) {
     document.getElementById('empPayslip').style.display='none';
     document.getElementById('payslipDetailPage').style.display='block';
     document.getElementById('psBackBtn').onclick = ()=>{
       document.getElementById('payslipDetailPage').style.display='none';
       document.getElementById('empPayslip').style.display='block';
     };
-  } else if (prefix==='fin') {
+  } else if (empId === 2) {
     document.getElementById('finMyPayslip').style.display='none';
     document.getElementById('finPayslipDetail').style.display='block';
-  } else if (prefix==='adm') {
+  } else if (empId === 1) {
     document.getElementById('admMyPayslip').style.display='none';
     document.getElementById('admPayslipDetail').style.display='block';
   }
 }
 
-function printPayslip() { showToast('📥','Payslip downloaded as PDF successfully!'); }
-
-function renderMyPayslips(tbodyId, salary) {
-  const tbody = document.getElementById(tbodyId);
-  if (!tbody) return;
-  const d = computeDeductions(salary);
-  tbody.innerHTML = payslips.map(p => `
-    <tr>
-      <td><strong>${p.period}</strong></td>
-      <td>${fmt(salary)}</td>
-      <td>${fmt(d.sss)}</td>
-      <td>${fmt(d.phil)}</td>
-      <td>${fmt(d.pag)}</td>
-      <td>${fmt(d.bir)}</td>
-      <td><strong style="color:var(--maroon-dark)">${fmt(d.net)}</strong></td>
-      <td><span class="badge ${p.status==='Released'?'b-green':'b-yellow'}">${p.status==='Released'?'✅':'⏳'} ${p.status}</span></td>
-      <td><button class="btn btn-outline btn-sm" onclick="downloadPayslip('${p.period}')">📥 PDF</button></td>
-    </tr>`).join('');
+function printPayslip() {
+  const active = document.querySelector('.dashboard-page.show');
+  const cfg = {
+    empPage: 'psDoc',
+    financePage: 'finPsDoc',
+    adminPage: 'admPsDoc'
+  }[active && active.id];
+  const doc = cfg ? document.getElementById(cfg) : null;
+  if (!doc || !doc.innerHTML.trim()) { showToast('⚠️','No payslip to download.'); return; }
+  const period = (doc.innerHTML.match(/Period:\s*([A-Za-z]+\s+\d{4})/) || [])[1] || '';
+  const name   = (doc.innerHTML.match(/Name<\/span><span style="font-weight:600">([^<]+)<\/span>/) || [])[1] || '';
+  const base   = `Payslip_${name.trim().replace(/\s+/g,'_')}_${period.replace(/\s+/g,'')}`;
+  const oldTitle = document.title;
+  document.title = base + '.pdf';
+  const old = document.getElementById('printOverlay');
+  if (old) old.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'printOverlay';
+  overlay.innerHTML = doc.innerHTML;
+  document.body.appendChild(overlay);
+  window.print();
+  setTimeout(()=>{ if (overlay.parentNode) overlay.parentNode.removeChild(overlay); document.title = oldTitle; }, 1500);
 }
 
 function showFinPage(id, btn) {
@@ -294,16 +374,14 @@ function showFinPage(id, btn) {
   const labels = {finDashboard:'Dashboard',finAnalytics:'Analytics',finBonus:'Bonus Management',finPayroll:'Payroll Calculation',finReports:'Reports',finGovReport:'Reports',finPayrollReport:'Reports',finDeduction:'Deduction Tables',finMyPayslip:'My Payslip',finMyProfile:'My Profile',finChangePassword:'Change Password'};
   const bc = document.getElementById('finBreadcrumb');
   if (bc) bc.textContent = labels[id] || 'Dashboard';
-  if (id === 'finDashboard') updateFinStats();
+  if (id === 'finDashboard') { updateFinStats(); renderFinRecentActivity(); }
   if (id === 'finAnalytics') renderAnalytics();
   if (id === 'finBonus') renderBonusModule();
   if (id === 'finPayroll') { populateCalcEmployees(); renderPayrollSummary(); }
   if (id === 'finDeduction') renderDeductionCategories();
   if (id === 'finMyPayslip') renderFinPayslipList();
-  if (id === 'admMyPayslip') renderAdmPayslipList();
   if (id === 'finPayrollReport') {
     document.getElementById('reportOutput').style.display = 'none';
-    renderMonthButtons();
   }
 }
 
@@ -316,6 +394,7 @@ function showEmpPage(id, btn) {
   if (target) target.style.display = 'block';
   document.querySelectorAll('#empPage .nav-item').forEach(b=>b.classList.remove('active'));
   if (btn) btn.classList.add('active');
+  if (id === 'empPayslip') renderPayslipList();
 }
 
 function showAdmPage(id, btn) {
@@ -332,4 +411,5 @@ function showAdmPage(id, btn) {
   if (bc) bc.textContent = labels[id] || 'Dashboard';
   if (id === 'admDashboard') { updateAdminStats(); renderAdminRecentUsers(); }
   if (id === 'admUsers') renderUserTable();
+  if (id === 'admMyPayslip') renderAdmPayslipList();
 }

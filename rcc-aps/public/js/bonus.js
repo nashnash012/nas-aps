@@ -112,6 +112,7 @@ function renderBonusModule() {
   const titleEl = document.getElementById('bonTableTitle');
   if (titleEl) titleEl.textContent = '🎁 13th Month Pay Computation (RA 8515) — ' + year;
   renderPayoutBanner(year);
+  renderBonusExemptionLimit();
 }
 
 function renderBonusTable() {
@@ -132,7 +133,7 @@ function renderBonusTable() {
           : '<button class="btn btn-outline btn-sm" onclick="markBonusPaid('+emp.id+','+year+')">Mark Paid</button>')
       : '<span style="color:#BDBDBD">—</span>';
     return `<tr>
-      <td><strong>${emp.first} ${emp.last}</strong></td>
+      <td><strong>${displayName(emp)}</strong></td>
       <td><span class="badge ${EMP_CLASS[emp.classification].badge}">${emp.classification}</span></td>
       <td>${emp.hireDate || '—'}${emp.endDate ? '<br/><span style="font-size:11px;color:var(--text-muted)">until '+emp.endDate+'</span>' : ''}</td>
       <td>${statusBadge}</td>
@@ -251,4 +252,24 @@ function toggleBonusType(id) {
 function isThirteenthActive() {
   const b = bonusTypes.find(x=>x.id===1);
   return !!(b && b.status==='Active');
+}
+
+// RA 10963 / CREATE: the annual tax-exempt ceiling for 13th Month + bonuses is
+// configurable so the system stays compliant when the government amends it.
+function renderBonusExemptionLimit() {
+  const el = document.getElementById('bonExemptionLimit');
+  if (el) el.value = BONUS_EXEMPTION_LIMIT;
+  const note = document.getElementById('bonFormulaExemption');
+  if (note) note.textContent = fmt(BONUS_EXEMPTION_LIMIT);
+}
+function saveBonusExemptionLimit() {
+  const el = document.getElementById('bonExemptionLimit');
+  if (!el) return;
+  const v = parseFloat(el.value);
+  if (isNaN(v) || v < 0) { showToast('⚠️','Enter a valid exemption limit.'); return; }
+  BONUS_EXEMPTION_LIMIT = v;
+  saveDemo();
+  renderBonusExemptionLimit();
+  renderBonusModule();
+  showToast('✅', `13th Month exemption limit set to ${fmt(BONUS_EXEMPTION_LIMIT)}/year.`);
 }

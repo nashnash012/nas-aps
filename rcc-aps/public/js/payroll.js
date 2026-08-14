@@ -22,15 +22,6 @@ let payrollRecords = (_savedDemo && _savedDemo.payrollRecords) || [];
 // 13th-month payout tracking: { empId_year: { date } }
 let bonusPayouts = (_savedDemo && _savedDemo.bonusPayouts) || {};
 
-// ── PAYSLIP DATA ─────────────────────────────────────────────
-const payslips = [
-  {period:'April 2026',   gross:28500, sss:1425.00, phil:712.50, pag:100, bir:814.38, net:25448.12, status:'Pending'},
-  {period:'March 2026',   gross:28500, sss:1425.00, phil:712.50, pag:100, bir:814.38, net:25448.12, status:'Released'},
-  {period:'February 2026',gross:28500, sss:1425.00, phil:712.50, pag:100, bir:814.38, net:25448.12, status:'Released'},
-  {period:'January 2026', gross:28500, sss:1425.00, phil:712.50, pag:100, bir:814.38, net:25448.12, status:'Released'},
-  {period:'December 2025',gross:28500, sss:1425.00, phil:712.50, pag:100, bir:814.38, net:25448.12, status:'Released'},
-];
-
 // ── PAYROLL RECORDS (per employee per month) ─────────────────
 // Employee classification helpers
 const EMP_CLASS = { Teaching: {badge:'b-blue'}, 'Non-Teaching': {badge:'b-gold'} };
@@ -52,8 +43,9 @@ function empHrsOrAbs(emp) {
 function getEmpCashAdvance(id) { return parseFloat(cashAdvances[id]) || 0; }
 
 // RA 10963 (TRAIN) / CREATE Act: 13th month pay + other bonuses are exempt
-// from income tax only up to ₱90,000 per year; the excess is taxable income.
-const BONUS_EXEMPTION_LIMIT = 90000;
+// from income tax only up to a configurable annual limit (default ₱90,000);
+// the excess is taxable income. Editable in Bonus Management.
+let BONUS_EXEMPTION_LIMIT = (_savedDemo && _savedDemo.bonusExemptionLimit) || 90000;
 // Splits bonuses (13th month + other bonuses) into exempt and taxable parts.
 // Returns the taxable excess and how much of it comes from the 13th month.
 function splitBonusTaxable(thirteenth, otherBonuses) {
@@ -72,14 +64,35 @@ function splitBonusTaxable(thirteenth, otherBonuses) {
   };
 }
 
-// BIR annual withholding (TRAIN Law brackets)
+// BIR annual withholding (TRAIN Law brackets) — computed from the EDITABLE
+// birData table (Deduction Tables → BIR). Keeping the tax in sync with what
+// the Finance Officer configures keeps the system compliant when BIR issues
+// new schedules. Rows use BIR phrasing "Up to X" / "Over X – Y" / "Over X".
 function annualBIR(annual) {
-  if      (annual <= 250000)              return 0;
-  else if (annual <= 400000)              return (annual - 250000) * 0.15;
-  else if (annual <= 800000)              return 22500  + (annual - 400000)  * 0.20;
-  else if (annual <= 2000000)             return 102500 + (annual - 800000)  * 0.25;
-  else if (annual <= 8000000)             return 402500 + (annual - 2000000) * 0.30;
-  else                                     return 2202500 + (annual - 8000000) * 0.35;
+  const num = s => parseFloat(String(s).match(/[\d,]+/)?.[0]?.replace(/,/g,'')) || 0;
+  for (const row of birData) {
+    const r = row.range || '';
+    if (r.indexOf('Up to') === 0) {
+      if (annual <= num(r)) return parseFloat((row.base || 0).toFixed(2));
+    } else if (r.indexOf('Over') === 0) {
+      const over = num(r);
+      const dash = r.indexOf('–');
+      if (dash > -1) {
+        const high = num(r.slice(dash));
+        if (annual > over && annual <= high) return parseFloat((row.base + (annual - over) * row.rate / 100).toFixed(2));
+      } else {
+        if (annual > over) return parseFloat((row.base + (annual - over) * row.rate / 100).toFixed(2));
+      }
+    } else if (r.indexOf('Above') === 0) {
+      const over = num(r);
+      if (annual > over) return parseFloat((row.base + (annual - over) * row.rate / 100).toFixed(2));
+    } else if (r.indexOf('–') > -1) {
+      const parts = r.split('–');
+      const over = num(parts[0]), high = num(parts[1]);
+      if (annual >= over && annual < high) return parseFloat((row.base + (annual - over) * row.rate / 100).toFixed(2));
+    }
+  }
+  return 0;
 }
 // Taxable monthly income = gross minus the employee's mandatory contributions
 // (SSS, PhilHealth, Pag-IBIG). Per BIR RR 11-2018 this is the base the BIR taxes.
@@ -171,7 +184,7 @@ function renderCalcEmpList(list, show) {
   const box = document.getElementById('calcEmpList');
   if (!box) return;
   box.innerHTML = list.length
-    ? list.map(u=>`<div class="combobox-item" onclick="selectCalcEmp(${u.id})">${u.first} ${u.last} — ${u.classification}${u.department?' · '+u.department:''}</div>`).join('')
+    ? list.map(u=>`<div class="combobox-item" onclick="selectCalcEmp(${u.id})">${displayName(u)} — ${u.classification}${u.department?' · '+u.department:''}</div>`).join('')
     : '<div class="combobox-empty">No employee found.</div>';
   box.classList.toggle('show', show !== false);
 }
@@ -205,7 +218,7 @@ function selectCalcEmp(id) {
   if (!emp) return;
   document.getElementById('calcEmp').value = id;
   const inp = document.getElementById('calcEmpSearch');
-  if (inp) inp.value = `${emp.first} ${emp.last} — ${emp.classification}${emp.department?' · '+emp.department:''}`;
+  if (inp) inp.value = `${displayName(emp)} — ${emp.classification}${emp.department?' · '+emp.department:''}`;
   closeCalcEmpList();
   loadEmployeeData();
 }
@@ -248,6 +261,7 @@ function updateCalc13thState() {
 
 function onPayPeriodChange() {
   updateCalc13thState();
+  updateCalcStatusBadge();
   renderPayrollSummary();
 }
 
@@ -282,7 +296,7 @@ function loadEmployeeData() {
     return;
   }
   const isTeaching = emp.classification === 'Teaching';
-  document.getElementById('calcMetaName').textContent = `${emp.first} ${emp.last}`;
+  document.getElementById('calcMetaName').textContent = displayName(emp);
   document.getElementById('calcMetaClass').textContent = emp.classification;
   document.getElementById('calcMetaDept').textContent = emp.department || '—';
   meta.style.display = 'block';
@@ -294,6 +308,28 @@ function loadEmployeeData() {
   empty.style.display = 'none';
   res.style.display = 'block';
   computePayroll();
+  updateCalcStatusBadge();
+}
+
+// Shows a warning badge when the selected employee already has a released
+// payroll record for the current pay period, so the user knows confirming will overwrite it.
+function updateCalcStatusBadge() {
+  const badge = document.getElementById('calcStatusBadge');
+  if (!badge) return;
+  const id = parseInt(document.getElementById('calcEmp').value) || 0;
+  const emp = users.find(u=>u.id===id);
+  const period = document.getElementById('payPeriod').value || 'December 2026';
+  const [monthName, yearStr] = period.split(' ');
+  const year = parseInt(yearStr) || 2026;
+  const monthNum = MONTHS.indexOf(monthName) + 1;
+  const rec = payrollRecords.find(r=>r.empId===id && r.month===monthNum && r.year===year);
+  if (emp && rec) {
+    badge.style.display = 'block';
+    badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;background:#FFEBEE;border:1px solid #F5C6C6;color:#C62828;border-radius:8px;padding:8px 12px;font-size:12.5px;font-weight:600">✓ Already processed for <strong>${rec.period}</strong> — Net ${fmt(rec.net)} · Released ${rec.date}. Confirming will <u>overwrite</u> the existing record.</span>`;
+  } else {
+    badge.style.display = 'none';
+    badge.innerHTML = '';
+  }
 }
 
 // Holds the last computed payroll so "Confirm & Generate Payslip" can store it
@@ -377,7 +413,7 @@ function computePayroll() {
   } else if (!isDec) {
     note13 = '<div style="font-size:12px;color:var(--text-muted);margin-top:8px;background:#F5F0EA;border:1px solid var(--border);border-radius:8px;padding:8px 10px">💡 13th Month Pay applies only to the <strong>December</strong> payroll run per RA 8515 / DOLE. Select December as the pay period to include it.</div>';
   } else if (thirteenSplit.taxable13 > 0) {
-    note13 = '<div style="font-size:12px;color:#C62828;margin-top:8px;background:#FFEBEE;border:1px solid #F5C6C6;border-radius:8px;padding:8px 10px">⚠️ 13th Month Pay + taxable bonuses exceed the <strong>₱90,000 annual exemption</strong> (RA 10963 / CREATE Act). Exempt: <strong>'+fmt(thirteenSplit.exempt13)+'</strong> · Taxable excess: <strong>'+fmt(thirteenSplit.taxable13)+'</strong><br>🧾 <strong>13th Month Excess Tax: '+fmt(thirteenTaxAmt)+'</strong> — this is withheld in full from your December 13th Month Pay.</div>';
+    note13 = '<div style="font-size:12px;color:#C62828;margin-top:8px;background:#FFEBEE;border:1px solid #F5C6C6;border-radius:8px;padding:8px 10px">⚠️ 13th Month Pay + taxable bonuses exceed the <strong>'+fmt(BONUS_EXEMPTION_LIMIT)+' annual exemption</strong> (RA 10963 / CREATE Act). Exempt: <strong>'+fmt(thirteenSplit.exempt13)+'</strong> · Taxable excess: <strong>'+fmt(thirteenSplit.taxable13)+'</strong><br>🧾 <strong>13th Month Excess Tax: '+fmt(thirteenTaxAmt)+'</strong> — this is withheld in full from your December 13th Month Pay.</div>';
   }
 
   const grossTotal = grossTaxable + deMinimisSum + thirteenth;
@@ -391,8 +427,8 @@ function computePayroll() {
     <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">${emp.classification==='Teaching'?'Hours Worked × Rate':'Monthly Base Salary'}</span><span style="font-weight:600">${meta}</span></div>
     <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">${emp.classification==='Teaching'?'Hourly Earnings':'Base Salary'}</span><span style="font-weight:600">${fmt(gross)}</span></div>
     ${bonuses.map(b=>'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">🎁 '+b.name+' <span style="font-size:11px;color:'+(b.deMinimis?'#2E7D32':'var(--text-muted)')+'">— '+(b.deMinimis?'de minimis (tax-exempt)':'taxable bonus')+'</span></span><span style="font-weight:600">+'+fmt(b.amount)+'</span></div>').join('')}
-    ${thirteenth>0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">🎁 13th Month Pay (RA 8515) <span style="font-size:11px;color:#2E7D32">— exempt up to ₱90,000/yr</span></span><span style="font-weight:700;color:var(--maroon-dark)">+'+fmt(thirteenSplit.exempt13)+'</span></div>' : ''}
-    ${thirteenth>0 && thirteenSplit.taxable13>0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">⚠️ 13th Month excess <span style="font-size:11px;color:#C62828">— taxable (over ₱90,000)</span></span><span style="font-weight:600;color:#C62828">+'+fmt(thirteenSplit.taxable13)+'</span></div>' : ''}
+    ${thirteenth>0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">🎁 13th Month Pay (RA 8515) <span style="font-size:11px;color:#2E7D32">— exempt up to '+fmt(BONUS_EXEMPTION_LIMIT)+'/yr</span></span><span style="font-weight:700;color:var(--maroon-dark)">+'+fmt(thirteenSplit.exempt13)+'</span></div>' : ''}
+    ${thirteenth>0 && thirteenSplit.taxable13>0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">⚠️ 13th Month excess <span style="font-size:11px;color:#C62828">— taxable (over '+fmt(BONUS_EXEMPTION_LIMIT)+')</span></span><span style="font-weight:600;color:#C62828">+'+fmt(thirteenSplit.taxable13)+'</span></div>' : ''}
     ${note13}`;
   document.getElementById('rBasic').textContent = fmt(grossTotal);
   document.getElementById('rSSS').textContent = fmt(d.sss);
@@ -415,10 +451,24 @@ function confirmPayroll() {
     date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
   });
   const existing = payrollRecords.find(r=>r.empId===rec.empId && r.month===rec.month && r.year===rec.year);
+  if (existing) {
+    document.getElementById('confirmIcon').textContent = '⚠️';
+    document.getElementById('confirmMsg').innerHTML =
+      `<strong>${rec.name}</strong> already has a released payroll for <strong>${rec.period}</strong> (Net ${fmt(existing.net)} · Released ${existing.date}).<br><br>` +
+      `Confirming will <strong style="color:#C62828">overwrite</strong> this record and its payslip with the new computation (Net ${fmt(rec.net)}). Continue?`;
+    document.getElementById('confirmActionBtn').onclick = () => { closeModal('confirmModal'); doSavePayroll(rec, existing); };
+    document.getElementById('confirmModal').classList.add('show');
+    return;
+  }
+  doSavePayroll(rec, null);
+}
+
+function doSavePayroll(rec, existing) {
   if (existing) Object.assign(existing, rec);
   else payrollRecords.push(rec);
   saveDemo();
   renderPayrollSummary();
+  updateCalcStatusBadge();
   const thirteenthMsg = rec.thirteenth > 0 ? ' — includes 13th Month Pay (RA 8515)' : '';
   showToast('✅',`${rec.name} payroll computed and payslip generated — ${rec.period} · Net Pay ${fmt(rec.net)}${thirteenthMsg}`);
 }
@@ -454,7 +504,7 @@ function renderPayrollSummary() {
       ? `<span style="color:#C62828;font-weight:600" title="13th Month Excess Tax — withheld from the 13th Month Pay">${fmt(tTax.annualTax)}</span>`
       : '<span style="color:#BBB">—</span>';
     return `<tr>
-      <td><strong>${emp.first} ${emp.last}</strong></td>
+      <td><strong>${displayName(emp)}</strong></td>
       <td><span class="badge ${EMP_CLASS[emp.classification].badge}">${emp.classification}</span></td>
       <td>${emp.classification==='Teaching' ? h.value+' hrs' : h.value+' days'}</td>
       <td>${fmt(grossTotal)}${thirteenth>0?' <span class="badge b-gold" style="font-size:9px">🎁 13th</span>':''}${taxableSum>0?` <span class="badge b-gold" style="font-size:9px">+bonus</span>`:''}${deMinimisSum>0?` <span class="badge b-green" style="font-size:9px">+de minimis</span>`:''}</td>
@@ -472,95 +522,100 @@ function renderPayrollSummary() {
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-// Build payroll records for all employees for a given period (uses confirmed runs when available)
-function getPayrollRecords(monthNum, yearNum) {
-  const monthName = MONTHS[monthNum - 1] || '';
-  const isDec = monthName === 'December';
-  const stored = payrollRecords.filter(r=>r.month===monthNum && r.year===yearNum);
-  const employees = users.filter(u => u.role === 'Employee' || u.role === 'Finance Officer' || u.role === 'System Admin');
-  return employees.map(emp => {
-    const rec = stored.find(r=>r.empId===emp.id);
-    if (rec) {
-      const cash = parseFloat(rec.cash) || 0;
-      const thirteenth = parseFloat(rec.thirteenth) || 0;
-      const deMinimisSum = parseFloat(rec.deMinimisSum) || 0;
-      const d = computeDeductions(rec.gross, cash, 0);
-      const thirteenTax = rec.thirteenTax != null
-        ? parseFloat(rec.thirteenTax)
-        : bonusAnnualTax(taxableMonthlyOf(rec.gross, d), splitBonusTaxable(thirteenth, 0).taxable13);
-      return { name:`${emp.first} ${emp.last}`, month:monthNum, year:yearNum, gross:rec.gross + deMinimisSum + thirteenth, sss:d.sss, phil:d.phil, pag:d.pag, bir:d.bir, thirteenTax, net:parseFloat((d.net + deMinimisSum + thirteenth - thirteenTax).toFixed(2)), status:'Released' };
-    }
+// Finance dashboard: recent payroll activity rendered live from active employees
+// and the confirmed payroll records for the current pay period.
+function renderFinRecentActivity() {
+  const tbody = document.getElementById('finRecentActivityBody');
+  if (!tbody) return;
+  const period = document.getElementById('payPeriod')?.value || 'December 2026';
+  const [monthName, yearStr] = period.split(' ');
+  const year = parseInt(yearStr) || 2026;
+  const monthNum = MONTHS.indexOf(monthName) + 1;
+  const isDec = /^december/i.test(monthName);
+  const emps = users.filter(u=>u.status==='Active' && (u.role==='Employee'||u.role==='Finance Officer'||u.role==='System Admin'));
+  if (!emps.length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">No active employees yet.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = emps.map(emp => {
     const base = empGrossPay(emp);
     const bonuses = activeBonusTypes(emp, base);
     const { deMinimisSum, taxableSum } = splitBonuses(bonuses);
-    const grossTaxable = base + taxableSum;
-    const thirteenth = isDec && isThirteenthActive() && thirteenthEligibility(emp, yearNum).eligible ? computeThirteenth(emp, yearNum) : 0;
+    const gross = base + taxableSum;
+    const thirteenth = isDec && isThirteenthActive() && thirteenthEligibility(emp, year).eligible ? computeThirteenth(emp, year) : 0;
     const taxable13 = splitBonusTaxable(thirteenth, taxableSum).taxable13;
-    const d = computeDeductions(grossTaxable, getEmpCashAdvance(emp.id), 0);
-    const thirteenTax = bonusAnnualTax(taxableMonthlyOf(grossTaxable, d), taxable13);
-    return {
-      name:   `${emp.first} ${emp.last}`,
-      month:  monthNum,
-      year:   yearNum,
-      gross:  grossTaxable + deMinimisSum + thirteenth,
-      sss:    d.sss,
-      phil:   d.phil,
-      pag:    d.pag,
-      bir:    d.bir,
-      thirteenTax,
-      net:    parseFloat((d.net + deMinimisSum + thirteenth - thirteenTax).toFixed(2)),
-      status: 'Released'
-    };
-  });
-}
-
-function initReportView() {
-  document.getElementById('reportSelector').style.display = 'block';
-  document.getElementById('reportOutput').style.display   = 'none';
-  document.getElementById('rptYear').value = '';
-  const monthEl = document.getElementById('rptMonth');
-  if (monthEl) { monthEl.value=''; monthEl.disabled=true; monthEl.style.opacity='0.4'; }
-  document.getElementById('reportSelector').scrollIntoView({behavior:'smooth'});
-}
-
-function renderMonthButtons() {
-  const year = parseInt(document.getElementById('rptYear').value);
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const fullMonths = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  // Determine which months have data — for demo, Jan-May 2026 have data
-  const hasData = {
-    2024: [1,2,3,4,5,6,7,8,9,10,11,12],
-    2025: [1,2,3,4,5,6,7,8,9,10,11,12],
-    2026: [1,2,3,4,5],  // Jan-May 2026
-  };
-  const dataMonths = hasData[year] || [];
-  const container = document.getElementById('monthButtons');
-  // Full Year button
-  const yearBtn = `<button
-    onclick="showYearReport(${year})"
-    style="padding:10px 20px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;
-      border:2px solid #27AE60;background:#27AE60;color:#fff;transition:all 0.2s">
-    📅 Full Year ${year}
-  </button>
-  <div style="width:1px;background:#DDD;margin:0 4px"></div>`;
-
-  const monthBtns = months.map((m, i) => {
-    const monthNum = i + 1;
-    const active = dataMonths.includes(monthNum);
-    return `<button
-      onclick="showMonthReport(${monthNum}, ${year}, '${fullMonths[i]}')"
-      style="padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;cursor:${active?'pointer':'not-allowed'};
-        border:2px solid ${active?'var(--maroon-dark)':'#DDD'};
-        background:${active?'var(--maroon-dark)':'#F5F5F5'};
-        color:${active?'#fff':'#BBB'};
-        transition:all 0.2s;
-        opacity:${active?1:0.5}"
-      ${!active?'disabled':''}>
-      ${m}
-    </button>`;
+    const d = computeDeductions(gross, getEmpCashAdvance(emp.id), 0);
+    const tTax = thirteenthTaxSplit(d, gross, taxable13);
+    const rec = payrollRecords.find(r=>r.empId===emp.id && r.month===monthNum && r.year===year);
+    const net = d.net + deMinimisSum + thirteenth - tTax.annualTax;
+    return `<tr>
+      <td><strong>${displayName(emp)}</strong></td>
+      <td>${rec ? rec.period : period}</td>
+      <td><strong style="color:var(--maroon-dark)">${fmt(net)}</strong></td>
+      <td>${rec ? '<span class="badge b-green">✅ Released</span>' : '<span class="badge b-yellow">⏳ Pending</span>'}</td>
+    </tr>`;
   }).join('');
+}
 
-  container.innerHTML = yearBtn + monthBtns;
+// Payroll records for a given period — only CONFIRMED/released runs are reported,
+// using the exact values stored at the time of release (not recomputed).
+function getPayrollRecords(monthNum, yearNum) {
+  return payrollRecords
+    .filter(r => r.month === monthNum && r.year === yearNum)
+    .map(rec => ({
+      name:   rec.name,
+      month:  rec.month,
+      year:   rec.year,
+      gross:  parseFloat(rec.gross) + (parseFloat(rec.deMinimisSum) || 0) + (parseFloat(rec.thirteenth) || 0),
+      sss:    rec.sss,
+      phil:   rec.phil,
+      pag:    rec.pag,
+      bir:    rec.bir,
+      thirteenTax: parseFloat(rec.thirteenTax) || 0,
+      net:    rec.net,
+      status: 'Released'
+    }));
+}
+
+// Months that have confirmed payroll records for a given year.
+function reportMonthsFor(year) {
+  return [...new Set(
+    payrollRecords.filter(r => r.year === year).map(r => r.month)
+  )].sort((a, b) => a - b);
+}
+
+// Confirmed payroll records for a given user + year, shaped for the payslip view.
+// Uses the exact values stored at the time of release (not recomputed).
+function payslipRecordsFor(userId, year) {
+  return payrollRecords
+    .filter(r => r.empId === userId && r.year === year)
+    .sort((a, b) => a.month - b.month)
+    .map(rec => ({
+      monthNum:   rec.month,
+      month:      MONTHS[rec.month - 1] || '',
+      year:       rec.year,
+      period:     `${MONTHS[rec.month - 1]} ${rec.year}`,
+      gross:      parseFloat(rec.gross) + (parseFloat(rec.deMinimisSum) || 0) + (parseFloat(rec.thirteenth) || 0),
+      deMinimis:  parseFloat(rec.deMinimisSum) || 0,
+      thirteenth: parseFloat(rec.thirteenth) || 0,
+      exempt13:   parseFloat(rec.thirteenExempt) || 0,
+      taxable13:  parseFloat(rec.thirteenTaxable) || 0,
+      thirteenTax:parseFloat(rec.thirteenTax) || 0,
+      sss:  rec.sss,
+      phil: rec.phil,
+      pag:  rec.pag,
+      bir:  rec.bir,
+      cash: parseFloat(rec.cash) || 0,
+      net:  rec.net,
+      status: 'Released'
+    }));
+}
+
+// Years that have confirmed payroll records for a given user.
+function payslipYearsFor(userId) {
+  return [...new Set(
+    payrollRecords.filter(r => r.empId === userId).map(r => r.year)
+  )].sort((a, b) => a - b);
 }
 
 function showMonthReport(monthNum, year, monthName) {
@@ -584,6 +639,13 @@ function showMonthReport(monthNum, year, monthName) {
 
   const records = getPayrollRecords(monthNum, year);
   const rows = records.filter(r => employees.some(u => `${u.first} ${u.last}` === r.name));
+  if (!rows.length) {
+    document.getElementById('rptBody').innerHTML = '';
+    document.getElementById('rptEmpty').style.display = 'block';
+    document.getElementById('rptTotals').innerHTML = '';
+    return;
+  }
+  document.getElementById('rptEmpty').style.display = 'none';
   let tGross=0, tSSS=0, tPhil=0, tPag=0, tBIR=0, tNet=0;
   document.getElementById('rptBody').innerHTML = rows.map(r => {
     const emp = employees.find(u => `${u.first} ${u.last}` === r.name);
@@ -591,7 +653,7 @@ function showMonthReport(monthNum, year, monthName) {
     tGross+=r.gross; tSSS+=r.sss; tPhil+=r.phil;
     tPag+=r.pag; tBIR+=birTotal; tNet+=r.net;
     return `<tr>
-      <td><strong>${r.name}</strong></td>
+      <td><strong>${emp ? displayName(emp) : r.name}</strong></td>
       <td><span class="badge ${EMP_CLASS[emp?.classification]?.badge||'b-gray'}">${emp?.classification||'Non-Teaching'}</span></td>
       <td>${fmt(r.gross)}</td>
       <td>${fmt(r.sss)}</td>
@@ -619,11 +681,6 @@ function showMonthReport(monthNum, year, monthName) {
       <span style="color:#CCC">|</span>
       <span><strong>Total Net Pay: <span style="color:var(--maroon-dark)">${fmt(tNet)}</span></strong></span>
     </div>`;
-}
-
-// keep for compatibility
-function showReport(type) {
-  initReportView();
 }
 
 function UNUSED_showReport_old(type) {
@@ -723,14 +780,9 @@ function showYearReport(year) {
   out.scrollIntoView({behavior:'smooth'});
 
   const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const MONTHS_FULL  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-  // Months with actual data per year
-  const hasData = {
-    2024: [1,2,3,4,5,6,7,8,9,10,11,12],
-    2025: [1,2,3,4,5,6,7,8,9,10,11,12],
-    2026: [1,2,3,4,5],
-  };
-  const dataMonths = hasData[year] || [];
+  const dataMonths = reportMonthsFor(year);
 
   document.getElementById('reportTitle').textContent = `Payroll Summary Report — Full Year ${year}`;
   document.getElementById('rptHead').innerHTML = `<tr>
@@ -744,7 +796,7 @@ function showYearReport(year) {
 
   const employees = users.filter(u => u.salary > 0 && u.status === 'Active');
 
-  if (!employees.length) {
+  if (!employees.length || !dataMonths.length) {
     document.getElementById('rptBody').innerHTML = '';
     document.getElementById('rptEmpty').style.display = 'block';
     document.getElementById('rptTotals').innerHTML = '';
@@ -752,47 +804,48 @@ function showYearReport(year) {
   }
   document.getElementById('rptEmpty').style.display = 'none';
 
+  const recordsByMonth = {};
+  dataMonths.forEach(monthNum => {
+    recordsByMonth[monthNum] = getPayrollRecords(monthNum, year);
+  });
+
   let grandYTD = 0;
   document.getElementById('rptBody').innerHTML = employees.map(emp => {
-    const base = empGrossPay(emp);
-    const bonuses = activeBonusTypes(emp, base);
-    const { deMinimisSum, taxableSum } = splitBonuses(bonuses);
-    const gross = base + taxableSum;
-    const d = computeDeductions(gross);
-    const thirteenth = isThirteenthActive() && thirteenthEligibility(emp, year).eligible ? computeThirteenth(emp, year) : 0;
-    const taxable13 = splitBonusTaxable(thirteenth, taxableSum).taxable13;
-    const decNet = d.net + deMinimisSum + thirteenth - bonusAnnualTax(taxableMonthlyOf(gross, d), taxable13);
-    const decProcessed = dataMonths.includes(12);
-    const ytdNet = parseFloat((d.net * (dataMonths.length - (decProcessed?1:0)) + (decProcessed?decNet:0)).toFixed(2));  // Only sum processed months
-    grandYTD += ytdNet;
+    const empName = `${emp.first} ${emp.last}`;
+    let empYTD = 0;
     const monthlyCells = MONTHS_SHORT.map((m, i) => {
       const monthNum = i + 1;
-      const processed = dataMonths.includes(monthNum);
-      return processed
-        ? `<td style="font-size:12px">${monthNum === 12 ? fmt(decNet) : fmt(d.net)}</td>`
-        : `<td style="font-size:12px;color:#CCC">—</td>`;
+      const rec = (recordsByMonth[monthNum] || []).find(r => r.name === empName);
+      if (rec) {
+        empYTD += rec.net;
+        return `<td style="font-size:12px">${fmt(rec.net)}</td>`;
+      }
+      return `<td style="font-size:12px;color:#CCC">—</td>`;
     }).join('');
+    grandYTD += empYTD;
     return `<tr>
       <td>
         <strong>${emp.first} ${emp.last}</strong><br/>
         <span style="font-size:11px;color:#999">${emp.role}</span>
       </td>
       ${monthlyCells}
-      <td><strong style="color:var(--maroon-dark)">${fmt(ytdNet)}</strong></td>
+      <td><strong style="color:var(--maroon-dark)">${fmt(empYTD)}</strong></td>
     </tr>`;
   }).join('');
 
   const processedCount = dataMonths.length;
-  const totalMonths = 12;
-  const isComplete = processedCount === totalMonths;
-  const netLabel = isComplete ? 'Annual Net Pay' : `Total Net Pay (Jan–${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][processedCount-1]} ${year})`;
+  const monthNames = dataMonths.map(n => MONTHS_FULL[n - 1]);
+  const isComplete = processedCount === 12;
+  const netLabel = isComplete
+    ? 'Annual Net Pay'
+    : `Total Net Pay (${monthNames.join(', ')} ${year})`;
   document.getElementById('rptTotals').innerHTML = `
     <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:13px;align-items:center">
       <span><strong>Year:</strong> ${year}</span>
       <span style="color:#CCC">|</span>
       <span><strong>Months Processed:</strong>
         <span style="color:var(--maroon-dark)">${processedCount}</span>
-        <span style="color:#AAA"> / ${totalMonths}</span>
+        <span style="color:#AAA"> / 12</span>
       </span>
       <span style="color:#CCC">|</span>
       <span><strong>Total Employees:</strong> ${employees.length}</span>
@@ -802,7 +855,7 @@ function showYearReport(year) {
       </strong></span>
       ${!isComplete ? `
         <span style="color:#CCC">|</span>
-        <span style="color:#888;font-style:italic">${totalMonths - processedCount} months remaining</span>
+        <span style="color:#888;font-style:italic">${12 - processedCount} months remaining</span>
       ` : ''}
     </div>`;
 }

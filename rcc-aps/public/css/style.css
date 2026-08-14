@@ -237,3 +237,20 @@ tr:hover td{background:#FEFCF8}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── PRINT ── */
+#printOverlay{display:none}
+@media print{
+  body > *:not(#printOverlay){display:none !important}
+  #printOverlay{
+    display:block !important;
+    position:absolute;
+    top:0;left:0;
+    width:100%;
+    max-width:680px;
+    background:#fff;
+    padding:36px 40px;
+    color:#1A1A1A;
+  }
+  #printOverlay *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}

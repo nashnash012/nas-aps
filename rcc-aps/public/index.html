@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>RCC-APS | Automated Payroll System</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="css/style.css"/>
+  <link rel="stylesheet" href="css/style.css?v=20260815q"/>
 </head>
 <body>
 
@@ -146,7 +146,7 @@
     <div class="topbar">
       <div class="tb-right">
         <div style="display:flex;align-items:center;gap:8px;background:#F5F0E8;border:1px solid #E0D0B8;border-radius:8px;padding:6px 14px;font-size:13px;color:#666">📅 <span id="empDateDisplay">May 03, 2026</span></div>
-        <div style="display:flex;align-items:center;gap:10px"><div class="tb-avatar">JG</div><div><div class="tb-name">Jhon Gerald Batuaan</div><div class="tb-role">Employee</div></div></div>
+        <div style="display:flex;align-items:center;gap:10px"><div class="tb-avatar" id="empAvatar">JG</div><div><div class="tb-name" id="empTbName">Jhon Gerald Batuaan</div><div class="tb-role">Employee</div></div></div>
       </div>
     </div>
     <div class="dash-content">
@@ -156,30 +156,26 @@
         <div class="hero-banner">
           <div class="hero-left">
             <div class="hero-tag">🌅 Good Morning</div>
-            <div class="hero-name">Welcome back, Gerald! 👋</div>
-            <div class="hero-sub">Here is your payroll summary for April 2026.</div>
+            <div class="hero-name" id="empHeroName">Welcome back, Gerald! 👋</div>
+            <div class="hero-sub" id="empHeroSub">Here is your payroll summary for April 2026.</div>
           </div>
           <div class="hero-stats">
-            <div class="hero-stat"><div class="hero-stat-val">₱28,500</div><div class="hero-stat-lbl">Basic Pay</div></div>
-            <div class="hero-stat"><div class="hero-stat-val">₱25,412.50</div><div class="hero-stat-lbl">Net Pay (Est.)</div></div>
-            <div class="hero-stat"><div class="hero-stat-val">Apr 30</div><div class="hero-stat-lbl">Next Payout</div></div>
+            <div class="hero-stat"><div class="hero-stat-val" id="empHeroBasic">₱28,500</div><div class="hero-stat-lbl">Basic Pay</div></div>
+            <div class="hero-stat"><div class="hero-stat-val" id="empHeroNet">₱25,412.50</div><div class="hero-stat-lbl">Net Pay (Est.)</div></div>
+            <div class="hero-stat"><div class="hero-stat-val" id="empHeroNext">Apr 30</div><div class="hero-stat-lbl">Next Payout</div></div>
           </div>
         </div>
         <div class="stats-grid s4">
-          <div class="stat-card"><div class="stat-icon" style="background:var(--gold-pale)">💰</div><div><div class="stat-val">₱25,412.50</div><div class="stat-lbl">Net Pay This Month</div><div class="stat-note">Includes BIR deduction</div></div></div>
-          <div class="stat-card"><div class="stat-icon" style="background:#E3F2FD">📄</div><div><div class="stat-val">12</div><div class="stat-lbl">Payslips Available</div><div class="stat-note">Since Jan 2025</div></div></div>
-          <div class="stat-card"><div class="stat-icon" style="background:#E8F5E9">📉</div><div><div class="stat-val">₱3,087.50</div><div class="stat-lbl">Total Deductions</div><div class="stat-note">SSS + PhilHealth + Pag-IBIG + BIR</div></div></div>
-          <div class="stat-card"><div class="stat-icon" style="background:#F3E5F5">📅</div><div><div class="stat-val">Apr 30</div><div class="stat-lbl">Next Payroll</div><div class="stat-note">2 days from now</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:var(--gold-pale)">💰</div><div><div class="stat-val" id="empStatNet">₱25,412.50</div><div class="stat-lbl">Net Pay This Month</div><div class="stat-note">Includes BIR deduction</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:#E3F2FD">📄</div><div><div class="stat-val" id="empStatPayslips">12</div><div class="stat-lbl">Payslips Available</div><div class="stat-note">Since Jan 2025</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:#E8F5E9">📉</div><div><div class="stat-val" id="empStatDed">₱3,087.50</div><div class="stat-lbl">Total Deductions</div><div class="stat-note">SSS + PhilHealth + Pag-IBIG + BIR</div></div></div>
+          <div class="stat-card"><div class="stat-icon" style="background:#F3E5F5">📅</div><div><div class="stat-val" id="empStatNext">Apr 30</div><div class="stat-lbl">Next Payroll</div><div class="stat-note">2 days from now</div></div></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr;gap:20px">
           <div class="card">
             <div class="card-head"><div class="card-title">📄 Recent Payslips</div><button class="btn btn-outline btn-sm" onclick="showEmpPage('empPayslip',null)">View All</button></div>
             <div style="padding:0"><table><thead><tr><th>Period</th><th>Gross Pay</th><th>Net Pay</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td><strong>April 2026</strong></td><td>₱28,500.00</td><td><strong>₱25,412.50</strong></td><td><span class="badge b-yellow">⏳ Pending</span></td></tr>
-              <tr><td><strong>March 2026</strong></td><td>₱28,500.00</td><td><strong>₱25,412.50</strong></td><td><span class="badge b-green">✅ Released</span></td></tr>
-              <tr><td><strong>February 2026</strong></td><td>₱28,500.00</td><td><strong>₱25,412.50</strong></td><td><span class="badge b-green">✅ Released</span></td></tr>
-            </tbody></table></div>
+            <tbody id="empRecentPayslipBody"></tbody></table></div>
           </div>
           
         </div>
@@ -349,11 +345,8 @@
           <div class="card">
             <div class="card-head"><div class="card-title">📋 Recent Payroll Activity</div><button class="btn btn-outline btn-sm" onclick="showFinPage('finPayroll',null)">Process Payroll</button></div>
             <div style="padding:0"><table><thead><tr><th>Employee</th><th>Period</th><th>Net Pay</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td><strong>Jhon Gerald Batuaan</strong></td><td>April 2026</td><td>₱25,412.50</td><td><span class="badge b-yellow">⏳ Pending</span></td></tr>
-              <tr><td><strong>Nash Valencia</strong></td><td>April 2026</td><td>₱22,525.00</td><td><span class="badge b-yellow">⏳ Pending</span></td></tr>
-              <tr><td><strong>Ana Cruz</strong></td><td>April 2026</td><td>₱20,275.00</td><td><span class="badge b-green">✅ Released</span></td></tr>
-              <tr><td><strong>Luz Reyes</strong></td><td>April 2026</td><td>₱28,712.50</td><td><span class="badge b-green">✅ Released</span></td></tr>
+            <tbody id="finRecentActivityBody">
+              <tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">Loading...</td></tr>
             </tbody></table></div>
           </div>
           
@@ -421,7 +414,27 @@
             <tbody id="bonTableBody"></tbody>
           </table></div>
           <div style="padding:12px 16px;background:#F9F7F4;border-top:1px solid #EEE8E0;font-size:12px;color:var(--text-muted)">
-            <strong>Formula (RA 8515 / DOLE):</strong> 13th Month Pay = Total Basic Salary Earned During the Calendar Year ÷ 12. Prorated by actual days of service for employees hired or separated mid-year. Everyone who rendered service during the year is entitled — no minimum-length rule. Payment on or before <strong>December 24</strong>. Not subject to SSS, PhilHealth, or Pag-IBIG. <strong>Tax-exempt only up to ₱90,000/year</strong> (RA 10963 / CREATE Act); any excess is taxable income subject to BIR withholding.
+            <strong>Formula (RA 8515 / DOLE):</strong> 13th Month Pay = Total Basic Salary Earned During the Calendar Year ÷ 12. Prorated by actual days of service for employees hired or separated mid-year. Everyone who rendered service during the year is entitled — no minimum-length rule. Payment on or before <strong>December 24</strong>. Not subject to SSS, PhilHealth, or Pag-IBIG. <strong>Tax-exempt only up to the configured annual limit</strong> (default <span id="bonFormulaExemption">₱90,000</span>/year, RA 10963 / CREATE Act); any excess is taxable income subject to BIR withholding.
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-head">
+            <div class="card-title">⚖️ Government Compliance Settings — 13th Month Exemption Limit (RA 10963 / CREATE)</div>
+          </div>
+          <div class="card-body">
+            <div style="display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap">
+              <div class="fg" style="min-width:240px">
+                <label class="fl">Annual Exemption Limit (₱/year)</label>
+                <input class="fi" type="number" step="1000" min="0" id="bonExemptionLimit" value="90000"/>
+              </div>
+              <button class="btn btn-primary" onclick="saveBonusExemptionLimit()">💾 Save Limit</button>
+            </div>
+            <div style="margin-top:12px;font-size:12px;color:var(--text-muted);line-height:1.6">
+              13th Month Pay + other taxable bonuses are income-tax exempt only up to this annual ceiling. Any excess is taxable income subject to BIR withholding.
+              Update this whenever the government amends the exemption amount so the system stays compliant.
+              All existing tables below are also editable and persist across sessions.
+            </div>
           </div>
         </div>
 
@@ -573,6 +586,7 @@
             </div>
             <div id="calcEmpMeta" style="display:none;margin-bottom:16px;background:var(--gold-pale);border:1px solid var(--gold);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--maroon-dark)">
               <strong id="calcMetaName"></strong> — <span id="calcMetaClass"></span> · <span id="calcMetaDept"></span>
+              <div id="calcStatusBadge" style="display:none;margin-top:8px"></div>
             </div>
             <div id="calcResult" style="display:none">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
@@ -588,7 +602,7 @@
                   <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">Pag-IBIG</span><span id="rPag" style="font-weight:600">₱0.00</span></div>
                   <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">BIR Withholding Tax</span><span id="rBIR" style="font-weight:600">₱0.00</span></div>
                   <div id="r13TaxRow" style="display:none;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #F5F0EA;font-size:13px;background:#FFF8E1">
-                    <span style="color:#8D6E63">🧾 13th Month Excess Tax <span style="font-size:10.5px;color:#8D6E63">(taxable over ₱90,000/yr — deducted from 13th Month Pay)</span></span>
+                    <span style="color:#8D6E63">🧾 13th Month Excess Tax <span style="font-size:10.5px;color:#8D6E63">(taxable over the configured annual exemption — deducted from 13th Month Pay)</span></span>
                     <span id="r13Tax" style="font-weight:700;color:#C62828">₱0.00</span>
                   </div>
                   <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">Cash Advance</span><span id="rCash" style="font-weight:600;color:#C62828">₱0.00</span></div>
@@ -1046,13 +1060,7 @@
           </div>
           <table>
             <thead><tr><th>#</th><th>Annual Taxable Income</th><th>Base Tax</th><th>Rate on Excess</th><th>Excess Over</th></tr></thead>
-            <tbody>
-              <tr><td>1</td><td>Up to ₱250,000</td><td><span class="badge b-green">₱0 — Exempt</span></td><td>0%</td><td>—</td></tr>
-              <tr><td>2</td><td>₱250,001 – ₱400,000</td><td>₱0</td><td>15%</td><td>₱250,000</td></tr>
-              <tr><td>3</td><td>₱400,001 – ₱800,000</td><td>₱22,500</td><td>20%</td><td>₱400,000</td></tr>
-              <tr><td>4</td><td>₱800,001 – ₱2,000,000</td><td>₱102,500</td><td>25%</td><td>₱800,000</td></tr>
-              <tr><td>5</td><td>₱2,000,001 – ₱8,000,000</td><td>₱402,500</td><td>30%</td><td>₱2,000,000</td></tr>
-              <tr><td>6</td><td>Above ₱8,000,000</td><td>₱2,202,500</td><td>35%</td><td>₱8,000,000</td></tr>
+            <tbody id="birTableBody">
             </tbody>
           </table>
           <div style="padding:10px 16px;background:#F9F7F4;border-top:1px solid #EEE8E0;font-size:12px;color:var(--text-muted)">
@@ -1072,7 +1080,7 @@
         </div>
         <div style="max-width:680px;margin:0 auto">
           <div class="card" style="padding:0">
-            <div id="psDoc" style="padding:40px 48px"></div>
+            <div id="finPsDoc" style="padding:40px 48px"></div>
             <div style="padding:0 48px 32px;display:flex;justify-content:center">
               <button class="btn btn-primary" onclick="printPayslip()" style="padding:12px 32px;display:flex;align-items:center;gap:8px">📥 Download PDF</button>
             </div>
@@ -1542,14 +1550,14 @@
 <!-- ════════════════════════════════════════════════════════════
      JAVASCRIPT
 ════════════════════════════════════════════════════════════ -->
-  <script src="js/core.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/employees.js"></script>
-  <script src="js/payroll.js"></script>
-  <script src="js/reports.js"></script>
-  <script src="js/bonus.js"></script>
-  <script src="js/deductions.js"></script>
-  <script src="js/ui.js"></script>
+  <script src="js/core.js?v=20260815q"></script>
+  <script src="js/auth.js?v=20260815q"></script>
+  <script src="js/employees.js?v=20260815q"></script>
+  <script src="js/payroll.js?v=20260815q"></script>
+  <script src="js/reports.js?v=20260815q"></script>
+  <script src="js/bonus.js?v=20260815q"></script>
+  <script src="js/deductions.js?v=20260815q"></script>
+  <script src="js/ui.js?v=20260815q"></script>
 
 <!-- ═══ ACCESS DENIED SCREEN ═══════════════════════════════ -->
 <div id="accessDenied" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center">
@@ -1611,7 +1619,7 @@
     </div>
   </div>
 </div>
-<script>function renderMonthButtons(){}
+<script>
 function onYearChange() {
   const yearEl  = document.getElementById('rptYear');
   const monthEl = document.getElementById('rptMonth');
@@ -1622,12 +1630,10 @@ function onYearChange() {
   document.getElementById('rptMonthLabel').style.color = year ? '#444' : '#BBB';
   document.getElementById('reportOutput').style.display = 'none';
   if (!year) return;
-  const hasData = {2024:[0,1,2,3,4,5,6,7,8,9,10,11,12],2025:[0,1,2,3,4,5,6,7,8,9,10,11,12],2026:[0,1,2,3,4,5]};
-  const dataMonths = hasData[parseInt(year)] || [];
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
   monthEl.innerHTML = `<option value="">— Select Month —</option>
-    <option value="0" ${dataMonths.includes(0)?'':'disabled'}>📅 Full Year ${year}</option>
-    ${months.map((m,i)=>{const n=i+1,ok=dataMonths.includes(n);return`<option value="${n}"${ok?'':' disabled'}>${m}${ok?'':' (no data)'}</option>`;}).join('')}`;
+    <option value="0">📅 Full Year ${year}</option>
+    ${months.map((m,i)=>`<option value="${i+1}">${m}</option>`).join('')}`;
 }
 
 function onMonthChange() {
@@ -1638,8 +1644,6 @@ function onMonthChange() {
   if (month === 0) { showYearReport(year); }
   else { showMonthReport(month, year, fullMonths[month-1]); }
 }
-
-function renderMonthButtons() {}
 </script>
 </body>
 </html>
