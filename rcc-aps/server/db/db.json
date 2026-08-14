@@ -1,0 +1,250 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "first": "Nash",
+      "last": "Valencia",
+      "email": "admin@rcc.edu.ph",
+      "role": "System Admin",
+      "status": "Active",
+      "date": "Jan 10, 2026",
+      "salary": 45000,
+      "classification": "Non-Teaching",
+      "department": "IT Office",
+      "hireDate": "2020-01-10"
+    },
+    {
+      "id": 2,
+      "first": "John",
+      "last": "Cabigting",
+      "email": "finance@rcc.edu.ph",
+      "role": "Finance Officer",
+      "status": "Active",
+      "date": "Jan 10, 2026",
+      "salary": 38000,
+      "classification": "Non-Teaching",
+      "department": "Finance Office",
+      "hireDate": "2019-06-01"
+    },
+    {
+      "id": 3,
+      "first": "Jhon Gerald",
+      "last": "Batuaan",
+      "email": "employee@rcc.edu.ph",
+      "role": "Employee",
+      "status": "Active",
+      "date": "Jan 12, 2026",
+      "salary": 28500,
+      "classification": "Teaching",
+      "department": "College of Computer Studies",
+      "hireDate": "2025-06-01",
+      "hourlyRate": 190,
+      "hoursWorked": 150
+    },
+    {
+      "id": 4,
+      "first": "Ana",
+      "last": "Cruz",
+      "email": "ana@rcc.edu.ph",
+      "role": "Employee",
+      "status": "Active",
+      "date": "Feb 5, 2026",
+      "salary": 22000,
+      "classification": "Non-Teaching",
+      "department": "Accounting Office",
+      "hireDate": "2023-08-15"
+    },
+    {
+      "id": 5,
+      "first": "Roberto",
+      "last": "Lim",
+      "email": "roberto@rcc.edu.ph",
+      "role": "Finance Officer",
+      "status": "Inactive",
+      "date": "Feb 12, 2026",
+      "salary": 35000,
+      "classification": "Non-Teaching",
+      "department": "Finance Office",
+      "hireDate": "2018-01-20",
+      "endDate": "2026-05-31"
+    },
+    {
+      "id": 6,
+      "first": "Luz",
+      "last": "Reyes",
+      "email": "luz@rcc.edu.ph",
+      "role": "Employee",
+      "status": "Active",
+      "date": "Mar 3, 2026",
+      "salary": 32500,
+      "classification": "Teaching",
+      "department": "College of Education",
+      "hireDate": "2022-06-01",
+      "hourlyRate": 217,
+      "hoursWorked": 150
+    },
+    {
+      "id": 7,
+      "first": "Carlo",
+      "last": "Mendoza",
+      "email": "carlo@rcc.edu.ph",
+      "role": "Employee",
+      "status": "Active",
+      "date": "Mar 15, 2026",
+      "salary": 20000,
+      "classification": "Non-Teaching",
+      "department": "Maintenance Office",
+      "hireDate": "2024-02-01"
+    },
+    {
+      "id": 8,
+      "first": "Sofia",
+      "last": "Garcia",
+      "email": "sofia@rcc.edu.ph",
+      "role": "Employee",
+      "status": "Inactive",
+      "date": "Apr 1, 2026",
+      "salary": 25000,
+      "classification": "Teaching",
+      "department": "College of Arts & Sciences",
+      "hireDate": "2025-11-03",
+      "endDate": "2026-03-31",
+      "hourlyRate": 167,
+      "hoursWorked": 150
+    },
+    {
+      "id": 9,
+      "first": "Maricel",
+      "last": "Dela Cruz",
+      "email": "maricel@rcc.edu.ph",
+      "role": "Employee",
+      "status": "Active",
+      "date": "Apr 14, 2026",
+      "salary": 27000,
+      "classification": "Non-Teaching",
+      "department": "Registrar Office",
+      "hireDate": "2023-01-16"
+    },
+    {
+      "id": 10,
+      "first": "Rey",
+      "last": "Santos",
+      "email": "rey@rcc.edu.ph",
+      "role": "Employee",
+      "status": "Active",
+      "date": "Apr 22, 2026",
+      "salary": 31000,
+      "classification": "Teaching",
+      "department": "College of Business & Accountancy",
+      "hireDate": "2021-06-01",
+      "hourlyRate": 207,
+      "hoursWorked": 150
+    },
+    {
+      "id": 11,
+      "first": "Jennifer",
+      "last": "Torres",
+      "email": "jennifer@rcc.edu.ph",
+      "role": "Employee",
+      "status": "Active",
+      "date": "May 5, 2026",
+      "salary": 24000,
+      "classification": "Non-Teaching",
+      "department": "Guidance Office",
+      "hireDate": "2024-07-01"
+    },
+    {
+      "id": 12,
+      "first": "Edwin",
+      "last": "Navarro",
+      "email": "edwin@rcc.edu.ph",
+      "role": "Employee",
+      "status": "Active",
+      "date": "May 12, 2026",
+      "salary": 33000,
+      "classification": "Teaching",
+      "department": "College of Criminal Justice",
+      "hireDate": "2019-06-01",
+      "hourlyRate": 220,
+      "hoursWorked": 150
+    }
+  ],
+  "nextUserId": 13,
+  "cashAdvances": {
+    "1": 0
+  },
+  "bonusTypes": [
+    {
+      "id": 1,
+      "name": "13th Month Pay",
+      "kind": "months",
+      "value": 1,
+      "desc": "Statutory bonus per RA 8515",
+      "status": "Active"
+    }
+  ],
+  "nextBonusId": 2,
+  "auth": {
+    "1": {
+      "id": 1,
+      "email": "admin@rcc.edu.ph",
+      "pass": "admin123",
+      "label": "System Admin",
+      "icon": "🔧",
+      "page": "adminPage",
+      "role": "admin",
+      "status": "Active"
+    },
+    "2": {
+      "id": 2,
+      "email": "finance@rcc.edu.ph",
+      "pass": "finance123",
+      "label": "Finance Officer",
+      "icon": "💼",
+      "page": "financePage",
+      "role": "finance",
+      "status": "Active"
+    },
+    "3": {
+      "id": 3,
+      "email": "employee@rcc.edu.ph",
+      "pass": "employee123",
+      "label": "Employee",
+      "icon": "👤",
+      "page": "empPage",
+      "role": "employee",
+      "status": "Active"
+    }
+  },
+  "deductionCategories": [],
+  "nextDedCatId": 1,
+  "payrollRecords": [
+    {
+      "empId": 1,
+      "name": "Nash Valencia",
+      "month": 12,
+      "monthName": "December",
+      "year": 2026,
+      "period": "December 2026",
+      "gross": 45000,
+      "deMinimisSum": 0,
+      "thirteenth": 45000,
+      "thirteenTaxable": 0,
+      "thirteenExempt": 45000,
+      "thirteenTax": 0,
+      "net": 83411.67,
+      "sss": 1750,
+      "phil": 1125,
+      "pag": 100,
+      "bir": 3613.33,
+      "cash": 0,
+      "bonuses": [],
+      "date": "Aug 7, 2026"
+    }
+  ],
+  "bonusPayouts": {},
+  "profile": {
+    "empPhone": "09171234567",
+    "empAddr": "123 Mabini St., Angeles City, Pampanga"
+  }
+}

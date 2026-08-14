@@ -1,0 +1,14 @@
+# Node
+node_modules/
+npm-debug.log*
+*.log
+
+# VS Code
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp / backups
+RccAPS_COPY.html
