@@ -27,31 +27,36 @@ function renderGovReport(month, year) {
   document.getElementById('govHead').innerHTML = `<tr>
     <th>EMPLOYEE</th><th>TYPE</th><th>GROSS</th><th>SSS</th><th>PHILHEALTH</th><th>PAG-IBIG</th><th>BIR</th><th>TOTAL REMITTANCE</th>
   </tr>`;
-  const emps = users.filter(u=>u.salary>0 && u.status==='Active');
-  const isDec = month === 12;
+  const records = getPayrollRecords(month, year);
+  const employees = users.filter(u=>u.salary>0 && u.status==='Active');
+  const rows = records.filter(r => employees.some(u => `${u.first} ${u.last}` === r.name));
+  if (!rows.length) {
+    document.getElementById('govBody').innerHTML = '';
+    document.getElementById('govEmpty') && (document.getElementById('govEmpty').style.display = 'block');
+    document.getElementById('govTotals').innerHTML = '';
+    return;
+  }
+  if (document.getElementById('govEmpty')) document.getElementById('govEmpty').style.display = 'none';
   let tSSS=0, tPhil=0, tPag=0, tBIR=0, tGross=0;
-  document.getElementById('govBody').innerHTML = emps.map(emp=>{
-    const g = empGrossPay(emp);
-    const d = computeDeductions(g, 0, 0);
-    const taxable13 = isDec && isThirteenthActive() && thirteenthEligibility(emp, year).eligible ? splitBonusTaxable(computeThirteenth(emp, year), 0).taxable13 : 0;
-    const b13 = isDec ? bonusAnnualTax(taxableMonthlyOf(g, d), taxable13) : 0;
-    const birTotal = d.bir + b13;
-    tGross+=g; tSSS+=d.sss; tPhil+=d.phil; tPag+=d.pag; tBIR+=birTotal;
+  document.getElementById('govBody').innerHTML = rows.map(r=>{
+    const emp = employees.find(u => `${u.first} ${u.last}` === r.name);
+    const birTotal = r.bir + (r.thirteenTax || 0);
+    tGross+=r.gross; tSSS+=r.sss; tPhil+=r.phil; tPag+=r.pag; tBIR+=birTotal;
     return `<tr>
-      <td><strong>${displayName(emp)}</strong></td>
-      <td><span class="badge ${EMP_CLASS[emp.classification]?.badge||'b-gray'}">${emp.classification||'Non-Teaching'}</span></td>
-      <td>${fmt(g)}</td>
-      <td>${fmt(d.sss)}</td>
-      <td>${fmt(d.phil)}</td>
-      <td>${fmt(d.pag)}</td>
+      <td><strong>${emp ? displayName(emp) : r.name}</strong></td>
+      <td><span class="badge ${EMP_CLASS[emp?.classification]?.badge||'b-gray'}">${emp?.classification||'Non-Teaching'}</span></td>
+      <td>${fmt(r.gross)}</td>
+      <td>${fmt(r.sss)}</td>
+      <td>${fmt(r.phil)}</td>
+      <td>${fmt(r.pag)}</td>
       <td>${fmt(birTotal)}</td>
-      <td><strong style="color:var(--maroon-dark)">${fmt(d.sss+d.phil+d.pag+birTotal)}</strong></td>
+      <td><strong style="color:var(--maroon-dark)">${fmt(r.sss+r.phil+r.pag+birTotal)}</strong></td>
     </tr>`;
   }).join('');
   const grand = tSSS+tPhil+tPag+tBIR;
   document.getElementById('govTotals').innerHTML = `
     <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:13px;align-items:center">
-      <span><strong>Employees:</strong> ${emps.length}</span>
+      <span><strong>Employees:</strong> ${rows.length}</span>
       <span style="color:#CCC">|</span>
       <span><strong>Total SSS:</strong> ${fmt(tSSS)}</span>
       <span style="color:#CCC">|</span>
@@ -68,16 +73,17 @@ function renderGovReport(month, year) {
 // ── ANALYTICS ─────────────────────────────────────────────────
 const ANALYTIC_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function renderAnalytics() {
-  const active = users.filter(u=>u.status==='Active' && u.salary>0);
-  if (!active.length) return;
-  const teach = active.filter(u=>u.classification==='Teaching');
-  const nonT  = active.filter(u=>u.classification!=='Teaching');
-  const tGross = teach.reduce((s,u)=>s+empGrossPay(u),0);
-  const nGross = nonT.reduce((s,u)=>s+empGrossPay(u),0);
+  const allRecords = payrollRecords || [];
+  if (!allRecords.length) return;
+  const employees = users.filter(u=>u.salary>0 && u.status==='Active');
+  const teach = allRecords.filter(r=>{ const emp = employees.find(u=>`${u.first} ${u.last}`===r.name); return emp && emp.classification==='Teaching'; });
+  const nonT  = allRecords.filter(r=>{ const emp = employees.find(u=>`${u.first} ${u.last}`===r.name); return emp && emp.classification!=='Teaching'; });
+  const tGross = teach.reduce((s,r)=>s+(parseFloat(r.gross)||0),0);
+  const nGross = nonT.reduce((s,r)=>s+(parseFloat(r.gross)||0),0);
   const total  = tGross + nGross;
   document.getElementById('anGross').textContent = fmt(total);
   const gov = {sss:0, phil:0, pag:0, bir:0};
-  active.forEach(u=>{ const d=computeDeductions(empGrossPay(u)); gov.sss+=d.sss; gov.phil+=d.phil; gov.pag+=d.pag; gov.bir+=d.bir; });
+  allRecords.forEach(r=>{ gov.sss+=parseFloat(r.sss)||0; gov.phil+=parseFloat(r.phil)||0; gov.pag+=parseFloat(r.pag)||0; gov.bir+=parseFloat(r.bir)||0; });
   document.getElementById('anGovDed').textContent = fmt(gov.sss+gov.phil+gov.pag+gov.bir);
   document.getElementById('anTeach').textContent = fmt(tGross);
   const tn = document.getElementById('anTeachNote'); if (tn) tn.textContent = total ? Math.round(tGross/total*100)+'% of total' : '0% of total';
@@ -129,7 +135,7 @@ function renderAnalytics() {
   const bonusEl = document.getElementById('bonusImpact');
   if (bonusEl) {
     const decRegular = parseFloat(total.toFixed(2));
-    const thirteenth = parseFloat(active.reduce((s,u)=>s+computeThirteenth(u,2026),0).toFixed(2));
+    const thirteenth = parseFloat(allRecords.reduce((s,r)=>s+(parseFloat(r.thirteenth)||0),0).toFixed(2));
     const decTotal = decRegular + thirteenth;
     const pct = decRegular ? Math.round((thirteenth/decRegular)*100) : 0;
     const maxB = Math.max(decRegular, decTotal, 1);
