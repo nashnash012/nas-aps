@@ -1,5 +1,10 @@
 @echo off
 cd /d "%~dp0rcc-aps"
+if not exist "node_modules" (
+    echo Installing dependencies... please wait
+    call npm install
+)
+echo.
 echo Starting RCC-APS Payroll System...
 echo.
 echo After this loads, open your browser and go to:
