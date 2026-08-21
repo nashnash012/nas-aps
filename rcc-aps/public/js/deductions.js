@@ -372,101 +372,87 @@ function syncFromHris() {
 
 // ── DEDUCTION MODAL ───────────────────────────────────────────
 // ── DEDUCTION TABLE DATA (editable) ──────────────────────────
-let sssTable = [
-  {range:'Below ₱5,250',        emp:250.00,   er:500.00},
-  {range:'₱5,250 – ₱5,749',    emp:275.00,   er:550.00},
-  {range:'₱5,750 – ₱6,249',    emp:300.00,   er:600.00},
-  {range:'₱6,250 – ₱6,749',    emp:325.00,   er:650.00},
-  {range:'₱6,750 – ₱7,249',    emp:350.00,   er:700.00},
-  {range:'₱7,250 – ₱7,749',    emp:375.00,   er:750.00},
-  {range:'₱7,750 – ₱8,249',    emp:400.00,   er:800.00},
-  {range:'₱8,250 – ₱8,749',    emp:425.00,   er:850.00},
-  {range:'₱8,750 – ₱9,249',    emp:450.00,   er:900.00},
-  {range:'₱9,250 – ₱9,749',    emp:475.00,   er:950.00},
-  {range:'₱9,750 – ₱10,249',   emp:500.00,   er:1000.00},
-  {range:'₱10,250 – ₱10,749',  emp:525.00,   er:1050.00},
-  {range:'₱10,750 – ₱11,249',  emp:550.00,   er:1100.00},
-  {range:'₱11,250 – ₱11,749',  emp:575.00,   er:1150.00},
-  {range:'₱11,750 – ₱12,249',  emp:600.00,   er:1200.00},
-  {range:'₱12,250 – ₱12,749',  emp:625.00,   er:1250.00},
-  {range:'₱12,750 – ₱13,249',  emp:650.00,   er:1300.00},
-  {range:'₱13,250 – ₱13,749',  emp:675.00,   er:1350.00},
-  {range:'₱13,750 – ₱14,249',  emp:700.00,   er:1400.00},
-  {range:'₱14,250 – ₱14,749',  emp:725.00,   er:1450.00},
-  {range:'₱14,750 – ₱15,249',  emp:750.00,   er:1500.00},
-  {range:'₱15,250 – ₱15,749',  emp:775.00,   er:1550.00},
-  {range:'₱15,750 – ₱16,249',  emp:800.00,   er:1600.00},
-  {range:'₱16,250 – ₱16,749',  emp:825.00,   er:1650.00},
-  {range:'₱16,750 – ₱17,249',  emp:850.00,   er:1700.00},
-  {range:'₱17,250 – ₱17,749',  emp:875.00,   er:1750.00},
-  {range:'₱17,750 – ₱18,249',  emp:900.00,   er:1800.00},
-  {range:'₱18,250 – ₱18,749',  emp:925.00,   er:1850.00},
-  {range:'₱18,750 – ₱19,249',  emp:950.00,   er:1900.00},
-  {range:'₱19,250 – ₱19,749',  emp:975.00,   er:1950.00},
-  {range:'₱19,750 – ₱20,249',  emp:1000.00,  er:2000.00},
-  {range:'₱20,250 – ₱20,749',  emp:1025.00,  er:2050.00},
-  {range:'₱20,750 – ₱21,249',  emp:1050.00,  er:2100.00},
-  {range:'₱21,250 – ₱21,749',  emp:1075.00,  er:2150.00},
-  {range:'₱21,750 – ₱22,249',  emp:1100.00,  er:2200.00},
-  {range:'₱22,250 – ₱22,749',  emp:1125.00,  er:2250.00},
-  {range:'₱22,750 – ₱23,249',  emp:1150.00,  er:2300.00},
-  {range:'₱23,250 – ₱23,749',  emp:1175.00,  er:2350.00},
-  {range:'₱23,750 – ₱24,249',  emp:1200.00,  er:2400.00},
-  {range:'₱24,250 – ₱24,749',  emp:1225.00,  er:2450.00},
-  {range:'₱24,750 – ₱25,249',  emp:1250.00,  er:2500.00},
-  {range:'₱25,250 – ₱25,749',  emp:1275.00,  er:2550.00},
-  {range:'₱25,750 – ₱26,249',  emp:1300.00,  er:2600.00},
-  {range:'₱26,250 – ₱26,749',  emp:1325.00,  er:2650.00},
-  {range:'₱26,750 – ₱27,249',  emp:1350.00,  er:2700.00},
-  {range:'₱27,250 – ₱27,749',  emp:1375.00,  er:2750.00},
-  {range:'₱27,750 – ₱28,249',  emp:1400.00,  er:2800.00},
-  {range:'₱28,250 – ₱28,749',  emp:1425.00,  er:2850.00},
-  {range:'₱28,750 – ₱29,249',  emp:1450.00,  er:2900.00},
-  {range:'₱29,250 – ₱29,749',  emp:1475.00,  er:2950.00},
-  {range:'₱29,750 – ₱30,249',  emp:1500.00,  er:3000.00},
-  {range:'₱30,250 – ₱30,749',  emp:1525.00,  er:3050.00},
-  {range:'₱30,750 – ₱31,249',  emp:1550.00,  er:3100.00},
-  {range:'₱31,250 – ₱31,749',  emp:1575.00,  er:3150.00},
-  {range:'₱31,750 – ₱32,249',  emp:1600.00,  er:3200.00},
-  {range:'₱32,250 – ₱32,749',  emp:1625.00,  er:3250.00},
-  {range:'₱32,750 – ₱33,249',  emp:1650.00,  er:3300.00},
-  {range:'₱33,250 – ₱33,749',  emp:1675.00,  er:3350.00},
-  {range:'₱33,750 – ₱34,249',  emp:1700.00,  er:3400.00},
-  {range:'₱34,250 – ₱34,749',  emp:1725.00,  er:3450.00},
-  {range:'₱34,750 and above',   emp:1750.00,  er:3500.00},
-];
-let philData = { rate:5.00, min:500.00, max:5000.00 };
+// Brackets use a structured {min, max} model so they can be added, removed,
+// and edited from the UI. A row matches when salary >= min and salary < max;
+// max = null means "and above" (open-ended top bracket).
+let sssTable = (() => {
+  const rows = [{min:0, max:5250, emp:250, er:500}];
+  for (let min = 5250, emp = 275; min < 34750; min += 500, emp += 25) {
+    rows.push({min, max:min + 500, emp, er:emp * 2});
+  }
+  rows.push({min:34750, max:null, emp:1750, er:3500});
+  return rows;
+})();
+let philData = { rate:5.00, min:500.00, max:5000.00, floor:10000, ceiling:100000 };
 let pagData  = { rate1:1, rate2:2, empMax:100.00, erMax:100.00 };
+// Tracks when deduction tables were last saved so every view can show a live
+// "Last updated" stamp instead of a hardcoded verification date.
+let dedMeta  = (_savedDemo && _savedDemo.dedMeta) || {};
 let birData  = [
-  {range:'Up to ₱250,000',             base:0,       rate:0},
-  {range:'Over ₱250,000 – ₱400,000',   base:0,       rate:15},
-  {range:'Over ₱400,000 – ₱800,000',   base:22500,   rate:20},
-  {range:'Over ₱800,000 – ₱2,000,000', base:102500,  rate:25},
-  {range:'Over ₱2,000,000 – ₱8,000,000', base:402500, rate:30},
-  {range:'Over ₱8,000,000',            base:2202500,  rate:35},
+  {min:0,       max:250000,  base:0,       rate:0},
+  {min:250000,  max:400000,  base:0,       rate:15},
+  {min:400000,  max:800000,  base:22500,   rate:20},
+  {min:800000,  max:2000000, base:102500,  rate:25},
+  {min:2000000, max:8000000, base:402500,  rate:30},
+  {min:8000000, max:null,    base:2202500, rate:35},
 ];
-// Converts legacy "₱250,001 – ₱400,000" / "Above ₱8,000,000" range phrasing
-// into the BIR-correct "Over ₱250,000 – ₱400,000" / "Over ₱8,000,000" form so
-// the "excess over" used in the tax formula matches the official brackets.
-function normalizeBIRTable(t) {
+
+const numOnly = v => parseFloat(String(v).replace(/[^\d.]/g, '')) || 0;
+const pesoP0  = v => '₱' + Math.round(parseFloat(v) || 0).toLocaleString('en-PH');
+function openMax(r) { return r.max === null || r.max === undefined || r.max === ''; }
+
+// Display label regenerated from the structured bracket so UI text always
+// matches the numbers the payroll engine actually uses.
+function sssRangeLabel(r) {
+  const min = parseFloat(r.min) || 0, max = openMax(r) ? null : parseFloat(r.max);
+  if (min <= 0 && max) return 'Below ' + pesoP0(max);
+  if (!max) return pesoP0(min) + ' and above';
+  return pesoP0(min) + ' – ' + pesoP0(max - 1);
+}
+function birRangeLabel(r) {
+  const min = parseFloat(r.min) || 0, max = openMax(r) ? null : parseFloat(r.max);
+  if (min <= 0) return 'Up to ' + pesoP0(max);
+  if (!max) return 'Over ' + pesoP0(min);
+  return 'Over ' + pesoP0(min) + ' – ' + pesoP0(max);
+}
+
+// Migrates legacy string-based bracket tables ("Below ₱X", "₱A – ₱B",
+// "Over ₱A – ₱B", "Above ₱X") saved by older versions into the structured
+// {min, max} model. Already-structured rows pass through untouched.
+// SSS dash brackets are inclusive on both ends in their labels
+// ("₱5,250 – ₱5,749"), so the stored upper bound is B+1 (exclusive).
+function migrateSssTable(t) {
   return (t || []).map(row => {
-    let r = row.range || '';
-    if (r.indexOf('Above') === 0) {
-      r = 'Over' + r.slice(r.indexOf('₱'));
-    } else if (r.indexOf('Up to') !== 0 && r.indexOf('Over') !== 0 && r.indexOf('–') > -1) {
-      const parts = r.split('–');
-      const low = parseFloat(String(parts[0]).replace(/[^\d.]/g, '')) || 0;
-      r = 'Over ₱' + (low - 1).toLocaleString('en-PH') + ' –' + parts[1];
+    if (row.min !== undefined && row.max !== undefined) return Object.assign({}, row);
+    const r = row.range || '';
+    if (r.indexOf('Below') === 0) return Object.assign({}, row, {min:0, max:numOnly(r)});
+    const parts = r.split('–');
+    if (parts.length > 1 && numOnly(parts[1]) > 0) return Object.assign({}, row, {min:numOnly(parts[0]), max:numOnly(parts[1]) + 1});
+    return Object.assign({}, row, {min:numOnly(r), max:null});
+  });
+}
+// BIR phrasing is "(A, B]": "Up to X" → [0, X]; "Over A – B" → (A, B];
+// legacy "₱A+1 – ₱B" ranges normalize their lower bound to A.
+function migrateBirTable(t) {
+  return (t || []).map(row => {
+    if (row.min !== undefined && row.max !== undefined) return Object.assign({}, row);
+    const r = row.range || '';
+    if (r.indexOf('Up to') === 0) return Object.assign({}, row, {min:0, max:numOnly(r)});
+    const parts = r.split('–');
+    if (parts.length > 1) {
+      let lo = numOnly(parts[0]);
+      if (r.indexOf('Over') !== 0) lo = Math.max(0, lo - 1);
+      return Object.assign({}, row, {min:lo, max:numOnly(parts[1])});
     }
-    return Object.assign({}, row, { range: r });
+    return Object.assign({}, row, {min:numOnly(r), max:null});
   });
 }
 // Restore government tables edited by the Finance Officer so they persist
 // across sessions and keep the system compliant with the latest regulations.
-if (_savedDemo && Array.isArray(_savedDemo.sssTable) && _savedDemo.sssTable.length) sssTable = _savedDemo.sssTable;
+if (_savedDemo && Array.isArray(_savedDemo.sssTable) && _savedDemo.sssTable.length) sssTable = migrateSssTable(_savedDemo.sssTable);
 if (_savedDemo && _savedDemo.philData) philData = Object.assign({}, philData, _savedDemo.philData);
 if (_savedDemo && _savedDemo.pagData)  pagData  = Object.assign({}, pagData,  _savedDemo.pagData);
-if (_savedDemo && Array.isArray(_savedDemo.birData) && _savedDemo.birData.length) birData = normalizeBIRTable(_savedDemo.birData);
+if (_savedDemo && Array.isArray(_savedDemo.birData) && _savedDemo.birData.length) birData = migrateBirTable(_savedDemo.birData);
 
 function openDedModal(type) {
   const titles = {
@@ -486,40 +472,25 @@ function openDedModal(type) {
         Update SSS contribution amounts for each salary bracket. Changes apply to all future payroll computations.
         <strong style="color:var(--maroon-dark)"> Republic Act No. 11199 — Rate: 15% of MSC.</strong>
       </p>
-      <div style="overflow-x:auto">
+      <div style="max-height:420px;overflow-y:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead>
-            <tr style="background:var(--maroon-dark);color:#fff">
+            <tr style="background:var(--maroon-dark);color:#fff;position:sticky;top:0">
               <th style="padding:10px 12px;text-align:left">#</th>
-              <th style="padding:10px 12px;text-align:left">Monthly Salary Credit Range</th>
+              <th style="padding:10px 12px;text-align:left">MSC From (₱)</th>
+              <th style="padding:10px 12px;text-align:left">MSC Up To (₱)</th>
               <th style="padding:10px 12px;text-align:left">Employee Share (₱)</th>
               <th style="padding:10px 12px;text-align:left">Employer Share (₱)</th>
               <th style="padding:10px 12px;text-align:left">Total</th>
+              <th style="padding:10px 12px"></th>
             </tr>
           </thead>
-          <tbody>
-            ${sssTable.map((row, i) => `
-              <tr style="background:${i%2===0?'#F9F7F4':'#fff'}">
-                <td style="padding:8px 12px;color:var(--text-muted)">${i+1}</td>
-                <td style="padding:8px 12px;font-weight:600;color:var(--maroon-dark)">${row.range}</td>
-                <td style="padding:4px 8px">
-                  <input type="number" step="0.01" value="${row.emp.toFixed(2)}"
-                    data-idx="${i}" data-field="emp"
-                    style="width:100px;padding:6px 10px;border:1px solid #DDD;border-radius:6px;font-size:13px"
-                    oninput="updateSSSRow(${i},'emp',this.value)"/>
-                </td>
-                <td style="padding:4px 8px">
-                  <input type="number" step="0.01" value="${row.er.toFixed(2)}"
-                    data-idx="${i}" data-field="er"
-                    style="width:110px;padding:6px 10px;border:1px solid #DDD;border-radius:6px;font-size:13px"
-                    oninput="updateSSSRow(${i},'er',this.value)"/>
-                </td>
-                <td style="padding:8px 12px;font-weight:600" id="sss-total-${i}">
-                  ₱${(row.emp + row.er).toFixed(2)}
-                </td>
-              </tr>`).join('')}
-          </tbody>
+          <tbody id="sssEditBody"></tbody>
         </table>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:12px;align-items:center">
+        <button class="btn btn-outline btn-sm" onclick="addSssBracket()">+ Add Bracket</button>
+        <span style="font-size:11px;color:var(--text-muted)">Leave "Up To" blank for the top (and above) bracket. Rows are sorted by "From" on save.</span>
       </div>`;
   }
 
@@ -552,6 +523,20 @@ function openDedModal(type) {
             oninput="philData.max=parseFloat(this.value)||5000"/>
         </div>
       </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+        <div>
+          <label class="fl">Salary Floor — Min Base (₱)</label>
+          <input class="fi" id="ph-floor" type="number" step="1000" value="${(philData.floor||0).toFixed(2)}"
+            oninput="philData.floor=parseFloat(this.value)||10000"/>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Salaries below this are computed at the floor</div>
+        </div>
+        <div>
+          <label class="fl">Salary Ceiling — Max Base (₱)</label>
+          <input class="fi" id="ph-ceiling" type="number" step="10000" value="${(philData.ceiling||0).toFixed(2)}"
+            oninput="philData.ceiling=parseFloat(this.value)||100000"/>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Salaries above this are computed at the ceiling</div>
+        </div>
+      </div>
       <div style="margin-top:16px;background:#EFF8FF;border:1px solid #B3D9FF;border-radius:10px;padding:12px 16px;font-size:12px;color:#1A4A7A">
         ℹ️ <strong>Formula reminder:</strong> Monthly Contribution = Basic Salary × Rate% ÷ 2 (employee share only)
       </div>`;
@@ -568,30 +553,30 @@ function openDedModal(type) {
             <tr style="background:var(--maroon-dark);color:#fff">
               <th style="padding:10px 12px">Monthly Compensation</th>
               <th style="padding:10px 12px">Employee Rate (%)</th>
-              <th style="padding:10px 12px">Employer Rate (%)</th>
             </tr>
           </thead>
           <tbody>
             <tr style="background:#F9F7F4">
               <td style="padding:8px 12px;font-weight:600">₱1,500 and below</td>
               <td style="padding:4px 8px;text-align:center">
-                <input type="number" step="0.5" min="1" max="5" value="${pagData.rate1}"
+                <input type="number" step="0.5" min="0.5" max="5" value="${pagData.rate1}"
                   style="width:80px;padding:6px 10px;border:1px solid #DDD;border-radius:6px;font-size:13px;text-align:center"
                   oninput="pagData.rate1=parseFloat(this.value)||1"/>
-              </td>
-              <td style="padding:4px 8px;text-align:center">
-                <input type="number" step="0.5" min="1" max="5" value="${pagData.rate2}"
-                  style="width:80px;padding:6px 10px;border:1px solid #DDD;border-radius:6px;font-size:13px;text-align:center"
-                  oninput="pagData.rate2=parseFloat(this.value)||2"/>
               </td>
             </tr>
             <tr style="background:#fff">
               <td style="padding:8px 12px;font-weight:600">Above ₱1,500</td>
-              <td style="padding:8px 12px;text-align:center;color:var(--text-muted)">2% (same)</td>
-              <td style="padding:8px 12px;text-align:center;color:var(--text-muted)">2% (same)</td>
+              <td style="padding:4px 8px;text-align:center">
+                <input type="number" step="0.5" min="0.5" max="5" value="${pagData.rate2}"
+                  style="width:80px;padding:6px 10px;border:1px solid #DDD;border-radius:6px;font-size:13px;text-align:center"
+                  oninput="pagData.rate2=parseFloat(this.value)||2"/>
+              </td>
             </tr>
           </tbody>
         </table>
+      </div>
+      <div style="margin-bottom:16px;background:#EFF8FF;border:1px solid #B3D9FF;border-radius:10px;padding:12px 16px;font-size:12px;color:#1A4A7A">
+        ℹ️ The employer share mirrors the employee rate per RA 9679 and is shouldered by the school — it is not deducted from payroll.
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div>
@@ -613,34 +598,24 @@ function openDedModal(type) {
         Update BIR TRAIN Law annual income tax brackets. <strong style="color:var(--maroon-dark)">Republic Act No. 10963.</strong>
         Only update when the BIR issues new official tax tables.
       </p>
-      <div style="overflow-x:auto">
+      <div style="max-height:420px;overflow-y:auto">
         <table style="width:100%;border-collapse:collapse;font-size:13px">
           <thead>
-            <tr style="background:var(--maroon-dark);color:#fff">
+            <tr style="background:var(--maroon-dark);color:#fff;position:sticky;top:0">
               <th style="padding:10px 12px">#</th>
-              <th style="padding:10px 12px">Annual Taxable Income</th>
+              <th style="padding:10px 12px">Income Over (₱)</th>
+              <th style="padding:10px 12px">Up To (₱)</th>
               <th style="padding:10px 12px">Base Tax (₱)</th>
               <th style="padding:10px 12px">Rate on Excess (%)</th>
+              <th style="padding:10px 12px"></th>
             </tr>
           </thead>
-          <tbody>
-            ${birData.map((row, i) => `
-              <tr style="background:${i%2===0?'#F9F7F4':'#fff'}">
-                <td style="padding:8px 12px;color:var(--text-muted)">${i+1}</td>
-                <td style="padding:8px 12px;font-weight:600;color:var(--maroon-dark)">${row.range}</td>
-                <td style="padding:4px 8px">
-                  <input type="number" step="0.01" value="${row.base.toFixed(2)}"
-                    style="width:120px;padding:6px 10px;border:1px solid #DDD;border-radius:6px;font-size:13px"
-                    oninput="birData[${i}].base=parseFloat(this.value)||0"/>
-                </td>
-                <td style="padding:4px 8px">
-                  <input type="number" step="1" min="0" max="100" value="${row.rate}"
-                    style="width:80px;padding:6px 10px;border:1px solid #DDD;border-radius:6px;font-size:13px;text-align:center"
-                    oninput="birData[${i}].rate=parseFloat(this.value)||0"/>
-                </td>
-              </tr>`).join('')}
-          </tbody>
+          <tbody id="birEditBody"></tbody>
         </table>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:12px;align-items:center">
+        <button class="btn btn-outline btn-sm" onclick="addBirBracket()">+ Add Bracket</button>
+        <span style="font-size:11px;color:var(--text-muted)">Leave "Up To" blank for the top bracket. Rows are sorted by "Over" on save.</span>
       </div>
       <div style="margin-top:12px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:10px;padding:12px 16px;font-size:12px;color:#6D4C00">
         ⚠️ <strong>Important:</strong> BIR tax tables are mandated by law. Only update when the BIR officially issues a new TRAIN Law amendment or Revenue Regulation.
@@ -648,7 +623,111 @@ function openDedModal(type) {
   }
 
   document.getElementById('dedModalBody').innerHTML = html;
+  if (type === 'SSS') renderSssEditRows();
+  if (type === 'BIR') renderBirEditRows();
   document.getElementById('dedModal').classList.add('show');
+}
+
+// ── SSS / BIR BRACKET EDITING ────────────────────────────────
+const dedInp = 'width:95px;padding:6px 8px;border:1px solid #DDD;border-radius:6px;font-size:13px';
+
+function renderSssEditRows() {
+  const tb = document.getElementById('sssEditBody');
+  if (!tb) return;
+  tb.innerHTML = sssTable.map((row, i) => `
+    <tr style="background:${i%2===0?'#F9F7F4':'#fff'}">
+      <td style="padding:6px 10px;color:var(--text-muted)">${i+1}</td>
+      <td style="padding:4px 6px"><input type="number" step="1" min="0" value="${Math.round(parseFloat(row.min)||0)}"
+        style="${dedInp}" oninput="updateSssBracket(${i},'min',this.value)"/></td>
+      <td style="padding:4px 6px">${openMax(row)
+        ? '<span style="color:var(--text-muted);font-size:12px;padding:0 4px">and above</span>'
+        : '<input type="number" step="1" min="0" value="' + Math.round(parseFloat(row.max)) + '" style="' + dedInp + '" oninput="updateSssBracket(' + i + ',\'max\',this.value)"/>'}</td>
+      <td style="padding:4px 6px"><input type="number" step="0.01" value="${(parseFloat(row.emp)||0).toFixed(2)}"
+        style="${dedInp}" oninput="updateSssBracket(${i},'emp',this.value)"/></td>
+      <td style="padding:4px 6px"><input type="number" step="0.01" value="${(parseFloat(row.er)||0).toFixed(2)}"
+        style="${dedInp}" oninput="updateSssBracket(${i},'er',this.value)"/></td>
+      <td style="padding:6px 10px;font-weight:600" id="sss-total-${i}">₱${((parseFloat(row.emp)||0)+(parseFloat(row.er)||0)).toFixed(2)}</td>
+      <td style="padding:4px 6px;text-align:center"><button class="btn btn-outline btn-sm" title="Remove bracket"
+        style="color:#C62828;border-color:#FFCDD2;padding:4px 8px" onclick="removeSssBracket(${i})">✕</button></td>
+    </tr>`).join('');
+}
+function updateSssBracket(i, field, val) {
+  if (!sssTable[i]) return;
+  sssTable[i][field] = (field === 'min' || field === 'max')
+    ? (val === '' ? null : parseFloat(val) || 0)
+    : parseFloat(val) || 0;
+  if (field === 'max' && val === '') sssTable[i].max = null;
+  const total = (parseFloat(sssTable[i].emp)||0) + (parseFloat(sssTable[i].er)||0);
+  const el = document.getElementById('sss-total-'+i);
+  if (el) el.textContent = '₱' + total.toFixed(2);
+}
+function addSssBracket() {
+  const last = sssTable[sssTable.length - 1];
+  const insertAt = sssTable.length - (last && openMax(last) ? 1 : 0);
+  const prev = sssTable[insertAt - 1];
+  const start = prev ? (openMax(prev) ? (parseFloat(prev.min)||0) + 500 : (parseFloat(prev.max)||0)) : 0;
+  sssTable.splice(insertAt, 0, {min:start, max:start + 500, emp:0, er:0});
+  renderSssEditRows();
+}
+function removeSssBracket(i) {
+  if (sssTable.length <= 1) { showToast('⚠️','At least one bracket is required.'); return; }
+  sssTable.splice(i, 1);
+  renderSssEditRows();
+}
+
+function renderBirEditRows() {
+  const tb = document.getElementById('birEditBody');
+  if (!tb) return;
+  tb.innerHTML = birData.map((row, i) => `
+    <tr style="background:${i%2===0?'#F9F7F4':'#fff'}">
+      <td style="padding:6px 10px;color:var(--text-muted)">${i+1}</td>
+      <td style="padding:4px 6px"><input type="number" step="1" min="0" value="${Math.round(parseFloat(row.min)||0)}"
+        style="${dedInp}" oninput="updateBirBracket(${i},'min',this.value)"/></td>
+      <td style="padding:4px 6px">${openMax(row)
+        ? '<span style="color:var(--text-muted);font-size:12px;padding:0 4px">and above</span>'
+        : '<input type="number" step="1" min="0" value="' + Math.round(parseFloat(row.max)) + '" style="' + dedInp + '" oninput="updateBirBracket(' + i + ',\'max\',this.value)"/>'}</td>
+      <td style="padding:4px 6px"><input type="number" step="0.01" value="${(parseFloat(row.base)||0).toFixed(2)}"
+        style="${dedInp}" oninput="updateBirBracket(${i},'base',this.value)"/></td>
+      <td style="padding:4px 6px"><input type="number" step="1" min="0" max="100" value="${parseFloat(row.rate)||0}"
+        style="${dedInp};text-align:center" oninput="updateBirBracket(${i},'rate',this.value)"/></td>
+      <td style="padding:4px 6px;text-align:center"><button class="btn btn-outline btn-sm" title="Remove bracket"
+        style="color:#C62828;border-color:#FFCDD2;padding:4px 8px" onclick="removeBirBracket(${i})">✕</button></td>
+    </tr>`).join('');
+}
+function updateBirBracket(i, field, val) {
+  if (!birData[i]) return;
+  birData[i][field] = (field === 'min' || field === 'max')
+    ? (val === '' ? null : parseFloat(val) || 0)
+    : parseFloat(val) || 0;
+  if (field === 'max' && val === '') birData[i].max = null;
+}
+function addBirBracket() {
+  const last = birData[birData.length - 1];
+  const insertAt = birData.length - (last && openMax(last) ? 1 : 0);
+  const prev = birData[insertAt - 1];
+  const start = prev ? (openMax(prev) ? (parseFloat(prev.min)||0) + 100000 : (parseFloat(prev.max)||0)) : 0;
+  birData.splice(insertAt, 0, {min:start, max:start + 150000, base:0, rate:0});
+  renderBirEditRows();
+}
+function removeBirBracket(i) {
+  if (birData.length <= 1) { showToast('⚠️','At least one bracket is required.'); return; }
+  birData.splice(i, 1);
+  renderBirEditRows();
+}
+
+// Sorts brackets by their lower bound and heals boundary gaps/overlaps: each
+// non-final row's upper bound snaps to the next row's lower bound so salary
+// matching stays continuous, and the final row is always open-ended.
+// Returns an error message or null when the table is usable.
+function normalizeBrackets(t) {
+  t.sort((a, b) => (parseFloat(a.min)||0) - (parseFloat(b.min)||0));
+  for (let i = 0; i < t.length - 1; i++) {
+    const row = t[i], nextMin = parseFloat(t[i+1].min)||0;
+    if (nextMin <= (parseFloat(row.min)||0)) return 'Each bracket needs its own unique "From" value (rows sort by "From").';
+    row.max = nextMin;
+  }
+  if (t.length) t[t.length-1].max = null;
+  return null;
 }
 
 function showDedPage(type) {
@@ -661,6 +740,7 @@ function showDedPage(type) {
     page.style.display = 'block';
     if (type === 'SSS') renderSSSTable();
     if (type === 'PhilHealth') renderPhilHealthDisplay();
+    if (type === 'PagIBIG') renderPagIBIGDisplay();
     if (type === 'BIR') renderBIRTable();
   }
 }
@@ -677,69 +757,127 @@ function renderSSSTable() {
   tbody.innerHTML = sssTable.map((row, i) => `
     <tr>
       <td>${i+1}</td>
-      <td><strong>${row.range}</strong></td>
-      <td>₱${row.emp.toFixed(2)}</td>
-      <td>₱${row.er.toFixed(2)}</td>
-      <td><strong>₱${(row.emp + row.er).toFixed(2)}</strong></td>
+      <td><strong>${sssRangeLabel(row)}</strong></td>
+      <td>₱${(parseFloat(row.emp)||0).toFixed(2)}</td>
+      <td>₱${(parseFloat(row.er)||0).toFixed(2)}</td>
+      <td><strong>₱${((parseFloat(row.emp)||0)+(parseFloat(row.er)||0)).toFixed(2)}</strong></td>
     </tr>`).join('');
 }
+
+function peso2(v) { return '₱' + (parseFloat(v)||0).toLocaleString('en-PH',{minimumFractionDigits:2}); }
 
 function renderPhilHealthDisplay() {
   const r = document.getElementById('philRateDisplay');
   const e = document.getElementById('philEmpDisplay');
+  const er = document.getElementById('philErDisplay');
   const mn = document.getElementById('philMinDisplay');
   const mx = document.getElementById('philMaxDisplay');
+  const fl = document.getElementById('philFloorDisplay');
+  const ce = document.getElementById('philCeilDisplay');
+  const fo = document.getElementById('philFormulaText');
   if (r) r.textContent = philData.rate.toFixed(2) + '%';
   if (e) e.textContent = (philData.rate/2).toFixed(2) + '%';
-  if (mn) mn.textContent = '₱' + philData.min.toLocaleString('en-PH', {minimumFractionDigits:2});
-  if (mx) mx.textContent = '₱' + philData.max.toLocaleString('en-PH', {minimumFractionDigits:2});
+  if (er) er.textContent = (philData.rate/2).toFixed(2) + '%';
+  if (mn) mn.textContent = peso2(philData.min);
+  if (mx) mx.textContent = peso2(philData.max);
+  if (fl) fl.textContent = peso2(philData.floor || 0);
+  if (ce) ce.textContent = peso2(philData.ceiling || 0);
+  if (fo) fo.innerHTML = '<strong>Formula:</strong> Basic Monthly Salary × ' + philData.rate.toFixed(2) + '% ÷ 2 = Employee Share';
+  renderPhilExamples();
 }
+
+// Recomputes the "Computation Example" table from the live philData so the
+// samples always match what the payroll engine actually deducts.
+function renderPhilExamples() {
+  const tb = document.getElementById('philExampleBody');
+  if (!tb) return;
+  const floor = philData.floor || 0;
+  const ceiling = philData.ceiling || Infinity;
+  tb.innerHTML = [10000,20000,28500,50000,100000].map(s => {
+    const share = philMonthlyTotal(s) / 2;
+    let tag = '';
+    if (s <= floor) tag = ' <span style="font-size:11px;color:var(--text-muted)">(min)</span>';
+    else if (s >= ceiling) tag = ' <span style="font-size:11px;color:var(--text-muted)">(max)</span>';
+    return `<tr><td>${peso2(s)}</td><td>${peso2(share)}${tag}</td></tr>`;
+  }).join('');
+}
+
+function renderPagIBIGDisplay() {
+  const tbody = document.getElementById('pagTableBody');
+  if (!tbody) return;
+  const r1 = Math.min(1500 * pagData.rate1 / 100, parseFloat(pagData.empMax) || Infinity);
+  tbody.innerHTML = `
+    <tr><td>₱1,500 and below</td><td>${pagData.rate1}%</td><td>${peso2(r1)}</td></tr>
+    <tr><td>Above ₱1,500</td><td><strong>${pagData.rate2}%</strong></td><td><strong>${peso2(pagData.empMax)}</strong></td></tr>`;
+  const fe = document.getElementById('pagFootEmpMax'), fr = document.getElementById('pagFootErMax');
+  if (fe) fe.textContent = peso2(pagData.empMax) + ' / month';
+  if (fr) fr.textContent = peso2(pagData.erMax) + ' / month';
+}
+
+// System Admin "Deduction Tables" is a read-only mirror of the Finance tables.
+// Rendered from the same live data so rate edits are visible everywhere.
+function renderAdmDedTables() {
+  const sssB = document.getElementById('admSSSBody');
+  if (sssB) sssB.innerHTML = sssTable.map(r =>
+    `<tr><td>${r.range}</td><td>₱${r.emp.toFixed(2)}</td><td>₱${r.er.toFixed(2)}</td></tr>`).join('');
+  const pr = document.getElementById('admPhilRate');
+  if (pr) pr.textContent = philData.rate.toFixed(2) + '%';
+  const ps = document.getElementById('admPhilSplit');
+  if (ps) ps.textContent = 'Split equally — ' + (philData.rate/2).toFixed(2) + '% employee, ' + (philData.rate/2).toFixed(2) + '% employer';
+  const pg = document.getElementById('admPagBody');
+  if (pg) pg.innerHTML = `
+    <tr><td>₱1,500 and below</td><td>${pagData.rate1}%</td></tr>
+    <tr><td>Above ₱1,500</td><td>${pagData.rate2}%</td></tr>`;
+  const birB = document.getElementById('admBIRBody');
+  if (birB) birB.innerHTML = birData.map(r => {
+    const desc = (parseFloat(r.base) === 0 && parseFloat(r.rate) === 0)
+      ? '<span class="badge b-green">0% — Exempt</span>'
+      : (parseFloat(r.base) > 0 ? '₱' + r.base.toLocaleString('en-PH') + ' + ' : '') + r.rate + '% on excess';
+    return `<tr><td>${r.range}</td><td>${desc}</td></tr>`;
+  }).join('');
+}
+
+// Status banner stamp — falls back to the original verification note until the
+// Finance Officer saves a rate change for the first time.
+function renderDedBanner() {
+  const el = document.getElementById('dedBannerSub');
+  if (!el) return;
+  let txt = 'SSS • PhilHealth • Pag-IBIG • BIR TRAIN Law — Last verified: May 2026';
+  if (dedMeta && dedMeta.updatedAt) {
+    const d = new Date(dedMeta.updatedAt);
+    txt = 'SSS • PhilHealth • Pag-IBIG • BIR TRAIN Law — Last updated: ' +
+      d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + ', ' +
+      d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  }
+  el.textContent = txt;
+}
+function stampDedMeta() { dedMeta = Object.assign({}, dedMeta, { updatedAt: new Date().toISOString() }); }
 
 function renderBIRTable() {
   const tbody = document.getElementById('birTableBody');
   if (!tbody) return;
-  const num = s => parseFloat(String(s).match(/[\d,]+/)?.[0]?.replace(/,/g,'')) || 0;
   tbody.innerHTML = birData.map((row, i) => {
-    const r = row.range;
-    const excess = r.indexOf('Over') === 0
-      ? '₱' + num(r).toLocaleString('en-PH')
-      : '—';
-    const baseCell = i === 0 && row.base === 0
+    const min = parseFloat(row.min)||0;
+    const excess = min > 0 ? '₱' + Math.round(min).toLocaleString('en-PH') : '—';
+    const baseCell = i === 0 && (parseFloat(row.base)||0) === 0 && (parseFloat(row.rate)||0) === 0
       ? '<span class="badge b-green">₱0 — Exempt</span>'
-      : '₱' + row.base.toLocaleString('en-PH', {minimumFractionDigits:2});
+      : '₱' + (parseFloat(row.base)||0).toLocaleString('en-PH', {minimumFractionDigits:2});
     return `<tr>
       <td>${i+1}</td>
-      <td>${r}</td>
+      <td>${birRangeLabel(row)}</td>
       <td>${baseCell}</td>
-      <td>${row.rate}%</td>
+      <td>${parseFloat(row.rate)||0}%</td>
       <td>${excess}</td>
     </tr>`;
   }).join('');
 }
 
-function updateSSSRow(i, field, val) {
-  sssTable[i][field] = parseFloat(val) || 0;
-  const total = sssTable[i].emp + sssTable[i].er;
-  const el = document.getElementById('sss-total-'+i);
-  if (el) el.textContent = '₱' + total.toFixed(2);
-}
-
 function saveDedModal() {
   const type = document.getElementById('dedModal').dataset.type;
 
-  if (type === 'SSS') {
-    // Update the SSS table display
-    const tbody = document.querySelector('#finDeduction table tbody');
-    if (tbody) {
-      tbody.querySelectorAll('tr').forEach((tr, i) => {
-        if (i < sssTable.length) {
-          const tds = tr.querySelectorAll('td');
-          if (tds[1]) tds[1].textContent = '₱' + sssTable[i].emp.toFixed(2);
-          if (tds[2]) tds[2].textContent = '₱' + sssTable[i].er.toFixed(2);
-          if (tds[3]) tds[3].textContent = '₱' + (sssTable[i].emp + sssTable[i].er).toFixed(2);
-        }
-      });
-    }
+  if (type === 'SSS' || type === 'BIR') {
+    const err = normalizeBrackets(type === 'SSS' ? sssTable : birData);
+    if (err) { showToast('⚠️', err); return; }
   }
   if (type === 'PhilHealth') {
     const el = document.getElementById('philRate');
@@ -747,10 +885,15 @@ function saveDedModal() {
   }
 
   closeModal('dedModal');
+  stampDedMeta();
   saveDemo();
   // Refresh the detail page display
   if (type === 'SSS') renderSSSTable();
   if (type === 'PhilHealth') renderPhilHealthDisplay();
+  if (type === 'PagIBIG') renderPagIBIGDisplay();
   if (type === 'BIR') renderBIRTable();
+  // Keep every other view (banner, admin mirror) in sync with the new rates
+  renderDedBanner();
+  renderAdmDedTables();
   showToast('✅', `${type} rates updated successfully! Changes will apply to the next payroll cycle.`);
 }

@@ -9,7 +9,8 @@ function saveDemo() {
     const state = {
       users, nextUserId, cashAdvances, bonusTypes, nextBonusId, auth: USERS_AUTH,
       deductionCategories, nextDedCatId, payrollRecords, bonusPayouts,
-      sssTable, philData, pagData, birData, bonusExemptionLimit: BONUS_EXEMPTION_LIMIT,
+      sssTable, philData, pagData, birData, dedMeta, bonusExemptionLimit: BONUS_EXEMPTION_LIMIT,
+      savedAt: new Date().toISOString(),
       profile: { empPhone: document.getElementById('empPhone')?.value, empAddr: document.getElementById('empAddr')?.value }
     };
     localStorage.setItem(DEMO_KEY, JSON.stringify(state));
@@ -32,13 +33,25 @@ function syncDemo() {
     fetch('/api/data')
       .then(r => { if (!r.ok) throw new Error('server offline'); return r.json(); })
       .then(d => {
-        if (d && d.users && d.users.length) {
-          if (!localStorage.getItem(DEMO_KEY)) {
-            localStorage.setItem(DEMO_KEY, JSON.stringify(d));
-            location.reload();
-          } else {
-            pushToServer(loadDemo());
-          }
+        if (!d || !d.users || !d.users.length) return;
+        const localRaw = localStorage.getItem(DEMO_KEY);
+        if (!localRaw) {
+          localStorage.setItem(DEMO_KEY, JSON.stringify(d));
+          location.reload();
+          return;
+        }
+        // Timestamp reconciliation: whichever copy was saved LAST wins, so a
+        // browser holding a stale cache can no longer silently overwrite
+        // newer rate edits made on another machine.
+        let local = null;
+        try { local = JSON.parse(localRaw); } catch(e) {}
+        const serverTime = Date.parse(d.savedAt) || 0;
+        const localTime  = Date.parse(local && local.savedAt) || 0;
+        if (serverTime > localTime) {
+          localStorage.setItem(DEMO_KEY, JSON.stringify(d));
+          location.reload();
+        } else {
+          pushToServer(local);
         }
       })
       .catch(() => {});

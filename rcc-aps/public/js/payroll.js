@@ -67,29 +67,14 @@ function splitBonusTaxable(thirteenth, otherBonuses) {
 // BIR annual withholding (TRAIN Law brackets) — computed from the EDITABLE
 // birData table (Deduction Tables → BIR). Keeping the tax in sync with what
 // the Finance Officer configures keeps the system compliant when BIR issues
-// new schedules. Rows use BIR phrasing "Up to X" / "Over X – Y" / "Over X".
+// new schedules. Brackets are structured {min, max, base, rate} rows matching
+// income in (min, max]; max = null is the open-ended top bracket.
 function annualBIR(annual) {
-  const num = s => parseFloat(String(s).match(/[\d,]+/)?.[0]?.replace(/,/g,'')) || 0;
   for (const row of birData) {
-    const r = row.range || '';
-    if (r.indexOf('Up to') === 0) {
-      if (annual <= num(r)) return parseFloat((row.base || 0).toFixed(2));
-    } else if (r.indexOf('Over') === 0) {
-      const over = num(r);
-      const dash = r.indexOf('–');
-      if (dash > -1) {
-        const high = num(r.slice(dash));
-        if (annual > over && annual <= high) return parseFloat((row.base + (annual - over) * row.rate / 100).toFixed(2));
-      } else {
-        if (annual > over) return parseFloat((row.base + (annual - over) * row.rate / 100).toFixed(2));
-      }
-    } else if (r.indexOf('Above') === 0) {
-      const over = num(r);
-      if (annual > over) return parseFloat((row.base + (annual - over) * row.rate / 100).toFixed(2));
-    } else if (r.indexOf('–') > -1) {
-      const parts = r.split('–');
-      const over = num(parts[0]), high = num(parts[1]);
-      if (annual >= over && annual < high) return parseFloat((row.base + (annual - over) * row.rate / 100).toFixed(2));
+    const min = parseFloat(row.min) || 0;
+    const max = openMax(row) ? Infinity : (parseFloat(row.max) || Infinity);
+    if (annual > min && annual <= max) {
+      return parseFloat(((parseFloat(row.base)||0) + (annual - min) * ((parseFloat(row.rate)||0)) / 100).toFixed(2));
     }
   }
   return 0;
@@ -115,31 +100,61 @@ function thirteenthTaxSplit(d, monthlyGross, taxable13) {
   return { annualTax, baseBir: parseFloat((d.bir || 0).toFixed(2)) };
 }
 
+// Active custom deduction categories (Deduction Tables → Other Deduction
+// Categories) applied on top of statutory deductions. Non-statutory: they do
+// NOT reduce taxable income — they lower net pay only, like a cash advance.
+// customOverrides maps category id → amount for per-run calculator overrides;
+// ids left blank fall back to the category default (fixed ₱ or % of gross).
+function activeCustomDeductions(gross, customOverrides) {
+  return deductionCategories
+    .filter(c => c.status === 'Active')
+    .map(c => {
+      let amt;
+      if (customOverrides && customOverrides[c.id] !== undefined) amt = parseFloat(customOverrides[c.id]) || 0;
+      else if (c.type === 'percent') amt = (parseFloat(gross) || 0) * c.amount / 100;
+      else amt = parseFloat(c.amount) || 0;
+      return { id: c.id, name: c.name, amount: parseFloat(amt.toFixed(2)) };
+    })
+    .filter(x => x.amount > 0);
+}
+
+// Reads the per-run override inputs from the Payroll Calculator. Blank = use
+// the category default; an explicit 0 excludes the category for this run.
+function collectCustomOverrides() {
+  const ov = {};
+  deductionCategories.filter(c => c.status === 'Active').forEach(c => {
+    const el = document.getElementById('calcCustom_' + c.id);
+    if (el && el.value !== '') ov[c.id] = parseFloat(el.value) || 0;
+  });
+  return ov;
+}
+
 // Helper: compute deductions
-function computeDeductions(gross, cashAdv, extraAnnual) {
+function computeDeductions(gross, cashAdv, extraAnnual, customOverrides) {
   const salary = Math.max(0, parseFloat(gross) || 0);
   // SSS — 2025 schedule (RA 11199, Circular 2024-006): Employee share is read
-  // from the editable sssTable brackets (MSC ₱5,000–₱35,000, 5% employee share)
-  function num(txt) { return parseFloat(String(txt).replace(/[^\d.]/g, '')) || 0; }
+  // from the editable structured sssTable brackets (MSC ₱5,000–₱35,000, 5%
+  // employee share). A bracket matches when salary >= min and salary < max.
   function getSSS(s) {
     for (const row of sssTable) {
-      const r = row.range;
-      if (r.indexOf('Below') === 0) {
-        if (s < num(r)) return row.emp;
-      } else if (r.indexOf('–') > -1) {
-        const parts = r.split('–');
-        if (s >= num(parts[0]) && s < num(parts[1])) return row.emp;
-      } else {
-        if (s >= num(r)) return row.emp;
-      }
+      const min = parseFloat(row.min) || 0;
+      const max = openMax(row) ? Infinity : (parseFloat(row.max) || Infinity);
+      if (s >= min && s < max) return parseFloat(row.emp) || 0;
     }
-    return sssTable[sssTable.length - 1].emp;
+    return sssTable.length ? (parseFloat(sssTable[sssTable.length - 1].emp) || 0) : 0;
   }
-  // PhilHealth — 5% of basic (2.5% employee share), total premium min ₱500 max ₱5,000
-  function getPhil(s) {
-    const total = Math.min(philData.max, Math.max(philData.min, s * philData.rate / 100));
-    return parseFloat((total / 2).toFixed(2));
-  }
+// Total monthly PhilHealth premium (employee + employer) for a salary base,
+// clamped to the editable min/max contribution. Shared by the calculator and
+// the Deduction Tables example renderer so both always agree.
+function philMonthlyTotal(s) {
+  return Math.min(philData.max, Math.max(philData.min, s * philData.rate / 100));
+}
+// PhilHealth — rate% of the salary base (half = employee share). The base is
+// clamped to the editable salary floor/ceiling before applying the rate.
+function getPhil(s) {
+  const base = Math.min(philData.ceiling || Infinity, Math.max(philData.floor || 0, s));
+  return parseFloat((philMonthlyTotal(base) / 2).toFixed(2));
+}
   // Pag-IBIG — 2% of monthly compensation (1% for ≤₱1,500), max ₱100 employee
   function getPag(s) {
     const r = s <= 1500 ? pagData.rate1 : pagData.rate2;
@@ -158,8 +173,10 @@ function computeDeductions(gross, cashAdv, extraAnnual) {
   const pag  = getPag(salary);
   const bir  = getBIR(salary, sss, phil, pag);
   const cash = parseFloat(cashAdv) || 0;
-  const net  = parseFloat((salary - sss - phil - pag - bir - cash).toFixed(2));
-  return { sss, phil, pag, bir, cash, gross: salary, net };
+  const custom = activeCustomDeductions(salary, customOverrides);
+  const customTotal = parseFloat(custom.reduce((s, x) => s + x.amount, 0).toFixed(2));
+  const net  = parseFloat((salary - sss - phil - pag - bir - cash - customTotal).toFixed(2));
+  return { sss, phil, pag, bir, cash, custom, customTotal, gross: salary, net };
 }
 
 // ── PAYROLL CALCULATOR ────────────────────────────────────────
@@ -234,7 +251,27 @@ function onCalcEmpKey(e) {
 
 function populateCalcEmployees() {
   renderCalcEmpList(calcEmpOptions(), false);
+  renderCalcCustomInputs();
   updateCalc13thState();
+}
+
+// Per-run override inputs for active custom deduction categories. Fixed
+// categories pre-fill their default amount; percent categories start blank
+// (auto % of gross) and any typed value overrides the computed amount.
+function renderCalcCustomInputs() {
+  const row = document.getElementById('calcCustomRow');
+  if (!row) return;
+  const cats = deductionCategories.filter(c => c.status === 'Active');
+  if (!cats.length) { row.style.display = 'none'; row.innerHTML = ''; return; }
+  row.style.display = 'grid';
+  row.innerHTML = cats.map(c => `
+    <div class="fg">
+      <label class="fl">📌 ${c.name} ${c.type === 'percent' ? '(' + c.amount + '% of gross)' : '(₱)'}</label>
+      <input class="fi" type="number" step="0.01" id="calcCustom_${c.id}"
+        value="${c.type === 'fixed' ? (parseFloat(c.amount)||0).toFixed(2) : ''}"
+        placeholder="${c.type === 'percent' ? 'auto — ' + c.amount + '% of gross' : '0.00'}"
+        oninput="computePayroll()"/>
+    </div>`).join('');
 }
 
 // Enable/disable the 13th Month option in the payroll calculator based on Bonus Management toggle
@@ -403,7 +440,7 @@ function computePayroll() {
   cashAdvances[emp.id] = cash;
   saveDemo();
   // Taxable 13th month excess is a one-time annual amount added to the BIR annualization
-  const d = computeDeductions(grossTaxable, cash, 0);
+  const d = computeDeductions(grossTaxable, cash, 0, collectCustomOverrides());
   const tTax = thirteenthTaxSplit(d, grossTaxable, thirteenSplit.taxable13);
   // Annual BIR tax caused by the taxable 13th month excess (₱0 when fully exempt ≤₱90,000)
   const thirteenTaxAmt = tTax.annualTax;
@@ -420,7 +457,8 @@ function computePayroll() {
   const net = parseFloat((d.net + deMinimisSum + thirteenth - tTax.annualTax).toFixed(2));
   lastCalc = {
     empId: emp.id, name:`${emp.first} ${emp.last}`, month:MONTHS.indexOf(monthName)+1, monthName, year, period,
-    gross: grossTaxable, deMinimisSum, thirteenth, thirteenTaxable: thirteenSplit.taxable13, thirteenExempt: thirteenSplit.exempt13, thirteenTax: tTax.annualTax, net, sss:d.sss, phil:d.phil, pag:d.pag, bir:d.bir, cash, bonuses
+    gross: grossTaxable, deMinimisSum, thirteenth, thirteenTaxable: thirteenSplit.taxable13, thirteenExempt: thirteenSplit.exempt13, thirteenTax: tTax.annualTax, net, sss:d.sss, phil:d.phil, pag:d.pag, bir:d.bir, cash, bonuses,
+    customDeds: d.custom, customTotal: d.customTotal
   };
 
   document.getElementById('calcEarnings').innerHTML = `
@@ -441,7 +479,13 @@ function computePayroll() {
     document.getElementById('r13Tax').textContent = fmt(tTax.annualTax);
   }
   document.getElementById('rCash').textContent = fmt(d.cash);
-  document.getElementById('rTotDed').textContent = fmt(d.sss + d.phil + d.pag + d.bir + d.cash + tTax.annualTax);
+  const rCustom = document.getElementById('rCustomRows');
+  if (rCustom) {
+    rCustom.innerHTML = d.custom.map(x =>
+      '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">📌 ' + x.name + '</span><span style="font-weight:600;color:#C62828">' + fmt(x.amount) + '</span></div>'
+    ).join('');
+  }
+  document.getElementById('rTotDed').textContent = fmt(d.sss + d.phil + d.pag + d.bir + d.cash + d.customTotal + tTax.annualTax);
   document.getElementById('rNetPay').textContent = fmt(net);
 }
 
@@ -514,6 +558,7 @@ function renderPayrollSummary() {
       <td>${fmt(d.bir)}</td>
       <td>${thirteenCell}</td>
       <td>${d.cash>0 ? '<span style="color:#C62828;font-weight:600">'+fmt(d.cash)+'</span>' : '—'}</td>
+      <td>${d.customTotal>0 ? '<span style="color:#C62828;font-weight:600" title="'+d.custom.map(x=>x.name+': '+fmt(x.amount)).join('  ·  ')+'">'+fmt(d.customTotal)+'</span>' : '—'}</td>
       <td><strong style="color:var(--maroon-dark)">${fmt(net)}</strong></td>
       <td>${status}</td>
     </tr>`;
@@ -606,6 +651,8 @@ function payslipRecordsFor(userId, year) {
       pag:  rec.pag,
       bir:  rec.bir,
       cash: parseFloat(rec.cash) || 0,
+      customDeds: Array.isArray(rec.customDeds) ? rec.customDeds : [],
+      customTotal: (Array.isArray(rec.customDeds) ? rec.customDeds : []).reduce((s, x) => s + (parseFloat(x.amount) || 0), 0),
       net:  rec.net,
       status: 'Released'
     }));

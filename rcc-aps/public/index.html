@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>RCC-APS | Automated Payroll System</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="css/style.css?v=20260815q"/>
+  <link rel="stylesheet" href="css/style.css?v=20260822c"/>
 </head>
 <body>
 
@@ -584,6 +584,7 @@
               <div class="fg"><label class="fl" id="calcAttLabel">Hours Worked</label><input class="fi" type="number" id="calcAtt" step="0.5" placeholder="0" oninput="computePayroll()"/></div>
               <div class="fg"><label class="fl">Cash Advance (₱)</label><input class="fi" type="number" id="calcCash" step="0.01" placeholder="0.00" oninput="computePayroll()"/></div>
             </div>
+            <div class="fg-row" style="margin-bottom:16px;display:none" id="calcCustomRow"></div>
             <div id="calcEmpMeta" style="display:none;margin-bottom:16px;background:var(--gold-pale);border:1px solid var(--gold);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--maroon-dark)">
               <strong id="calcMetaName"></strong> — <span id="calcMetaClass"></span> · <span id="calcMetaDept"></span>
               <div id="calcStatusBadge" style="display:none;margin-top:8px"></div>
@@ -606,6 +607,7 @@
                     <span id="r13Tax" style="font-weight:700;color:#C62828">₱0.00</span>
                   </div>
                   <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">Cash Advance</span><span id="rCash" style="font-weight:600;color:#C62828">₱0.00</span></div>
+                  <div id="rCustomRows"></div>
                   <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13.5px"><span style="color:var(--text-muted)">Total Deductions</span><span id="rTotDed" style="font-weight:700;color:#C62828">₱0.00</span></div>
                 </div>
               </div>
@@ -626,7 +628,7 @@
         </div>
         <div class="card">
           <div class="card-head"><div class="card-title" id="payrollSummaryTitle">📋 Payroll Summary — December 2026</div><button class="btn btn-outline btn-sm" onclick="renderPayrollSummary()">🔄 Refresh</button></div>
-          <div style="padding:0"><table><thead><tr><th>Employee</th><th>Type</th><th>Hrs / Abs</th><th>Gross Pay</th><th>SSS</th><th>PhilHealth</th><th>Pag-IBIG</th><th>BIR</th><th>13th Tax</th><th>Cash Adv</th><th>Net Pay</th><th>Status</th></tr></thead>
+          <div style="padding:0"><table><thead><tr><th>Employee</th><th>Type</th><th>Hrs / Abs</th><th>Gross Pay</th><th>SSS</th><th>PhilHealth</th><th>Pag-IBIG</th><th>BIR</th><th>13th Tax</th><th>Cash Adv</th><th>Other</th><th>Net Pay</th><th>Status</th></tr></thead>
           <tbody id="payrollSummaryBody"></tbody></table></div>
         </div>
       </div>
@@ -841,7 +843,7 @@
             <div style="font-size:28px">📋</div>
             <div>
               <div style="color:#fff;font-weight:700;font-size:15px">Government Contribution Rates — 2026</div>
-              <div style="color:rgba(255,255,255,0.7);font-size:12px">SSS • PhilHealth • Pag-IBIG • BIR TRAIN Law — Last verified: May 2026</div>
+              <div style="color:rgba(255,255,255,0.7);font-size:12px" id="dedBannerSub">SSS • PhilHealth • Pag-IBIG • BIR TRAIN Law — Last verified: May 2026</div>
             </div>
           </div>
           <div style="background:rgba(255,255,255,0.15);border-radius:8px;padding:8px 16px;color:#fff;font-size:12px;font-weight:600">✅ All rates up to date</div>
@@ -913,7 +915,7 @@
           <div class="card-head">
             <div>
               <div class="card-title">Other Deduction Categories</div>
-              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Custom deductions applied on top of mandatory government contributions</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Custom deductions applied on top of mandatory government contributions — Active categories are deducted from every payroll run and shown on payslips</div>
             </div>
             <button class="btn btn-primary btn-sm" onclick="openAddDeductionCategory()" style="display:flex;align-items:center;gap:6px">
               + Add Category
@@ -989,7 +991,7 @@
                 </div>
                 <div style="background:var(--gold-pale);border:1px solid var(--gold);border-radius:10px;padding:14px;text-align:center">
                   <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Employer Share</div>
-                  <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--maroon-dark)">2.50%</div>
+                  <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--maroon-dark)" id="philErDisplay">2.50%</div>
                 </div>
               </div>
               <table>
@@ -997,11 +999,11 @@
                 <tbody>
                   <tr><td>Minimum Monthly Premium</td><td><strong id="philMinDisplay">₱500.00</strong></td></tr>
                   <tr><td>Maximum Monthly Premium</td><td><strong id="philMaxDisplay">₱5,000.00</strong></td></tr>
-                  <tr><td>Salary Floor (Min Base)</td><td>₱10,000.00</td></tr>
-                  <tr><td>Salary Ceiling (Max Base)</td><td>₱100,000.00</td></tr>
+                  <tr><td>Salary Floor (Min Base)</td><td><strong id="philFloorDisplay">₱10,000.00</strong></td></tr>
+                  <tr><td>Salary Ceiling (Max Base)</td><td><strong id="philCeilDisplay">₱100,000.00</strong></td></tr>
                 </tbody>
               </table>
-              <div style="padding:10px 16px;background:#F9F7F4;border-top:1px solid #EEE8E0;font-size:12px;color:var(--text-muted)">
+              <div style="padding:10px 16px;background:#F9F7F4;border-top:1px solid #EEE8E0;font-size:12px;color:var(--text-muted)" id="philFormulaText">
                 <strong>Formula:</strong> Basic Monthly Salary × 5% ÷ 2 = Employee Share
               </div>
             </div>
@@ -1011,12 +1013,7 @@
             <div class="card-body">
               <table>
                 <thead><tr><th>Monthly Salary</th><th>Employee Share</th></tr></thead>
-                <tbody>
-                  <tr><td>₱10,000</td><td>₱250.00 (min)</td></tr>
-                  <tr><td>₱20,000</td><td>₱500.00</td></tr>
-                  <tr><td>₱28,500</td><td>₱712.50</td></tr>
-                  <tr><td>₱50,000</td><td>₱1,250.00</td></tr>
-                  <tr><td>₱100,000</td><td>₱2,500.00 (max)</td></tr>
+                <tbody id="philExampleBody">
                 </tbody>
               </table>
             </div>
@@ -1037,16 +1034,14 @@
             <button class="btn btn-outline btn-sm" onclick="openDedModal('PagIBIG')">✏️ Edit Rates</button>
           </div>
           <table>
-            <thead><tr><th>Monthly Compensation</th><th>Employee Rate</th><th>Employer Rate</th><th>Max Employee</th><th>Max Employer</th></tr></thead>
-            <tbody>
-              <tr><td>₱1,500 and below</td><td>1%</td><td>2%</td><td>₱15.00</td><td>₱30.00</td></tr>
-              <tr><td>Above ₱1,500</td><td><strong>2%</strong></td><td><strong>2%</strong></td><td><strong>₱100.00</strong></td><td><strong>₱100.00</strong></td></tr>
+            <thead><tr><th>Monthly Compensation</th><th>Employee Rate</th><th>Max Employee Share</th></tr></thead>
+            <tbody id="pagTableBody">
             </tbody>
           </table>
           <div style="padding:12px 16px;background:#F9F7F4;font-size:12px;color:var(--text-muted)">
-            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #EEE8E0"><span>Max Employee Contribution</span><span><strong>₱100.00 / month</strong></span></div>
-            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #EEE8E0"><span>Max Employer Contribution</span><span><strong>₱100.00 / month</strong></span></div>
-            <div style="display:flex;justify-content:space-between;padding:4px 0"><span>Maximum Fund Salary Base</span><span><strong>₱5,000.00</strong></span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #EEE8E0"><span>Max Employee Contribution</span><span><strong id="pagFootEmpMax">₱100.00 / month</strong></span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #EEE8E0"><span>Max Employer Contribution</span><span><strong id="pagFootErMax">₱100.00 / month</strong></span></div>
+            <div style="display:flex;justify-content:space-between;padding:4px 0"><span>Employer Share</span><span>Mirrors the employee rate per RA 9679 — not deducted from payroll</span></div>
           </div>
         </div>
       </div>
@@ -1265,15 +1260,8 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
           <div class="card">
             <div class="card-head"><div class="card-title">🏛️ SSS Contribution</div></div>
-            <div style="padding:0"><table><thead><tr><th>Salary Range</th><th>Employee</th><th>Employer</th></tr></thead>
-            <tbody>
-              <tr><td>Below ₱5,000</td><td>₱250.00</td><td>₱500.00</td></tr>
-              <tr><td>₱5,000 – ₱9,999</td><td>₱250 – ₱500</td><td>₱500 – ₱1,000</td></tr>
-              <tr><td>₱10,000 – ₱19,999</td><td>₱500 – ₱1,000</td><td>₱1,000 – ₱2,000</td></tr>
-              <tr><td>₱20,000 – ₱29,999</td><td>₱1,000 – ₱1,500</td><td>₱2,000 – ₱3,000</td></tr>
-              <tr><td>₱30,000 – ₱34,999</td><td>₱1,500 – ₱1,725</td><td>₱3,000 – ₱3,450</td></tr>
-              <tr><td>₱35,000 and above</td><td>₱1,750.00</td><td>₱3,500.00</td></tr>
-              <tr><td colspan="3" style="font-size:12px;color:var(--text-muted);padding:10px 14px">Effective Jan 2025 (SSS Circular 2024-006): 15% of MSC — 5% employee, 10% employer. 63-bracket schedule is managed by the Finance Officer on the Deduction Tables page.</td></tr>
+            <div style="padding:0;max-height:300px;overflow-y:auto"><table><thead><tr><th>Salary Range</th><th>Employee</th><th>Employer</th></tr></thead>
+            <tbody id="admSSSBody">
             </tbody></table></div>
           </div>
           <div class="card">
@@ -1281,32 +1269,23 @@
             <div class="card-body">
               <div style="background:var(--gold-pale);border-radius:10px;padding:16px;text-align:center">
                 <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Current Rate</div>
-                <div style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;color:var(--maroon-dark)">5.00%</div>
-                <div style="font-size:12px;color:var(--text-muted)">Split equally — 2.5% employee, 2.5% employer</div>
+                <div style="font-family:'Playfair Display',serif;font-size:32px;font-weight:700;color:var(--maroon-dark)" id="admPhilRate">5.00%</div>
+                <div style="font-size:12px;color:var(--text-muted)" id="admPhilSplit">Split equally — 2.50% employee, 2.50% employer</div>
               </div>
             </div>
           </div>
           <!-- Pag-IBIG -->
           <div class="card">
             <div class="card-head"><div class="card-title">🏠 Pag-IBIG Contribution</div></div>
-            <div style="padding:0"><table><thead><tr><th>Monthly Compensation</th><th>Employee Rate</th><th>Employer Rate</th></tr></thead>
-            <tbody>
-              <tr><td>₱1,500 and below</td><td>1%</td><td>2%</td></tr>
-              <tr><td>Above ₱1,500</td><td>2%</td><td>2%</td></tr>
-              <tr><td colspan="3" style="font-size:12px;color:var(--text-muted);padding:10px 14px">Max employee contribution: ₱100/month. Max employer: ₱100/month.</td></tr>
+            <div style="padding:0"><table><thead><tr><th>Monthly Compensation</th><th>Employee Rate</th></tr></thead>
+            <tbody id="admPagBody">
             </tbody></table></div>
           </div>
           <!-- BIR -->
           <div class="card">
             <div class="card-head"><div class="card-title">📋 BIR Withholding Tax (TRAIN Law)</div></div>
             <div style="padding:0"><table><thead><tr><th>Annual Taxable Income</th><th>Tax Rate</th></tr></thead>
-            <tbody>
-              <tr><td>Up to ₱250,000</td><td><span class="badge b-green">0% — Exempt</span></td></tr>
-              <tr><td>₱250,001 – ₱400,000</td><td>15% on excess over ₱250,000</td></tr>
-              <tr><td>₱400,001 – ₱800,000</td><td>₱22,500 + 20% on excess</td></tr>
-              <tr><td>₱800,001 – ₱2,000,000</td><td>₱102,500 + 25% on excess</td></tr>
-              <tr><td>₱2,000,001 – ₱8,000,000</td><td>₱402,500 + 30% on excess</td></tr>
-              <tr><td>Above ₱8,000,000</td><td>₱2,202,500 + 35% on excess</td></tr>
+            <tbody id="admBIRBody">
             </tbody></table></div>
           </div>
         </div>
@@ -1555,14 +1534,14 @@
 <!-- ════════════════════════════════════════════════════════════
      JAVASCRIPT
 ════════════════════════════════════════════════════════════ -->
-  <script src="js/core.js?v=20260815q"></script>
-  <script src="js/auth.js?v=20260815q"></script>
-  <script src="js/employees.js?v=20260815q"></script>
-  <script src="js/payroll.js?v=20260815q"></script>
-  <script src="js/reports.js?v=20260815q"></script>
-  <script src="js/bonus.js?v=20260815q"></script>
-  <script src="js/deductions.js?v=20260815q"></script>
-  <script src="js/ui.js?v=20260815q"></script>
+  <script src="js/core.js?v=20260822c"></script>
+  <script src="js/auth.js?v=20260822c"></script>
+  <script src="js/employees.js?v=20260822c"></script>
+  <script src="js/payroll.js?v=20260822c"></script>
+  <script src="js/reports.js?v=20260822c"></script>
+  <script src="js/bonus.js?v=20260822c"></script>
+  <script src="js/deductions.js?v=20260822c"></script>
+  <script src="js/ui.js?v=20260822c"></script>
 
 <!-- ═══ ACCESS DENIED SCREEN ═══════════════════════════════ -->
 <div id="accessDenied" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center">

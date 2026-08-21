@@ -158,7 +158,7 @@ function buildPayslipRows(tbodyId, year, prefix) {
   }
   tbody.innerHTML = records.map(p => {
     const isDec = p.monthNum === 12;
-    const totalDed = p.sss + p.phil + p.pag + p.bir + p.cash + p.thirteenTax;
+    const totalDed = p.sss + p.phil + p.pag + p.bir + p.cash + p.thirteenTax + (p.customTotal || 0);
     return `
     <tr>
       <td><strong>${p.period}</strong>${isDec?' <span class="badge b-gold" style="margin-left:4px;font-size:10px">🎁 13th Mo.</span>':''}</td>
@@ -225,7 +225,7 @@ function renderEmpDashboard() {
   set('empHeroNext', nextLabel);
   set('empStatNet', latestRec ? fmt(latestRec.net) : '₱0.00');
   set('empStatPayslips', allRecs.length);
-  set('empStatDed', latestRec ? fmt(latestRec.sss + latestRec.phil + latestRec.pag + latestRec.bir + latestRec.thirteenTax + latestRec.cash) : '₱0.00');
+  set('empStatDed', latestRec ? fmt(latestRec.sss + latestRec.phil + latestRec.pag + latestRec.bir + latestRec.thirteenTax + latestRec.cash + (latestRec.customTotal || 0)) : '₱0.00');
   set('empStatNext', nextLabel);
 
   const avatar = el('empAvatar');
@@ -261,7 +261,9 @@ function viewPayslipDetail(period, empId) {
   const taxable13    = parseFloat(rec.thirteenTaxable) || 0;
   const thirteenTax  = parseFloat(rec.thirteenTax) || 0;
   const sss = parseFloat(rec.sss)||0, phil = parseFloat(rec.phil)||0, pag = parseFloat(rec.pag)||0, bir = parseFloat(rec.bir)||0, cash = parseFloat(rec.cash)||0;
-  const totalDed  = sss + phil + pag + bir + cash + thirteenTax;
+  const customDeds = Array.isArray(rec.customDeds) ? rec.customDeds : [];
+  const customTotal = customDeds.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
+  const totalDed  = sss + phil + pag + bir + cash + thirteenTax + customTotal;
   const totalGross = grossTaxable + deMinimis + thirteenth;
   const earningLabel = emp.classification === 'Teaching'
     ? `${emp.hoursWorked||0} hrs × ₱${(parseFloat(emp.hourlyRate)||0).toFixed(2)}`
@@ -305,6 +307,10 @@ function viewPayslipDetail(period, empId) {
       ${[['SSS Contribution',sss],['PhilHealth Premium',phil],['Pag-IBIG Contribution',pag],['BIR Withholding Tax',bir],['Cash Advance',cash]].map(([l,v])=>`
         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
           <span style="color:var(--text-muted)">${l}</span><span>${fmt(v)}</span>
+        </div>`).join('')}
+      ${customDeds.map(x=>`
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
+          <span style="color:var(--text-muted)">📌 ${x.name}</span><span>${fmt(x.amount)}</span>
         </div>`).join('')}
       ${thirteenTax>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px;background:#FFF8E1">
         <span style="color:#8D6E63">🧾 13th Month Excess Tax <span style="font-size:10px;color:#8D6E63">(over ${fmt(BONUS_EXEMPTION_LIMIT)} exemption — withheld from 13th Month Pay)</span></span><span style="font-weight:700;color:#C62828">${fmt(thirteenTax)}</span>
@@ -378,7 +384,7 @@ function showFinPage(id, btn) {
   if (id === 'finAnalytics') renderAnalytics();
   if (id === 'finBonus') renderBonusModule();
   if (id === 'finPayroll') { populateCalcEmployees(); renderPayrollSummary(); }
-  if (id === 'finDeduction') renderDeductionCategories();
+  if (id === 'finDeduction') { renderDeductionCategories(); renderDedBanner(); }
   if (id === 'finMyPayslip') renderFinPayslipList();
   if (id === 'finPayrollReport') {
     document.getElementById('reportOutput').style.display = 'none';
@@ -411,5 +417,6 @@ function showAdmPage(id, btn) {
   if (bc) bc.textContent = labels[id] || 'Dashboard';
   if (id === 'admDashboard') { updateAdminStats(); renderAdminRecentUsers(); }
   if (id === 'admUsers') renderUserTable();
+  if (id === 'admDeduction') renderAdmDedTables();
   if (id === 'admMyPayslip') renderAdmPayslipList();
 }

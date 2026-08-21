@@ -10,7 +10,7 @@ function updateFinStats() {
   if (elT) elT.textContent = teach;
   if (elN) elN.textContent = nonT;
   let totGross=0, totDed=0, totNet=0;
-  emps.forEach(e=>{ const g=empGrossPay(e); const d=computeDeductions(g); totGross+=g; totDed+=(d.sss+d.phil+d.pag+d.bir+d.cash); totNet+=d.net; });
+  emps.forEach(e=>{ const g=empGrossPay(e); const d=computeDeductions(g); totGross+=g; totDed+=(d.sss+d.phil+d.pag+d.bir+d.cash+(d.customTotal||0)); totNet+=d.net; });
   const el2 = document.getElementById('finTotGross');
   const el4 = document.getElementById('finTotDed');
   const el3 = document.getElementById('finTotNet');
