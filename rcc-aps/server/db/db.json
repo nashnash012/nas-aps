@@ -56,24 +56,6 @@
       "value": 1,
       "desc": "Statutory bonus per RA 8515",
       "status": "Active"
-    },
-    {
-      "id": 2,
-      "name": "sample bonus",
-      "kind": "fixed",
-      "value": 1000,
-      "desc": "",
-      "status": "Active",
-      "deMinimis": false
-    },
-    {
-      "id": 3,
-      "name": "sample bonus 13",
-      "kind": "months",
-      "value": 1,
-      "desc": "",
-      "status": "Active",
-      "deMinimis": false
     }
   ],
   "nextBonusId": 4,
@@ -677,7 +659,7 @@
   ],
   "dedMeta": {},
   "bonusExemptionLimit": 90000,
-  "savedAt": "2026-08-21T19:24:44.926Z",
+  "savedAt": "2026-08-21T22:01:17.734Z",
   "profile": {
     "empPhone": "09171234567",
     "empAddr": "123 Mabini St., Angeles City, Pampanga"

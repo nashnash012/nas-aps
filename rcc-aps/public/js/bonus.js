@@ -4,6 +4,26 @@ let bonusTypes = (_savedDemo && _savedDemo.bonusTypes) || [
 ];
 let nextBonusId = (_savedDemo && _savedDemo.nextBonusId) || 2;
 
+// ── Statutory protection (RA 8515) ─────────────────────────────
+// The 13th Month Pay is identified by id===1 everywhere in the code.
+// Its name and the "Months of Pay" kind are reserved so no custom bonus
+// can recreate it under another identity and bypass the December rule.
+function normalizeBonusName(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+function isReservedBonusName(s) {
+  const n = normalizeBonusName(s);
+  return n === '13thmonthpay' || n === 'thirteenthmonthpay';
+}
+function isIgnoredCustomBonus(b) {
+  return b.id !== 1 && (isReservedBonusName(b.name) || b.kind === 'months');
+}
+// Auto-heal: if saved data somehow lost the statutory entry (e.g. deleted
+// before this protection existed), restore it on load.
+if (!bonusTypes.some(b => b.id === 1)) {
+  bonusTypes.unshift({id:1, name:'13th Month Pay', kind:'months', value:1, desc:'Statutory bonus per RA 8515', status:'Active'});
+}
+
 function parseDate(str) {
   if (!str) return new Date(NaN);
   const d = new Date(str + 'T00:00:00');
@@ -184,6 +204,7 @@ function renderBonusTypes() {
           <button class="btn btn-outline btn-sm" onclick="openBonusTypeModal(${b.id})">✏️ Edit</button>
           <button class="btn btn-outline btn-sm" style="color:#C62828;border-color:#FFCDD2" onclick="deleteBonusType(${b.id})">🗑️ Remove</button>
           ${b.deMinimis ? '<span class="badge b-green" style="align-self:center">🌿 De Minimis — tax-exempt</span>' : ''}
+          ${(b.id!==1 && isIgnoredCustomBonus(b)) ? '<span class="badge" style="align-self:center;background:#FFF8E1;border:1px solid #FFD54F;color:#6D4C00">⚠️ Ignored — reserved for statutory 13th Month Pay</span>' : ''}
         </div>
       </div>
     </div>`).join('');
@@ -191,9 +212,15 @@ function renderBonusTypes() {
 
 function openBonusTypeModal(id) {
   const b = id ? bonusTypes.find(x=>x.id===id) : null;
-  document.getElementById('bonusTypeModalTitle').textContent = b ? 'Edit Bonus Type' : 'Add Bonus Type';
-  document.getElementById('bonName').value = b ? b.name : '';
-  document.getElementById('bonKind').value = b ? b.kind : 'months';
+  const statutory = !!(b && b.id === 1);
+  document.getElementById('bonusTypeModalTitle').textContent = statutory ? 'Edit Statutory 13th Month Pay' : (b ? 'Edit Bonus Type' : 'Add Bonus Type');
+  const nameEl = document.getElementById('bonName');
+  const kindEl = document.getElementById('bonKind');
+  nameEl.value = b ? b.name : '';
+  kindEl.value = statutory ? 'months' : (b ? b.kind : 'fixed');
+  nameEl.disabled = statutory;
+  kindEl.disabled = statutory;
+  if (statutory) nameEl.title = 'The name of the statutory bonus cannot be changed (RA 8515).'; else nameEl.title = '';
   document.getElementById('bonValue').value = b ? b.value : '';
   document.getElementById('bonDesc').value = b ? b.desc : '';
   document.getElementById('bonDeMinimis').checked = !!(b && b.deMinimis);
@@ -213,6 +240,20 @@ function saveBonusType() {
   if (!name) { err.textContent='Please enter a bonus name.'; err.style.display='block'; return; }
   if (!value || value<=0) { err.textContent='Please enter a valid multiplier or amount.'; err.style.display='block'; return; }
   const editId = document.getElementById('bonusTypeModal').dataset.editId;
+  const editingId = editId ? parseInt(editId) : null;
+  const isStatutory = editingId === 1;
+  if (!isStatutory && isReservedBonusName(name)) {
+    err.textContent='"13th Month Pay" is a reserved statutory bonus (RA 8515). Please use a different name.';
+    err.style.display='block'; return;
+  }
+  if (bonusTypes.some(b => b.id !== editingId && normalizeBonusName(b.name) === normalizeBonusName(name))) {
+    err.textContent=`"${name}" already exists. Bonus names must be unique.`;
+    err.style.display='block'; return;
+  }
+  if (!isStatutory && kind === 'months') {
+    err.textContent='"Months of Pay" is reserved for the statutory 13th Month Pay (RA 8515). Choose Fixed Amount or Percentage of Gross.';
+    err.style.display='block'; return;
+  }
   if (editId) {
     const b = bonusTypes.find(x=>x.id===parseInt(editId));
     if (b) { b.name=name; b.kind=kind; b.value=value; b.desc=desc; b.deMinimis=deMinimis; }
@@ -228,6 +269,10 @@ function saveBonusType() {
 
 function deleteBonusType(id) {
   const b = bonusTypes.find(x=>x.id===id); if(!b) return;
+  if (b.id === 1) {
+    showToast('🛡️', '"13th Month Pay" is a statutory bonus (RA 8515) and cannot be removed. Use the toggle to disable it instead.');
+    return;
+  }
   if (confirm(`Remove "${b.name}"?`)) {
     bonusTypes = bonusTypes.filter(x=>x.id!==id);
     saveDemo();

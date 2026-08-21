@@ -372,10 +372,13 @@ function updateCalcStatusBadge() {
 // Holds the last computed payroll so "Confirm & Generate Payslip" can store it
 let lastCalc = null;
 
-// Active configurable bonus types (excl. statutory 13th month, id=1) applied to earnings
+// Active configurable bonus types (excl. statutory 13th month, id=1) applied to earnings.
+// Defense-in-depth: legacy entries saved before the reserved-name/kind rules
+// (duplicates of "13th Month Pay" or custom Months-of-Pay bonuses) are ignored
+// in every computation, even if they still exist in stored data or a stale cache.
 function activeBonusTypes(emp, baseGross) {
   return bonusTypes
-    .filter(b => b.status === 'Active' && b.id !== 1)
+    .filter(b => b.status === 'Active' && b.id !== 1 && !isIgnoredCustomBonus(b))
     .map(b => {
       let amount = 0;
       if (b.kind === 'fixed')       amount = b.value;
