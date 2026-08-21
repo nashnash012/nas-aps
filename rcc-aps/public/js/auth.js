@@ -1,5 +1,32 @@
 // ── LOGIN ────────────────────────────────────────────────────
 let loggedInUser = null; // current authenticated USERS_AUTH entry
+let loginFails = 0, lockUntil = 0;
+
+// Pure-ish credential check with basic brute-force throttling
+// (demo-grade: 5 failed attempts lock attempts for 30 seconds).
+function checkLogin(email, pass) {
+  const now = Date.now();
+  if (now < lockUntil) {
+    return { ok:false, msg:'Too many failed attempts. Try again in ' + Math.ceil((lockUntil - now)/1000) + 's.' };
+  }
+  const u = Object.values(USERS_AUTH).find(x => x.email === email);
+  if (!u) {
+    loginFails++;
+    if (loginFails >= 5) { lockUntil = Date.now() + 30000; loginFails = 0; return { ok:false, msg:'Too many failed attempts. Locked for 30 seconds.' }; }
+    return { ok:false, msg:'Invalid email or password. Please try again.' };
+  }
+  if (u.status === 'Inactive') {
+    return { ok:false, msg:'This account is deactivated. Please contact the System Admin.' };
+  }
+  if (pass !== u.pass) {
+    loginFails++;
+    if (loginFails >= 5) { lockUntil = Date.now() + 30000; loginFails = 0; return { ok:false, msg:'Too many failed attempts. Locked for 30 seconds.' }; }
+    return { ok:false, msg:'Invalid email or password. Please try again.' };
+  }
+  loginFails = 0;
+  return { ok:true, user:u };
+}
+
 function togglePass() {
   const p = document.getElementById('passInp');
   const e = document.getElementById('eyeBtn');
@@ -16,19 +43,12 @@ function handleLogin() {
     document.getElementById('errText').textContent='Please enter your email and password.';
     err.classList.add('show'); return;
   }
-  const u = Object.values(USERS_AUTH).find(x => x.email === email);
-  if (!u) {
-    document.getElementById('errText').textContent='Invalid email or password. Please try again.';
+  const res = checkLogin(email, pass);
+  if (!res.ok) {
+    document.getElementById('errText').textContent = res.msg;
     err.classList.add('show'); return;
   }
-  if (u.status === 'Inactive') {
-    document.getElementById('errText').textContent='This account is deactivated. Please contact the System Admin.';
-    err.classList.add('show'); return;
-  }
-  if (pass !== u.pass) {
-    document.getElementById('errText').textContent='Invalid email or password. Please try again.';
-    err.classList.add('show'); return;
-  }
+  const u = res.user;
   loggedInUser = u;
   // Loading state
   const btn = document.getElementById('loginBtn');
@@ -104,10 +124,16 @@ function changePassword() {
   showToast('✅','Password changed successfully!');
 }
 
-document.addEventListener('keydown', e => { if (e.key==='Enter') handleLogin(); });
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  // Only trigger login while the login page is actually visible.
+  const lp = document.getElementById('loginPage');
+  if (lp && lp.style.display !== 'none') handleLogin();
+});
 
 // ── PAGE NAVIGATION ───────────────────────────────────────────
 function initPage(page) {
+  restoreProfileFields();
   setTopbarDates();
   if (page === 'empPage')     { renderEmpDashboard(); renderPayslipList(); }
   if (page === 'financePage') { updateFinStats(); renderFinRecentActivity(); populateCalcEmployees(); renderPayrollSummary(); renderBonusModule(); renderAnalytics(); }
@@ -206,7 +232,7 @@ function renderEmpDashboard() {
   const base = empGrossPay(emp);
 
   const heroName = el('empHeroName');
-  if (heroName) heroName.innerHTML = `Welcome back, ${emp.first}! 👋`;
+  if (heroName) heroName.innerHTML = `Welcome back, ${esc(emp.first)}! 👋`;
   const heroSub = el('empHeroSub');
   if (heroSub) heroSub.textContent = latestRec
     ? `Here is your payroll summary for ${latestRec.period}.`
@@ -279,7 +305,7 @@ function viewPayslipDetail(period, empId) {
     </div>
     <div style="margin-bottom:20px">
       <div style="font-weight:700;font-size:13px;color:var(--maroon-dark);margin-bottom:12px">Employee Information</div>
-      ${[['Name', displayName(emp)],['Employee ID', '#USR-00' + emp.id],['Position', emp.role],['Classification', emp.classification || 'Non-Teaching'],['Department', emp.department || '—']].map(([l,v])=>`
+      ${[['Name', esc(displayName(emp))],['Employee ID', '#USR-00' + emp.id],['Position', esc(emp.role)],['Classification', emp.classification || 'Non-Teaching'],['Department', esc(emp.department || '—')]].map(([l,v])=>`
         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
           <span style="color:var(--text-muted)">${l}</span><span style="font-weight:600">${v}</span>
         </div>`).join('')}
@@ -310,7 +336,7 @@ function viewPayslipDetail(period, empId) {
         </div>`).join('')}
       ${customDeds.map(x=>`
         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-          <span style="color:var(--text-muted)">📌 ${x.name}</span><span>${fmt(x.amount)}</span>
+          <span style="color:var(--text-muted)">📌 ${esc(x.name)}</span><span>${fmt(x.amount)}</span>
         </div>`).join('')}
       ${thirteenTax>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px;background:#FFF8E1">
         <span style="color:#8D6E63">🧾 13th Month Excess Tax <span style="font-size:10px;color:#8D6E63">(over ${fmt(BONUS_EXEMPTION_LIMIT)} exemption — withheld from 13th Month Pay)</span></span><span style="font-weight:700;color:#C62828">${fmt(thirteenTax)}</span>

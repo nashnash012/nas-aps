@@ -15,7 +15,6 @@ let users = (_savedDemo && _savedDemo.users) || [
 ];
 let nextUserId = (_savedDemo && _savedDemo.nextUserId) || 13;
 let editingUserId = null;
-let monthlyAtt = {}; // per-employee attendance: { id: { hours, absences } }
 let cashAdvances = (_savedDemo && _savedDemo.cashAdvances) || {}; // per-employee cash advance: { id: amount }
 // Payroll runs confirmed from the calculator (persisted). { empId, period, month, year, gross, sss, phil, pag, bir, cash, thirteenth, net, date }
 let payrollRecords = (_savedDemo && _savedDemo.payrollRecords) || [];
@@ -27,12 +26,12 @@ let bonusPayouts = (_savedDemo && _savedDemo.bonusPayouts) || {};
 const EMP_CLASS = { Teaching: {badge:'b-blue'}, 'Non-Teaching': {badge:'b-gold'} };
 function empGrossPay(emp, hours, absences) {
   if (emp.classification === 'Teaching') {
-    const h = (hours != null && hours !== '') ? parseFloat(hours) : (emp.hoursWorked || 0);
-    const r = parseFloat(emp.hourlyRate) || 0;
+    const h = Math.max(0, (hours != null && hours !== '') ? parseFloat(hours) : (emp.hoursWorked || 0));
+    const r = Math.max(0, parseFloat(emp.hourlyRate) || 0);
     return parseFloat((h * r).toFixed(2));
   }
-  const base = parseFloat(emp.salary) || 0;
-  const a = (absences != null && absences !== '') ? parseFloat(absences) : (emp.absenceDays || 0);
+  const base = Math.max(0, parseFloat(emp.salary) || 0);
+  const a = Math.max(0, (absences != null && absences !== '') ? parseFloat(absences) : (emp.absenceDays || 0));
   return parseFloat((base - (a / 22) * base).toFixed(2));
 }
 function empHrsOrAbs(emp) {
@@ -124,7 +123,7 @@ function collectCustomOverrides() {
   const ov = {};
   deductionCategories.filter(c => c.status === 'Active').forEach(c => {
     const el = document.getElementById('calcCustom_' + c.id);
-    if (el && el.value !== '') ov[c.id] = parseFloat(el.value) || 0;
+    if (el && el.value !== '') ov[c.id] = Math.max(0, parseFloat(el.value) || 0);
   });
   return ov;
 }
@@ -201,7 +200,7 @@ function renderCalcEmpList(list, show) {
   const box = document.getElementById('calcEmpList');
   if (!box) return;
   box.innerHTML = list.length
-    ? list.map(u=>`<div class="combobox-item" onclick="selectCalcEmp(${u.id})">${displayName(u)} — ${u.classification}${u.department?' · '+u.department:''}</div>`).join('')
+    ? list.map(u=>`<div class="combobox-item" onclick="selectCalcEmp(${u.id})">${esc(displayName(u))} — ${u.classification}${u.department?' · '+esc(u.department):''}</div>`).join('')
     : '<div class="combobox-empty">No employee found.</div>';
   box.classList.toggle('show', show !== false);
 }
@@ -266,8 +265,8 @@ function renderCalcCustomInputs() {
   row.style.display = 'grid';
   row.innerHTML = cats.map(c => `
     <div class="fg">
-      <label class="fl">📌 ${c.name} ${c.type === 'percent' ? '(' + c.amount + '% of gross)' : '(₱)'}</label>
-      <input class="fi" type="number" step="0.01" id="calcCustom_${c.id}"
+      <label class="fl">📌 ${esc(c.name)} ${c.type === 'percent' ? '(' + c.amount + '% of gross)' : '(₱)'}</label>
+      <input class="fi" type="number" step="0.01" min="0" id="calcCustom_${c.id}"
         value="${c.type === 'fixed' ? (parseFloat(c.amount)||0).toFixed(2) : ''}"
         placeholder="${c.type === 'percent' ? 'auto — ' + c.amount + '% of gross' : '0.00'}"
         oninput="computePayroll()"/>
@@ -412,13 +411,13 @@ function computePayroll() {
 
   let gross = 0, meta = '';
   if (isTeaching) {
-    const h = parseFloat(attEl.value) || 0;
-    const r = parseFloat(rateEl.value) || 0;
+    const h = Math.max(0, parseFloat(attEl.value) || 0);
+    const r = Math.max(0, parseFloat(rateEl.value) || 0);
     gross = parseFloat((h * r).toFixed(2));
     meta = `${h} hrs × ₱${r.toLocaleString('en-PH',{minimumFractionDigits:2})} = ${fmt(gross)}`;
   } else {
-    const base = parseFloat(rateEl.value) || 0;
-    const a = parseFloat(attEl.value) || 0;
+    const base = Math.max(0, parseFloat(rateEl.value) || 0);
+    const a = Math.max(0, parseFloat(attEl.value) || 0);
     gross = parseFloat((base - (a/22)*base).toFixed(2));
     meta = `₱${base.toLocaleString('en-PH',{minimumFractionDigits:2})} − (${a}/22) = ${fmt(gross)}`;
   }
@@ -439,9 +438,7 @@ function computePayroll() {
   // The excess is added as one-time taxable income in the BIR annualization.
   // Only TAXABLE bonuses join the 13th month in the ₱90,000 exempt pool (de minimis is separate).
   const thirteenSplit = splitBonusTaxable(thirteenth, taxableSum);
-  const cash = parseFloat(cashEl.value) || 0;
-  cashAdvances[emp.id] = cash;
-  saveDemo();
+  const cash = Math.max(0, parseFloat(cashEl.value) || 0);
   // Taxable 13th month excess is a one-time annual amount added to the BIR annualization
   const d = computeDeductions(grossTaxable, cash, 0, collectCustomOverrides());
   const tTax = thirteenthTaxSplit(d, grossTaxable, thirteenSplit.taxable13);
@@ -467,7 +464,7 @@ function computePayroll() {
   document.getElementById('calcEarnings').innerHTML = `
     <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">${emp.classification==='Teaching'?'Hours Worked × Rate':'Monthly Base Salary'}</span><span style="font-weight:600">${meta}</span></div>
     <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">${emp.classification==='Teaching'?'Hourly Earnings':'Base Salary'}</span><span style="font-weight:600">${fmt(gross)}</span></div>
-    ${bonuses.map(b=>'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">🎁 '+b.name+' <span style="font-size:11px;color:'+(b.deMinimis?'#2E7D32':'var(--text-muted)')+'">— '+(b.deMinimis?'de minimis (tax-exempt)':'taxable bonus')+'</span></span><span style="font-weight:600">+'+fmt(b.amount)+'</span></div>').join('')}
+    ${bonuses.map(b=>'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">🎁 '+esc(b.name)+' <span style="font-size:11px;color:'+(b.deMinimis?'#2E7D32':'var(--text-muted)')+'">— '+(b.deMinimis?'de minimis (tax-exempt)':'taxable bonus')+'</span></span><span style="font-weight:600">+'+fmt(b.amount)+'</span></div>').join('')}
     ${thirteenth>0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">🎁 13th Month Pay (RA 8515) <span style="font-size:11px;color:#2E7D32">— exempt up to '+fmt(BONUS_EXEMPTION_LIMIT)+'/yr</span></span><span style="font-weight:700;color:var(--maroon-dark)">+'+fmt(thirteenSplit.exempt13)+'</span></div>' : ''}
     ${thirteenth>0 && thirteenSplit.taxable13>0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">⚠️ 13th Month excess <span style="font-size:11px;color:#C62828">— taxable (over '+fmt(BONUS_EXEMPTION_LIMIT)+')</span></span><span style="font-weight:600;color:#C62828">+'+fmt(thirteenSplit.taxable13)+'</span></div>' : ''}
     ${note13}`;
@@ -485,7 +482,7 @@ function computePayroll() {
   const rCustom = document.getElementById('rCustomRows');
   if (rCustom) {
     rCustom.innerHTML = d.custom.map(x =>
-      '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">📌 ' + x.name + '</span><span style="font-weight:600;color:#C62828">' + fmt(x.amount) + '</span></div>'
+      '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">📌 ' + esc(x.name) + '</span><span style="font-weight:600;color:#C62828">' + fmt(x.amount) + '</span></div>'
     ).join('');
   }
   document.getElementById('rTotDed').textContent = fmt(d.sss + d.phil + d.pag + d.bir + d.cash + d.customTotal + tTax.annualTax);
@@ -501,7 +498,7 @@ function confirmPayroll() {
   if (existing) {
     document.getElementById('confirmIcon').textContent = '⚠️';
     document.getElementById('confirmMsg').innerHTML =
-      `<strong>${rec.name}</strong> already has a released payroll for <strong>${rec.period}</strong> (Net ${fmt(existing.net)} · Released ${existing.date}).<br><br>` +
+      `<strong>${esc(rec.name)}</strong> already has a released payroll for <strong>${rec.period}</strong> (Net ${fmt(existing.net)} · Released ${existing.date}).<br><br>` +
       `Confirming will <strong style="color:#C62828">overwrite</strong> this record and its payslip with the new computation (Net ${fmt(rec.net)}). Continue?`;
     document.getElementById('confirmActionBtn').onclick = () => { closeModal('confirmModal'); doSavePayroll(rec, existing); };
     document.getElementById('confirmModal').classList.add('show');
@@ -513,6 +510,9 @@ function confirmPayroll() {
 function doSavePayroll(rec, existing) {
   if (existing) Object.assign(existing, rec);
   else payrollRecords.push(rec);
+  // One-time deduction semantics: the cash advance is consumed by this
+  // payroll run — clear it so it is not deducted again in the next period.
+  if ((parseFloat(rec.cash) || 0) > 0) cashAdvances[rec.empId] = 0;
   saveDemo();
   renderPayrollSummary();
   updateCalcStatusBadge();
@@ -551,7 +551,7 @@ function renderPayrollSummary() {
       ? `<span style="color:#C62828;font-weight:600" title="13th Month Excess Tax — withheld from the 13th Month Pay">${fmt(tTax.annualTax)}</span>`
       : '<span style="color:#BBB">—</span>';
     return `<tr>
-      <td><strong>${displayName(emp)}</strong></td>
+      <td><strong>${esc(displayName(emp))}</strong></td>
       <td><span class="badge ${EMP_CLASS[emp.classification].badge}">${emp.classification}</span></td>
       <td>${emp.classification==='Teaching' ? h.value+' hrs' : h.value+' days'}</td>
       <td>${fmt(grossTotal)}${thirteenth>0?' <span class="badge b-gold" style="font-size:9px">🎁 13th</span>':''}${taxableSum>0?` <span class="badge b-gold" style="font-size:9px">+bonus</span>`:''}${deMinimisSum>0?` <span class="badge b-green" style="font-size:9px">+de minimis</span>`:''}</td>
@@ -561,7 +561,7 @@ function renderPayrollSummary() {
       <td>${fmt(d.bir)}</td>
       <td>${thirteenCell}</td>
       <td>${d.cash>0 ? '<span style="color:#C62828;font-weight:600">'+fmt(d.cash)+'</span>' : '—'}</td>
-      <td>${d.customTotal>0 ? '<span style="color:#C62828;font-weight:600" title="'+d.custom.map(x=>x.name+': '+fmt(x.amount)).join('  ·  ')+'">'+fmt(d.customTotal)+'</span>' : '—'}</td>
+      <td>${d.customTotal>0 ? '<span style="color:#C62828;font-weight:600" title="'+esc(d.custom.map(x=>x.name+': '+fmt(x.amount)).join('  ·  '))+'">'+fmt(d.customTotal)+'</span>' : '—'}</td>
       <td><strong style="color:var(--maroon-dark)">${fmt(net)}</strong></td>
       <td>${status}</td>
     </tr>`;
@@ -597,7 +597,7 @@ function renderFinRecentActivity() {
     const rec = payrollRecords.find(r=>r.empId===emp.id && r.month===monthNum && r.year===year);
     const net = d.net + deMinimisSum + thirteenth - tTax.annualTax;
     return `<tr>
-      <td><strong>${displayName(emp)}</strong></td>
+      <td><strong>${esc(displayName(emp))}</strong></td>
       <td>${rec ? rec.period : period}</td>
       <td><strong style="color:var(--maroon-dark)">${fmt(net)}</strong></td>
       <td>${rec ? '<span class="badge b-green">✅ Released</span>' : '<span class="badge b-yellow">⏳ Pending</span>'}</td>
@@ -611,6 +611,7 @@ function getPayrollRecords(monthNum, yearNum) {
   return payrollRecords
     .filter(r => r.month === monthNum && r.year === yearNum)
     .map(rec => ({
+      empId:  rec.empId,
       name:   rec.name,
       month:  rec.month,
       year:   rec.year,
@@ -688,7 +689,7 @@ function showMonthReport(monthNum, year, monthName) {
   document.getElementById('rptEmpty').style.display = 'none';
 
   const records = getPayrollRecords(monthNum, year);
-  const rows = records.filter(r => employees.some(u => `${u.first} ${u.last}` === r.name));
+  const rows = records.filter(r => employees.some(u => u.id === r.empId));
   if (!rows.length) {
     document.getElementById('rptBody').innerHTML = '';
     document.getElementById('rptEmpty').style.display = 'block';
@@ -698,12 +699,12 @@ function showMonthReport(monthNum, year, monthName) {
   document.getElementById('rptEmpty').style.display = 'none';
   let tGross=0, tSSS=0, tPhil=0, tPag=0, tBIR=0, tNet=0;
   document.getElementById('rptBody').innerHTML = rows.map(r => {
-    const emp = employees.find(u => `${u.first} ${u.last}` === r.name);
+    const emp = employees.find(u => u.id === r.empId);
     const birTotal = r.bir + (r.thirteenTax || 0);
     tGross+=r.gross; tSSS+=r.sss; tPhil+=r.phil;
     tPag+=r.pag; tBIR+=birTotal; tNet+=r.net;
     return `<tr>
-      <td><strong>${emp ? displayName(emp) : r.name}</strong></td>
+      <td><strong>${emp ? esc(displayName(emp)) : esc(r.name)}</strong></td>
       <td><span class="badge ${EMP_CLASS[emp?.classification]?.badge||'b-gray'}">${emp?.classification||'Non-Teaching'}</span></td>
       <td>${fmt(r.gross)}</td>
       <td>${fmt(r.sss)}</td>
@@ -733,97 +734,6 @@ function showMonthReport(monthNum, year, monthName) {
     </div>`;
 }
 
-function UNUSED_showReport_old(type) {
-  const out    = document.getElementById('reportOutput');
-  const monthVal = 4;
-  const yearVal  = 2026;
-  const isYearOnly = false;
-
-  out.style.display = 'block';
-  out.scrollIntoView({behavior:'smooth'});
-
-  if (isYearOnly) {
-    // ── YEAR MODE: Show Jan–Dec summary ──────────────────────
-    document.getElementById('reportTitle').textContent = `Payroll Summary Report — ${yearVal}`;
-    document.getElementById('rptHead').innerHTML = `<tr>
-      <th>EMPLOYEE</th>
-      <th>JAN</th><th>FEB</th><th>MAR</th><th>APR</th>
-      <th>MAY</th><th>JUN</th><th>JUL</th><th>AUG</th>
-      <th>SEP</th><th>OCT</th><th>NOV</th><th>DEC</th>
-      <th>ANNUAL NET</th>
-    </tr>`;
-
-    const employees = users.filter(u => u.role === 'Employee' || u.role === 'Finance Officer');
-    let grandTotal = 0;
-
-    document.getElementById('rptBody').innerHTML = employees.map(emp => {
-      const d = computeDeductions(emp.salary);
-      const annualNet = d.net * 12;
-      grandTotal += annualNet;
-      const monthlyNet = fmt(d.net);
-      const cells = Array(12).fill(`<td>${monthlyNet}</td>`).join('');
-      return `<tr>
-        <td><strong>${emp.first} ${emp.last}</strong><br/><span style="font-size:11px;color:#999">${emp.role}</span></td>
-        ${cells}
-        <td><strong style="color:var(--maroon-dark)">${fmt(annualNet)}</strong></td>
-      </tr>`;
-    }).join('');
-
-    document.getElementById('rptTotals').innerHTML = `
-      <div style="display:flex;flex-wrap:wrap;gap:16px;font-size:13px">
-        <span><strong>Year:</strong> ${yearVal}</span>
-        <span>|</span>
-        <span><strong>Total Employees:</strong> ${employees.length}</span>
-        <span>|</span>
-        <span><strong>Total Annual Net Pay:</strong> <strong style="color:var(--maroon-dark)">${fmt(grandTotal)}</strong></span>
-      </div>`;
-
-  } else {
-    // ── MONTH MODE: Show specific month ──────────────────────
-    const monthName = MONTHS[monthVal - 1];
-    document.getElementById('reportTitle').textContent = `Payroll Summary Report — ${monthName} ${yearVal}`;
-    document.getElementById('rptHead').innerHTML = `<tr>
-      <th>EMPLOYEE</th><th>GROSS PAY</th><th>SSS</th>
-      <th>PHILHEALTH</th><th>PAG-IBIG</th><th>BIR</th>
-      <th>NET PAY</th><th>STATUS</th>
-    </tr>`;
-
-    const records = getPayrollRecords(monthVal, yearVal);
-    let tGross=0, tSSS=0, tPhil=0, tPag=0, tBIR=0, tNet=0;
-
-    document.getElementById('rptBody').innerHTML = records.map(r => {
-      tGross += r.gross; tSSS += r.sss; tPhil += r.phil;
-      tPag   += r.pag;  tBIR  += r.bir; tNet  += r.net;
-      return `<tr>
-        <td><strong>${r.name}</strong></td>
-        <td>${fmt(r.gross)}</td>
-        <td>${fmt(r.sss)}</td>
-        <td>${fmt(r.phil)}</td>
-        <td>${fmt(r.pag)}</td>
-        <td>${fmt(r.bir)}</td>
-        <td><strong style="color:var(--maroon-dark)">${fmt(r.net)}</strong></td>
-        <td><span class="badge b-green">✅ ${r.status}</span></td>
-      </tr>`;
-    }).join('');
-
-    document.getElementById('rptTotals').innerHTML = `
-      <div style="display:flex;flex-wrap:wrap;gap:12px;font-size:13px">
-        <span><strong>Total Gross:</strong> ${fmt(tGross)}</span>
-        <span style="color:#CCC">|</span>
-        <span><strong>Total SSS:</strong> ${fmt(tSSS)}</span>
-        <span style="color:#CCC">|</span>
-        <span><strong>Total PhilHealth:</strong> ${fmt(tPhil)}</span>
-        <span style="color:#CCC">|</span>
-        <span><strong>Total Pag-IBIG:</strong> ${fmt(tPag)}</span>
-        <span style="color:#CCC">|</span>
-        <span><strong>Total BIR:</strong> ${fmt(tBIR)}</span>
-        <span style="color:#CCC">|</span>
-        <span><strong>Total Deductions:</strong> ${fmt(tSSS+tPhil+tPag+tBIR)}</span>
-        <span style="color:#CCC">|</span>
-        <span><strong>Total Net Pay: <span style="color:var(--maroon-dark)">${fmt(tNet)}</span></strong></span>
-      </div>`;
-  }
-}
 function showYearReport(year) {
   const out = document.getElementById('reportOutput');
   out.style.display = 'block';
@@ -861,11 +771,10 @@ function showYearReport(year) {
 
   let grandYTD = 0;
   document.getElementById('rptBody').innerHTML = employees.map(emp => {
-    const empName = `${emp.first} ${emp.last}`;
     let empYTD = 0;
     const monthlyCells = MONTHS_SHORT.map((m, i) => {
       const monthNum = i + 1;
-      const rec = (recordsByMonth[monthNum] || []).find(r => r.name === empName);
+      const rec = (recordsByMonth[monthNum] || []).find(r => r.empId === emp.id);
       if (rec) {
         empYTD += rec.net;
         return `<td style="font-size:12px">${fmt(rec.net)}</td>`;

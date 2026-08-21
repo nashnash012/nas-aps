@@ -22,8 +22,8 @@ function renderDeductionCategories() {
       <div class="card-body" style="padding:20px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div>
-            <div style="font-weight:700;font-size:15px;color:var(--maroon-dark)">${c.name}</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${c.desc || '—'}</div>
+            <div style="font-weight:700;font-size:15px;color:var(--maroon-dark)">${esc(c.name)}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${esc(c.desc || '—')}</div>
           </div>
           <span class="badge ${c.status==='Active'?'b-green':'b-gray'}" style="flex-shrink:0">● ${c.status}</span>
         </div>
@@ -133,9 +133,9 @@ function renderUserTable() {
     <tr>
       <td><div style="display:flex;align-items:center;gap:10px">
         <div style="width:34px;height:34px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${initials(u.first,u.last)}</div>
-        <div><div style="font-weight:600">${displayName(u)} <span class="badge ${EMP_CLASS[u.classification||'Non-Teaching']?.badge||'b-gray'}" style="margin-left:6px;font-size:10px">${u.classification||'Non-Teaching'}</span></div><div style="font-size:11px;color:var(--text-muted)">#USR-00${u.id}</div></div>
+        <div><div style="font-weight:600">${esc(displayName(u))} <span class="badge ${EMP_CLASS[u.classification||'Non-Teaching']?.badge||'b-gray'}" style="margin-left:6px;font-size:10px">${u.classification||'Non-Teaching'}</span></div><div style="font-size:11px;color:var(--text-muted)">#USR-00${u.id}</div></div>
       </div></td>
-      <td>${u.email}</td>
+      <td>${esc(u.email)}</td>
       <td><span class="badge ${roleBadge[u.role]}">${u.role}</span></td>
       <td><span class="badge ${u.status==='Active'?'b-green':'b-gray'}">${u.status==='Active'?'● Active':'● Inactive'}</span></td>
       <td>${u.date}</td>
@@ -169,12 +169,15 @@ function updateAdminStats() {
 function renderAdminRecentUsers() {
   const tbody = document.getElementById('admRecentUsers');
   if (!tbody) return;
-  const recent = users.slice(0,4);
+  // Most recently ADDED accounts first, using each account's real added date.
+  const recent = users.slice()
+    .sort((a,b)=>(Date.parse(b.date)||0)-(Date.parse(a.date)||0))
+    .slice(0,4);
   tbody.innerHTML = recent.map(u=>`
     <tr>
-      <td><strong>${displayName(u)}</strong></td>
+      <td><strong>${esc(displayName(u))}</strong></td>
       <td><span class="badge ${roleBadge[u.role]}">${u.role}</span></td>
-      <td style="font-size:12px;color:var(--text-muted)">Apr 28, 2026</td>
+      <td style="font-size:12px;color:var(--text-muted)">${u.date || '—'}</td>
       <td><span class="badge ${u.status==='Active'?'b-green':'b-gray'}">${u.status==='Active'?'● Active':'● Inactive'}</span></td>
     </tr>`).join('');
 }
@@ -182,6 +185,7 @@ function renderAdminRecentUsers() {
 function openAddUserModal() {
   editingUserId = null;
   document.getElementById('uModalTitle').textContent = 'Add New User';
+  document.getElementById('uHire').max = new Date().toISOString().slice(0,10);
   document.getElementById('uFirst').value  = '';
   document.getElementById('uLast').value   = '';
   document.getElementById('uEmail').value  = '';
@@ -203,6 +207,7 @@ function openEditUserModal(id) {
   const u = users.find(x=>x.id===id); if(!u) return;
   editingUserId = id;
   document.getElementById('uModalTitle').textContent = 'Edit User';
+  document.getElementById('uHire').max = new Date().toISOString().slice(0,10);
   document.getElementById('uFirst').value  = u.first;
   document.getElementById('uLast').value   = u.last;
   document.getElementById('uEmail').value  = u.email;
@@ -233,10 +238,10 @@ function saveUser() {
   const status=document.getElementById('uStatus').value, pass=document.getElementById('uPass').value.trim();
   const classification=document.getElementById('uClass').value;
   const department=document.getElementById('uDept').value.trim();
-  const salary=parseFloat(document.getElementById('uSalary').value)||0;
-  const hourlyRate=parseFloat(document.getElementById('uHourly').value)||0;
+  const salary=Math.max(0,parseFloat(document.getElementById('uSalary').value)||0);
+  const hourlyRate=Math.max(0,parseFloat(document.getElementById('uHourly').value)||0);
   const hireDate=document.getElementById('uHire').value;
-  const hrsAbs=parseFloat(document.getElementById('uHrsAbs').value)||0;
+  const hrsAbs=Math.max(0,parseFloat(document.getElementById('uHrsAbs').value)||0);
   const err=document.getElementById('uErr');
   err.classList.remove('show');
   if (!first||!last) { err.textContent='Please enter first and last name.'; err.classList.add('show'); return; }
@@ -244,6 +249,15 @@ function saveUser() {
   if (!editingUserId&&!pass) { err.textContent='Please set an initial password.'; err.classList.add('show'); return; }
   if (!salary||salary<=0) { err.textContent='Please enter a valid monthly base salary.'; err.classList.add('show'); return; }
   if (classification==='Teaching' && (!hourlyRate||hourlyRate<=0)) { err.textContent='Teaching personnel require a valid hourly rate.'; err.classList.add('show'); return; }
+  // Date of hire is REQUIRED — the RA 8515 proration (and thus 13th Month Pay
+  // eligibility) depends on it. It also cannot be in the future.
+  if (!hireDate) { err.textContent='Please set the date of hire (required for 13th Month Pay proration).'; err.classList.add('show'); return; }
+  {
+    const today = new Date(); today.setHours(0,0,0,0);
+    const hd = new Date(hireDate + 'T00:00:00');
+    if (isNaN(hd)) { err.textContent='Please enter a valid date of hire.'; err.classList.add('show'); return; }
+    if (hd > today) { err.textContent='Date of hire cannot be in the future.'; err.classList.add('show'); return; }
+  }
   const dup = users.find(u=>u.email.toLowerCase()===email.toLowerCase()&&u.id!==editingUserId);
   if (dup) { err.textContent='This email is already in use.'; err.classList.add('show'); return; }
   if (editingUserId) {
@@ -270,12 +284,12 @@ function viewUser(id) {
   document.getElementById('viewUserBody').innerHTML = `
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
       <div style="width:56px;height:56px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700">${initials(u.first,u.last)}</div>
-      <div><div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--maroon-dark)">${displayName(u)}</div><div style="font-size:12px;color:var(--text-muted)">#USR-00${u.id} &nbsp;·&nbsp; Added ${u.date}</div></div>
+      <div><div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--maroon-dark)">${esc(displayName(u))}</div><div style="font-size:12px;color:var(--text-muted)">#USR-00${u.id} &nbsp;·&nbsp; Added ${u.date}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      ${infoBox('✉️ Email',u.email)}${infoBox('🏷️ Role',`<span class="badge ${roleBadge[u.role]}">${u.role}</span>`)}
+      ${infoBox('✉️ Email',esc(u.email))}${infoBox('🏷️ Role',`<span class="badge ${roleBadge[u.role]}">${u.role}</span>`)}
       ${infoBox('⚡ Status',`<span class="badge ${u.status==='Active'?'b-green':'b-gray'}">${u.status==='Active'?'● Active':'● Inactive'}</span>`)}${infoBox('📅 Date Added',u.date)}
-      ${infoBox('🎓 Classification',`<span class="badge ${EMP_CLASS[u.classification]?.badge||'b-gray'}">${u.classification||'Non-Teaching'}</span>`)}${infoBox('🏢 Department',u.department||'—')}
+      ${infoBox('🎓 Classification',`<span class="badge ${EMP_CLASS[u.classification]?.badge||'b-gray'}">${u.classification||'Non-Teaching'}</span>`)}      ${infoBox('🏢 Department',esc(u.department||'—'))}
       ${infoBox('💰 Monthly Base',`<strong>₱${(u.salary||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`)}${infoBox('🆔 Employee ID',`#USR-00${u.id}`)}
       ${infoBox(u.classification==='Teaching'?'⏱ Hourly Rate':'📅 Date Hired', u.classification==='Teaching' ? '₱'+(u.hourlyRate||0).toFixed(2) : (u.hireDate||'—'))}${infoBox(u.classification==='Teaching'?'🕒 Hours Worked':'🚫 Absence Days', u.classification==='Teaching' ? (u.hoursWorked||0)+' hrs' : (u.absenceDays||0)+' days')}
     </div>`;
@@ -286,7 +300,7 @@ function infoBox(label,value){return`<div style="background:var(--bg);border-rad
 function confirmDeactivate(id) {
   const u=users.find(x=>x.id===id); if(!u) return;
   document.getElementById('confirmIcon').textContent='⚠️';
-  document.getElementById('confirmMsg').innerHTML=`Are you sure you want to deactivate <strong>${u.first} ${u.last}</strong>? Their access will be suspended.`;
+  document.getElementById('confirmMsg').innerHTML=`Are you sure you want to deactivate <strong>${esc(u.first+' '+u.last)}</strong>? Their access will be suspended.`;
   document.getElementById('confirmActionBtn').textContent='Deactivate';
   document.getElementById('confirmActionBtn').onclick=()=>{ u.status='Inactive'; ensureAuth(u); closeModal('confirmModal'); renderUserTable(); renderAdminRecentUsers(); showToast('⏸',`${u.first} ${u.last} deactivated.`); };
   document.getElementById('confirmModal').classList.add('show');
@@ -297,19 +311,38 @@ function reactivateUser(id) {
   showToast('✅',`${u.first} ${u.last} reactivated.`);
 }
 
+// Pure guard logic (testable): why can't this user be removed? null = allowed.
+function removalBlockReason(id) {
+  const u = users.find(x=>x.id===id);
+  if (!u) return 'User not found.';
+  if (typeof loggedInUser !== 'undefined' && loggedInUser && u.id === loggedInUser.id)
+    return 'You cannot remove the account you are currently logged into.';
+  if (u.role === 'System Admin' && users.filter(x=>x.role==='System Admin' && x.id!==id).length === 0)
+    return 'Cannot remove the last System Admin. Deactivate the account instead, or promote another admin first.';
+  return null;
+}
+
 function confirmRemove(id) {
   const u=users.find(x=>x.id===id); if(!u) return;
+  const block = removalBlockReason(id);
+  if (block) { showToast('🛡️', block); return; }
   // Update title based on role
   const titles = {
     'Employee': 'Remove Employee',
     'Finance Officer': 'Remove Finance Officer',
     'System Admin': 'Remove System Admin'
   };
+  const recCount = payrollRecords.filter(r=>r.empId===id).length;
   document.getElementById('removeTitle').textContent = titles[u.role] || 'Remove User';
   document.getElementById('removeUserName').textContent = `${u.first} ${u.last} (#USR-00${u.id})`;
+  document.getElementById('removeMsg').innerHTML =
+    `⚠️ This will permanently delete the account and cannot be undone. Consider Deactivating instead.` +
+    (recCount ? `<br><br>📁 Their <strong>${recCount}</strong> released payslip${recCount>1?'s':''} will be <strong>kept</strong> for audit purposes.` : '');
   document.getElementById('removeConfirmBtn').onclick = () => {
     users = users.filter(x=>x.id!==id);
     removeAuth(id);
+    delete cashAdvances[id];
+    Object.keys(bonusPayouts).forEach(k => { if (k.startsWith(id + '_')) delete bonusPayouts[k]; });
     saveDemo();
     closeModal('removeModal');
     renderUserTable();

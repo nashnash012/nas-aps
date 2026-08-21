@@ -186,8 +186,8 @@ function renderBonusTypes() {
       <div class="card-body" style="padding:20px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
           <div>
-            <div style="font-weight:700;font-size:15px;color:var(--maroon-dark)">${b.name}</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${b.desc || '—'}</div>
+            <div style="font-weight:700;font-size:15px;color:var(--maroon-dark)">${esc(b.name)}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${esc(b.desc || '—')}</div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
             <label class="switch" title="Enable / disable this bonus"><input type="checkbox" ${b.status==='Active'?'checked':''} onchange="toggleBonusType(${b.id})"/><span class="slider"></span></label>

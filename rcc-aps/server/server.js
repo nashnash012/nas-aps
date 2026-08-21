@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const hrisMock = require('./hris-mock');
+const { validateStateBody } = require('./state-validator');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -21,7 +22,11 @@ function readDB() {
 }
 
 function writeDB(data) {
-  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
+  // Atomic write: write to a temp file then rename, so a crash mid-write
+  // can never leave db.json truncated/corrupted.
+  const tmp = DB_PATH + '.tmp';
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
+  fs.renameSync(tmp, DB_PATH);
 }
 
 function mapHrisEmployee(h) {
@@ -84,7 +89,15 @@ app.get('/api/data', (req, res) => {
 });
 
 app.post('/api/data', (req, res) => {
-  writeDB(req.body || {});
+  const check = validateStateBody(req.body || {});
+  if (!check.ok) {
+    return res.status(400).json({ ok: false, error: check.error });
+  }
+  try {
+    writeDB(req.body);
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: 'Failed to persist data.' });
+  }
   res.json({ ok: true });
 });
 

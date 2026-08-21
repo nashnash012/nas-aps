@@ -4,24 +4,48 @@ const DEMO_KEY = 'rcc_aps_demo_v1';
 function loadDemo() {
   try { const raw = localStorage.getItem(DEMO_KEY); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
 }
+const _savedDemo = loadDemo();
+// ── PER-USER PROFILE STORAGE ─────────────────────────────────
+// Profiles are keyed by the logged-in user's id so each account keeps its
+// own phone/address instead of one global blob shared by everyone.
+const PROFILES = Object.assign(
+  {},
+  (_savedDemo && _savedDemo.profiles) || {},
+  // Legacy migration: very old saves stored a single global `profile` blob.
+  // Attribute it to the demo employee account so it is not lost.
+  (_savedDemo && _savedDemo.profile) ? { 3: _savedDemo.profile } : {}
+);
+function currentUid() {
+  return (typeof loggedInUser !== 'undefined' && loggedInUser && loggedInUser.id) || 0;
+}
 function saveDemo() {
   try {
+    const uid = currentUid();
+    if (uid) {
+      const pp = document.getElementById('empPhone');
+      const pa = document.getElementById('empAddr');
+      if (pp && pa && (pp.value.trim() || pa.value.trim())) {
+        PROFILES[uid] = { empPhone: pp.value, empAddr: pa.value };
+      }
+    }
     const state = {
       users, nextUserId, cashAdvances, bonusTypes, nextBonusId, auth: USERS_AUTH,
       deductionCategories, nextDedCatId, payrollRecords, bonusPayouts,
       sssTable, philData, pagData, birData, dedMeta, bonusExemptionLimit: BONUS_EXEMPTION_LIMIT,
-      savedAt: new Date().toISOString(),
-      profile: { empPhone: document.getElementById('empPhone')?.value, empAddr: document.getElementById('empAddr')?.value }
+      profiles: PROFILES,
+      savedAt: new Date().toISOString()
     };
     localStorage.setItem(DEMO_KEY, JSON.stringify(state));
     pushToServer(state);
-  } catch(e){}
+  } catch(e){
+    // Surface storage failures (e.g. quota exceeded) instead of failing silently.
+    if (typeof showToast === 'function') showToast('⚠️', 'Save failed locally: ' + ((e && e.message) || e));
+  }
 }
 function resetDemo() {
   localStorage.removeItem(DEMO_KEY);
   location.reload();
 }
-const _savedDemo = loadDemo();
 
 function pushToServer(state) {
   try {
@@ -97,12 +121,15 @@ function ensureAuth(u, pass) {
 function removeAuth(userId) {
   Object.keys(USERS_AUTH).forEach(k => { if (USERS_AUTH[k].id === userId) delete USERS_AUTH[k]; });
 }
-// Restore saved employee profile fields
-if (_savedDemo && _savedDemo.profile) {
+// Restore the logged-in user's saved profile fields into the form.
+// Called from initPage() after login (fields depend on the active account).
+function restoreProfileFields() {
   const pp = document.getElementById('empPhone');
   const pa = document.getElementById('empAddr');
-  if (pp && _savedDemo.profile.empPhone) pp.value = _savedDemo.profile.empPhone;
-  if (pa && _savedDemo.profile.empAddr)  pa.value = _savedDemo.profile.empAddr;
+  if (!pp || !pa) return;
+  const p = PROFILES[currentUid()] || {};
+  pp.value = p.empPhone || '';
+  pa.value = p.empAddr || '';
 }
 const DEMOS = {
   employee:'Email: employee@rcc.edu.ph &nbsp;|&nbsp; Password: employee123',

@@ -29,7 +29,7 @@ function renderGovReport(month, year) {
   </tr>`;
   const records = getPayrollRecords(month, year);
   const employees = users.filter(u=>u.salary>0 && u.status==='Active');
-  const rows = records.filter(r => employees.some(u => `${u.first} ${u.last}` === r.name));
+  const rows = records.filter(r => employees.some(u => u.id === r.empId));
   if (!rows.length) {
     document.getElementById('govBody').innerHTML = '';
     document.getElementById('govEmpty') && (document.getElementById('govEmpty').style.display = 'block');
@@ -39,11 +39,11 @@ function renderGovReport(month, year) {
   if (document.getElementById('govEmpty')) document.getElementById('govEmpty').style.display = 'none';
   let tSSS=0, tPhil=0, tPag=0, tBIR=0, tGross=0;
   document.getElementById('govBody').innerHTML = rows.map(r=>{
-    const emp = employees.find(u => `${u.first} ${u.last}` === r.name);
+    const emp = employees.find(u => u.id === r.empId);
     const birTotal = r.bir + (r.thirteenTax || 0);
     tGross+=r.gross; tSSS+=r.sss; tPhil+=r.phil; tPag+=r.pag; tBIR+=birTotal;
     return `<tr>
-      <td><strong>${emp ? displayName(emp) : r.name}</strong></td>
+      <td><strong>${emp ? esc(displayName(emp)) : esc(r.name)}</strong></td>
       <td><span class="badge ${EMP_CLASS[emp?.classification]?.badge||'b-gray'}">${emp?.classification||'Non-Teaching'}</span></td>
       <td>${fmt(r.gross)}</td>
       <td>${fmt(r.sss)}</td>
@@ -76,8 +76,8 @@ function renderAnalytics() {
   const allRecords = payrollRecords || [];
   if (!allRecords.length) return;
   const employees = users.filter(u=>u.salary>0 && u.status==='Active');
-  const teach = allRecords.filter(r=>{ const emp = employees.find(u=>`${u.first} ${u.last}`===r.name); return emp && emp.classification==='Teaching'; });
-  const nonT  = allRecords.filter(r=>{ const emp = employees.find(u=>`${u.first} ${u.last}`===r.name); return emp && emp.classification!=='Teaching'; });
+  const teach = allRecords.filter(r=>{ const emp = employees.find(u=>u.id===r.empId); return emp && emp.classification==='Teaching'; });
+  const nonT  = allRecords.filter(r=>{ const emp = employees.find(u=>u.id===r.empId); return emp && emp.classification!=='Teaching'; });
   const tGross = teach.reduce((s,r)=>s+(parseFloat(r.gross)||0),0);
   const nGross = nonT.reduce((s,r)=>s+(parseFloat(r.gross)||0),0);
   const total  = tGross + nGross;
@@ -90,22 +90,31 @@ function renderAnalytics() {
   document.getElementById('anNonTeach').textContent = fmt(nGross);
   const nn = document.getElementById('anNonTeachNote'); if (nn) nn.textContent = total ? Math.round(nGross/total*100)+'% of total' : '0% of total';
 
-  // Trend chart — monthly gross payroll (Jan-May 2026)
-  const months = ANALYTIC_MONTHS.slice(0,5);
-  const trendFactors = [0.90, 0.94, 0.97, 1.0, 1.06];
-  const trend = months.map((_,i)=>parseFloat((total*trendFactors[i]).toFixed(2)));
-  const maxV = Math.max(...trend,1);
-  document.getElementById('trendChart').innerHTML = `
-    <div style="display:flex;align-items:flex-end;gap:18px;height:220px;padding:8px 4px 0">
-      ${months.map((m,i)=>{
-        const h = Math.max(12, Math.round(trend[i]/maxV*190));
-        return `<div style="flex:1;text-align:center">
-          <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${fmt(trend[i])}</div>
-          <div style="width:100%;background:linear-gradient(180deg,var(--maroon),var(--maroon-light));border-radius:8px 8px 0 0;height:${h}px;margin:0 auto"></div>
-          <div style="font-size:11px;font-weight:600;color:var(--maroon-dark);margin-top:6px">${m}</div>
-        </div>`;
-      }).join('')}
-    </div>`;
+  // Trend chart — REAL monthly gross payroll from confirmed records
+  // (latest calendar year present in the data; no synthetic projections).
+  const years = [...new Set(allRecords.map(r=>r.year))].sort((a,b)=>a-b);
+  const trendYear = years.length ? years[years.length-1] : new Date().getFullYear();
+  const monthlyTotals = Array(12).fill(0);
+  allRecords.forEach(r=>{
+    if (r.year !== trendYear) return;
+    monthlyTotals[r.month-1] += (parseFloat(r.gross)||0) + (parseFloat(r.deMinimisSum)||0) + (parseFloat(r.thirteenth)||0);
+  });
+  const activeMonths = ANALYTIC_MONTHS.map((m,i)=>({ m, v: monthlyTotals[i] })).filter(x=>x.v>0);
+  if (!activeMonths.length) {
+    document.getElementById('trendChart').innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px 0;font-size:13px">No confirmed payroll yet for '+trendYear+' — the monthly trend appears here once payroll is released.</div>';
+  } else {
+    const maxV = Math.max(...activeMonths.map(x=>x.v));
+    document.getElementById('trendChart').innerHTML = `
+      <div style="text-align:right;font-size:11px;color:var(--text-muted);margin-bottom:4px">Calendar Year ${trendYear}</div>
+      <div style="display:flex;align-items:flex-end;gap:18px;height:220px;padding:8px 4px 0">
+        ${activeMonths.map(x=>`
+          <div style="flex:1;text-align:center">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${fmt(x.v)}</div>
+            <div style="width:100%;background:linear-gradient(180deg,var(--maroon),var(--maroon-light));border-radius:8px 8px 0 0;height:${Math.max(12, Math.round(x.v/maxV*190))}px;margin:0 auto"></div>
+            <div style="font-size:11px;font-weight:600;color:var(--maroon-dark);margin-top:6px">${x.m}</div>
+          </div>`).join('')}
+      </div>`;
+  }
 
   // Teaching vs Non-Teaching donut + legend
   const pT = total ? Math.round(tGross/total*100) : 0;
@@ -124,11 +133,14 @@ function renderAnalytics() {
       </div>
     </div>`;
 
-  // Government deductions summary
+  // Government deductions summary — Monthly = average per processed month,
+  // YTD = actual total across ALL confirmed payroll records.
+  const processedKeys = new Set(allRecords.map(r => r.year + '-' + r.month));
+  const monthsCount = processedKeys.size || 1;
   const rows = [['SSS',gov.sss],['PhilHealth',gov.phil],['Pag-IBIG',gov.pag],['BIR Withholding Tax',gov.bir]];
   const gTot = gov.sss+gov.phil+gov.pag+gov.bir;
   document.getElementById('govtDedBody').innerHTML = rows.map(([l,v])=>`
-    <tr><td><strong>${l}</strong></td><td>${fmt(v)}</td><td>${fmt(v*5)}</td>
+    <tr><td><strong>${l}</strong></td><td>${fmt(v/monthsCount)}</td><td>${fmt(v)}</td>
       <td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;max-width:120px;background:#F0EBE3;border-radius:4px;height:6px;overflow:hidden"><div style="height:6px;width:${gTot?Math.round(v/gTot*100):0}%;background:linear-gradient(90deg,var(--maroon),var(--gold));border-radius:4px"></div></div><span style="font-size:12px;font-weight:600">${gTot?Math.round(v/gTot*100):0}%</span></div></td></tr>`).join('');
 
   // 13th Month Pay cost impact (December)
