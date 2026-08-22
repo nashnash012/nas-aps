@@ -896,8 +896,8 @@ function renderWorkDaysSetting() {
 function saveWorkDays() {
   const el = document.getElementById('workDaysInput');
   if (!el) return;
-  const v = Number(el.value);
-  if (!Number.isInteger(v) || v < 1 || v > 31) {
+  const v = Math.round(Number(el.value) * 100) / 100;
+  if (!v || v < 1 || v > 31) {
     showToast('⚠️','Enter a whole number between 1 and 31.');
     renderWorkDaysSetting();
     return;
