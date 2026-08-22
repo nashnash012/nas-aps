@@ -6,8 +6,10 @@ let nextBonusId = (_savedDemo && _savedDemo.nextBonusId) || 2;
 
 // ── Statutory protection (RA 8515) ─────────────────────────────
 // The 13th Month Pay is identified by id===1 everywhere in the code.
-// Its name and the "Months of Pay" kind are reserved so no custom bonus
-// can recreate it under another identity and bypass the December rule.
+// Its name is reserved so no custom bonus can recreate it under another
+// identity and bypass the December rule. (The "Months of Pay" KIND itself is
+// now allowed for custom bonuses — they are applied to payroll like other
+// bonus types via activeBonusTypes.)
 function normalizeBonusName(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
@@ -16,7 +18,7 @@ function isReservedBonusName(s) {
   return n === '13thmonthpay' || n === 'thirteenthmonthpay';
 }
 function isIgnoredCustomBonus(b) {
-  return b.id !== 1 && (isReservedBonusName(b.name) || b.kind === 'months');
+  return b.id !== 1 && isReservedBonusName(b.name);
 }
 // Auto-heal: if saved data somehow lost the statutory entry (e.g. deleted
 // before this protection existed), restore it on load.
@@ -271,10 +273,6 @@ function saveBonusType() {
   }
   if (bonusTypes.some(b => b.id !== editingId && normalizeBonusName(b.name) === normalizeBonusName(name))) {
     err.textContent=`"${name}" already exists. Bonus names must be unique.`;
-    err.style.display='block'; return;
-  }
-  if (!isStatutory && kind === 'months') {
-    err.textContent='"Months of Pay" is reserved for the statutory 13th Month Pay (RA 8515). Choose Fixed Amount or Percentage of Gross.';
     err.style.display='block'; return;
   }
   if (editId) {

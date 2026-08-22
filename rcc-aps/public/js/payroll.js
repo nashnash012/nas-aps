@@ -376,9 +376,10 @@ function updateCalcStatusBadge() {
 let lastCalc = null;
 
 // Active configurable bonus types (excl. statutory 13th month, id=1) applied to earnings.
-// Defense-in-depth: legacy entries saved before the reserved-name/kind rules
-// (duplicates of "13th Month Pay" or custom Months-of-Pay bonuses) are ignored
-// in every computation, even if they still exist in stored data or a stale cache.
+// Defense-in-depth: legacy entries saved before the reserved-name rule
+// (duplicates of "13th Month Pay") are ignored in every computation, even if
+// they still exist in stored data or a stale cache. Months-of-Pay customs are
+// allowed and computed as value × the employee's average monthly pay.
 // Last calendar day of a payroll period string like "November 2026".
 function periodEndDate(periodStr) {
   const parts = String(periodStr || '').trim().split(/\s+/);
@@ -572,11 +573,15 @@ function renderPayrollSummary() {
     const thirteenCell = tTax.annualTax > 0
       ? `<span style="color:#C62828;font-weight:600" title="13th Month Excess Tax — withheld from the 13th Month Pay">${fmt(tTax.annualTax)}</span>`
       : '<span style="color:#BBB">—</span>';
+    const bonusCell = bonuses.length
+      ? '<span style="color:#2E7D32;font-weight:600" title="'+esc(bonuses.map(b=>b.name+': +'+fmt(b.amount)+(b.deMinimis?' (de minimis)':'')).join('\n'))+'">+'+fmt(taxableSum+deMinimisSum)+'</span>'
+      : '<span style="color:#BBB">—</span>';
     return `<tr>
       <td><strong>${esc(displayName(emp))}</strong></td>
       <td><span class="badge ${EMP_CLASS[emp.classification].badge}">${emp.classification}</span></td>
       <td>${emp.classification==='Teaching' ? h.value+' hrs' : h.value+' days'}</td>
       <td>${fmt(grossTotal)}${thirteenth>0?' <span class="badge b-gold" style="font-size:9px">🎁 13th</span>':''}${taxableSum>0?` <span class="badge b-gold" style="font-size:9px">+bonus</span>`:''}${deMinimisSum>0?` <span class="badge b-green" style="font-size:9px">+de minimis</span>`:''}</td>
+      <td>${bonusCell}</td>
       <td>${fmt(d.sss)}</td>
       <td>${fmt(d.phil)}</td>
       <td>${fmt(d.pag)}</td>
@@ -697,7 +702,7 @@ function showMonthReport(monthNum, year, monthName) {
   out.scrollIntoView({behavior:'smooth'});
   document.getElementById('reportTitle').textContent = `Payroll Summary Report — ${monthName} ${year}`;
   document.getElementById('rptHead').innerHTML = `<tr>
-    <th>EMPLOYEE</th><th>TYPE</th><th>GROSS PAY</th><th>SSS</th>
+    <th>EMPLOYEE</th><th>TYPE</th><th>GROSS PAY</th><th>BONUS</th><th>SSS</th>
     <th>PHILHEALTH</th><th>PAG-IBIG</th><th>BIR</th><th>NET PAY</th><th>STATUS</th>
   </tr>`;
 
@@ -719,16 +724,22 @@ function showMonthReport(monthNum, year, monthName) {
     return;
   }
   document.getElementById('rptEmpty').style.display = 'none';
-  let tGross=0, tSSS=0, tPhil=0, tPag=0, tBIR=0, tNet=0;
+  let tGross=0, tBonus=0, tSSS=0, tPhil=0, tPag=0, tBIR=0, tNet=0;
   document.getElementById('rptBody').innerHTML = rows.map(r => {
     const emp = employees.find(u => u.id === r.empId);
     const birTotal = r.bir + (r.thirteenTax || 0);
-    tGross+=r.gross; tSSS+=r.sss; tPhil+=r.phil;
+    const recBonuses = Array.isArray(r.bonuses) ? r.bonuses : [];
+    const bTotal = recBonuses.reduce((s,b)=>s+(parseFloat(b.amount)||0),0);
+    const bonusCell = bTotal > 0
+      ? '<span style="color:#2E7D32;font-weight:600" title="'+esc(recBonuses.map(b=>b.name+': +'+fmt(b.amount)).join('\n'))+'">+'+fmt(bTotal)+'</span>'
+      : '<span style="color:#BBB">—</span>';
+    tGross+=r.gross; tBonus+=bTotal; tSSS+=r.sss; tPhil+=r.phil;
     tPag+=r.pag; tBIR+=birTotal; tNet+=r.net;
     return `<tr>
       <td><strong>${emp ? esc(displayName(emp)) : esc(r.name)}</strong></td>
       <td><span class="badge ${EMP_CLASS[emp?.classification]?.badge||'b-gray'}">${emp?.classification||'Non-Teaching'}</span></td>
       <td>${fmt(r.gross)}</td>
+      <td>${bonusCell}</td>
       <td>${fmt(r.sss)}</td>
       <td>${fmt(r.phil)}</td>
       <td>${fmt(r.pag)}</td>
@@ -741,6 +752,8 @@ function showMonthReport(monthNum, year, monthName) {
   document.getElementById('rptTotals').innerHTML = `
     <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:13px">
       <span><strong>Total Gross:</strong> ${fmt(tGross)}</span>
+      <span style="color:#CCC">|</span>
+      <span><strong>Total Bonus:</strong> ${fmt(tBonus)}</span>
       <span style="color:#CCC">|</span>
       <span><strong>Total SSS:</strong> ${fmt(tSSS)}</span>
       <span style="color:#CCC">|</span>
