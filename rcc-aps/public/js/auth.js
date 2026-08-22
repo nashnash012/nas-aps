@@ -282,6 +282,7 @@ function viewPayslipDetail(period, empId) {
 
   const grossTaxable = parseFloat(rec.gross) || 0;
   const deMinimis    = parseFloat(rec.deMinimisSum) || 0;
+  const recBonuses   = Array.isArray(rec.bonuses) ? rec.bonuses : [];
   const thirteenth   = parseFloat(rec.thirteenth) || 0;
   const exempt13     = parseFloat(rec.thirteenExempt) || 0;
   const taxable13    = parseFloat(rec.thirteenTaxable) || 0;
@@ -315,9 +316,13 @@ function viewPayslipDetail(period, empId) {
       <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
         <span style="color:var(--text-muted)">${earningLabel}</span><span style="font-weight:600">${fmt(grossTaxable)}</span>
       </div>
-      ${deMinimis>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
+      ${recBonuses.length ? recBonuses.map(b=>`
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
+          <span style="color:var(--text-muted)">🎁 ${esc(b.name)} <span style="font-size:10px;color:${b.deMinimis?'#2E7D32':'var(--text-muted)'}">— ${b.deMinimis?'de minimis (tax-exempt)':'taxable bonus'}</span></span><span style="font-weight:600">+${fmt(b.amount)}</span>
+        </div>`).join('')
+       : (deMinimis>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
         <span style="color:var(--text-muted)">De Minimis Benefits</span><span style="font-weight:600">${fmt(deMinimis)}</span>
-      </div>`:''}
+      </div>`:'')}
       ${exempt13>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
         <span style="color:var(--text-muted)">🎁 13th Month Pay (RA 8515) <span style="font-size:10px;color:#2E7D32">— exempt (≤${fmt(BONUS_EXEMPTION_LIMIT)}/yr)</span></span><span style="font-weight:700;color:var(--maroon-dark)">${fmt(exempt13)}</span>
       </div>`:''}
