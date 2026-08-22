@@ -32,6 +32,7 @@ function saveDemo() {
       users, nextUserId, cashAdvances, bonusTypes, nextBonusId, auth: USERS_AUTH,
       deductionCategories, nextDedCatId, payrollRecords, bonusPayouts,
       sssTable, philData, pagData, birData, dedMeta, bonusExemptionLimit: BONUS_EXEMPTION_LIMIT,
+      workDays: WORK_DAYS,
       profiles: PROFILES,
       savedAt: new Date().toISOString()
     };

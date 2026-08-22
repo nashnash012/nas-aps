@@ -886,6 +886,29 @@ function renderDedBanner() {
 }
 function stampDedMeta() { dedMeta = Object.assign({}, dedMeta, { updatedAt: new Date().toISOString() }); }
 
+// ── Payroll Basis — Working Days per Month (absence divisor) ──
+function renderWorkDaysSetting() {
+  const el = document.getElementById('workDaysInput');
+  if (el) el.value = WORK_DAYS;
+  const note = document.getElementById('workDaysFormula');
+  if (note) note.textContent = WORK_DAYS;
+}
+function saveWorkDays() {
+  const el = document.getElementById('workDaysInput');
+  if (!el) return;
+  const v = Number(el.value);
+  if (!Number.isInteger(v) || v < 1 || v > 31) {
+    showToast('⚠️','Enter a whole number between 1 and 31.');
+    renderWorkDaysSetting();
+    return;
+  }
+  WORK_DAYS = v;
+  stampDedMeta();
+  saveDemo();
+  renderWorkDaysSetting();
+  showToast('✅', `Working days per month set to ${WORK_DAYS}. Absence deductions will use ÷${WORK_DAYS}.`);
+}
+
 function renderBIRTable() {
   const tbody = document.getElementById('birTableBody');
   if (!tbody) return;

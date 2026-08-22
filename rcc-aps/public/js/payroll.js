@@ -32,7 +32,7 @@ function empGrossPay(emp, hours, absences) {
   }
   const base = Math.max(0, parseFloat(emp.salary) || 0);
   const a = Math.max(0, (absences != null && absences !== '') ? parseFloat(absences) : (emp.absenceDays || 0));
-  return parseFloat((base - (a / 22) * base).toFixed(2));
+  return parseFloat((base - (a / WORK_DAYS) * base).toFixed(2));
 }
 function empHrsOrAbs(emp) {
   return emp.classification === 'Teaching'
@@ -45,6 +45,10 @@ function getEmpCashAdvance(id) { return parseFloat(cashAdvances[id]) || 0; }
 // from income tax only up to a configurable annual limit (default ₱90,000);
 // the excess is taxable income. Editable in Bonus Management.
 let BONUS_EXEMPTION_LIMIT = (_savedDemo && _savedDemo.bonusExemptionLimit) || 90000;
+// Payroll basis: working days per month used as the absence divisor for
+// monthly-paid (Non-Teaching) staff. Configurable in Deduction Tables —
+// standard convention is 22; holidays stay paid so they are not deducted.
+let WORK_DAYS = (_savedDemo && _savedDemo.workDays) || 22;
 // Splits bonuses (13th month + other bonuses) into exempt and taxable parts.
 // Returns the taxable excess and how much of it comes from the 13th month.
 function splitBonusTaxable(thirteenth, otherBonuses) {
@@ -337,7 +341,7 @@ function loadEmployeeData() {
   document.getElementById('calcMetaDept').textContent = emp.department || '—';
   meta.style.display = 'block';
   document.getElementById('calcGrossFieldLabel').textContent = isTeaching ? 'Hourly Rate (₱)' : 'Monthly Base Salary (₱)';
-  document.getElementById('calcAttLabel').textContent = isTeaching ? 'Hours Worked' : 'Absences (days, ÷22)';
+  document.getElementById('calcAttLabel').textContent = isTeaching ? 'Hours Worked' : 'Absences (days, ÷' + WORK_DAYS + ')';
   salEl.value = isTeaching ? (emp.hourlyRate||'') : (emp.salary||'');
   attEl.value = isTeaching ? (emp.hoursWorked||'') : (emp.absenceDays||0);
   cashEl.value = getEmpCashAdvance(emp.id) || '';
@@ -418,8 +422,8 @@ function computePayroll() {
   } else {
     const base = Math.max(0, parseFloat(rateEl.value) || 0);
     const a = Math.max(0, parseFloat(attEl.value) || 0);
-    gross = parseFloat((base - (a/22)*base).toFixed(2));
-    meta = `₱${base.toLocaleString('en-PH',{minimumFractionDigits:2})} − (${a}/22) = ${fmt(gross)}`;
+    gross = parseFloat((base - (a/WORK_DAYS)*base).toFixed(2));
+    meta = `₱${base.toLocaleString('en-PH',{minimumFractionDigits:2})} − (${a}/${WORK_DAYS}) = ${fmt(gross)}`;
   }
 
   // Active bonus types (excl. the statutory 13th month, id=1) are added to gross.
