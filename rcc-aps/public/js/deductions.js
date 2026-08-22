@@ -200,6 +200,7 @@ function openAddUserModal() {
   document.getElementById('uHrsAbs').value = '';
   document.getElementById('uPassGroup').style.display = 'block';
   document.getElementById('uErr').classList.remove('show');
+  salaryAuto = true; // new users: auto-suggest Basic Salary from rate × hours
   toggleUserClassFields();
   document.getElementById('userModal').classList.add('show');
 }
@@ -221,17 +222,58 @@ function openEditUserModal(id) {
   document.getElementById('uHrsAbs').value = (u.hoursWorked || u.absenceDays || '');
   document.getElementById('uPassGroup').style.display = 'none';
   document.getElementById('uErr').classList.remove('show');
+  salaryAuto = false; // respect the stored salary — never auto-overwrite on edit
   toggleUserClassFields();
   closeModal('viewUserModal');
   document.getElementById('userModal').classList.add('show');
 }
 function toggleUserClassFields() {
   const c = document.getElementById('uClass')?.value;
+  const teaching = c === 'Teaching';
   const hg = document.getElementById('uHourlyGroup');
-  if (hg) hg.style.opacity = c==='Teaching' ? '1' : '0.5';
+  if (hg) hg.style.display = teaching ? 'block' : 'none';
   const hr = document.getElementById('uHourly');
-  if (hr) hr.disabled = c!=='Teaching';
+  if (hr) hr.disabled = !teaching;
+  const title = document.getElementById('uPaySectionTitle');
+  if (title) title.textContent = teaching
+    ? '⏱️ PAY SETUP — HOURLY-RATE'
+    : '💰 PAY SETUP — MONTHLY-RATE';
+  const lbl = document.getElementById('uHrsLabel');
+  if (lbl) lbl.textContent = teaching
+    ? 'Default Hours Worked (/month)'
+    : 'Default Absences (days/month)';
+  const hrs = document.getElementById('uHrsAbs');
+  if (hrs) hrs.placeholder = teaching ? 'e.g. 150' : 'e.g. 0';
+  const hrsCap = document.getElementById('uHrsCap');
+  if (hrsCap) hrsCap.textContent = teaching
+    ? 'Default hours pre-filled when computing payroll (pay = rate × hours).'
+    : 'Absence days are deducted as salary ÷ Working Days per Month per day.';
+  const cap = document.getElementById('uSalaryCap');
+  if (cap) cap.innerHTML = teaching
+    ? 'Required for ALL personnel — benefits &amp; records basis. <strong>Auto-filled</strong> as Hourly Rate × Hours Worked; you may override it.'
+    : 'Fixed monthly rate — used for benefits &amp; records eligibility and absence deductions.';
 }
+
+// ── Teaching auto-suggest: Basic Salary ≈ Hourly Rate × Hours ──
+let salaryAuto = true;
+function recalcSuggestedSalary() {
+  if (!salaryAuto) return;
+  if ((document.getElementById('uClass')?.value) !== 'Teaching') return;
+  const r = parseFloat(document.getElementById('uHourly')?.value);
+  const h = parseFloat(document.getElementById('uHrsAbs')?.value);
+  if ((!isNaN(r) && r > 0) && (!isNaN(h) && h > 0)) {
+    const sal = document.getElementById('uSalary');
+    if (sal) sal.value = Math.round(r * h * 100) / 100;
+  }
+}
+(function wirePaySetupListeners() {
+  ['uHourly','uHrsAbs'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', () => { salaryAuto = true; recalcSuggestedSalary(); });
+  });
+  const sal = document.getElementById('uSalary');
+  if (sal) sal.addEventListener('input', () => { salaryAuto = false; });
+})();
 function saveUser() {
   const first=document.getElementById('uFirst').value.trim(), last=document.getElementById('uLast').value.trim();
   const email=document.getElementById('uEmail').value.trim(), role=document.getElementById('uRole').value;
@@ -247,8 +289,8 @@ function saveUser() {
   if (!first||!last) { err.textContent='Please enter first and last name.'; err.classList.add('show'); return; }
   if (!email||!email.includes('@')) { err.textContent='Please enter a valid email address.'; err.classList.add('show'); return; }
   if (!editingUserId&&!pass) { err.textContent='Please set an initial password.'; err.classList.add('show'); return; }
-  if (!salary||salary<=0) { err.textContent='Please enter a valid monthly base salary.'; err.classList.add('show'); return; }
-  if (classification==='Teaching' && (!hourlyRate||hourlyRate<=0)) { err.textContent='Teaching personnel require a valid hourly rate.'; err.classList.add('show'); return; }
+  if (!salary||salary<=0) { err.textContent='Please enter a valid monthly basic salary (required for all personnel — benefits basis).'; err.classList.add('show'); return; }
+  if (classification==='Teaching' && (!hourlyRate||hourlyRate<=0)) { err.textContent='Teaching personnel require a valid hourly rate (pay = rate × hours worked).'; err.classList.add('show'); return; }
   // Date of hire is REQUIRED — the RA 8515 proration (and thus 13th Month Pay
   // eligibility) depends on it. It also cannot be in the future.
   if (!hireDate) { err.textContent='Please set the date of hire (required for 13th Month Pay proration).'; err.classList.add('show'); return; }
