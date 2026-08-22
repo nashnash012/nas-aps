@@ -379,7 +379,8 @@ let lastCalc = null;
 // Defense-in-depth: legacy entries saved before the reserved-name rule
 // (duplicates of "13th Month Pay") are ignored in every computation, even if
 // they still exist in stored data or a stale cache. Months-of-Pay customs are
-// allowed and computed as value × the employee's average monthly pay.
+// 13th-month-style annual payouts: DECEMBER-ONLY (fail-closed when the period
+// cannot be determined), computed as value × the employee's average monthly pay.
 // Last calendar day of a payroll period string like "November 2026".
 function periodEndDate(periodStr) {
   const parts = String(periodStr || '').trim().split(/\s+/);
@@ -390,9 +391,12 @@ function periodEndDate(periodStr) {
 }
 
 function activeBonusTypes(emp, baseGross, periodEnd) {
+  const isDecemberPeriod = !!periodEnd && periodEnd.getMonth() === 11;
   return bonusTypes
     .filter(b => {
       if (b.status !== 'Active' || b.id === 1 || isIgnoredCustomBonus(b)) return false;
+      // Months-of-Pay customs mirror the statutory 13th Month Pay: December-only.
+      if (b.kind === 'months' && !isDecemberPeriod) return false;
       // Give-date scheduling: a bonus with a release date only applies to
       // payroll periods ending on or after that date.
       if (b.releaseDate && periodEnd) {

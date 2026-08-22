@@ -217,6 +217,7 @@ function renderBonusTypes() {
           <button class="btn btn-outline btn-sm" style="color:#C62828;border-color:#FFCDD2" onclick="deleteBonusType(${b.id})">🗑️ Remove</button>
           ${b.deMinimis ? '<span class="badge b-green" style="align-self:center">🌿 De Minimis — tax-exempt</span>' : ''}
           ${(b.id!==1 && isIgnoredCustomBonus(b)) ? '<span class="badge" style="align-self:center;background:#FFF8E1;border:1px solid #FFD54F;color:#6D4C00">⚠️ Ignored — reserved for statutory 13th Month Pay</span>' : ''}
+          ${(b.id!==1 && b.kind==='months' && !isIgnoredCustomBonus(b)) ? '<span class="badge b-gold" style="align-self:center" title="Months-of-Pay bonuses apply to December payroll runs only — 13th-month-style annual payout">🎄 December only</span>' : ''}
         </div>
       </div>
     </div>`;
