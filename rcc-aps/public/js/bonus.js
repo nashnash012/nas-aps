@@ -7,15 +7,15 @@ let nextBonusId = (_savedDemo && _savedDemo.nextBonusId) || 2;
 // ── Statutory protection (RA 8515) ─────────────────────────────
 // The 13th Month Pay is identified by id===1 everywhere in the code.
 // Its name is reserved so no custom bonus can recreate it under another
-// identity and bypass the December rule. (The "Months of Pay" KIND itself is
-// now allowed for custom bonuses — they are applied to payroll like other
-// bonus types via activeBonusTypes.)
+// identity and bypass the December rule. Substring matching closes the
+// clone loophole: variants like "Fake 13TH MONTH PAY!", "My 13th Month
+// Bonus", or "Thirteenth Month Pay Clone" are all blocked/ignored.
 function normalizeBonusName(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 function isReservedBonusName(s) {
   const n = normalizeBonusName(s);
-  return n === '13thmonthpay' || n === 'thirteenthmonthpay';
+  return n.includes('13thmonth') || n.includes('thirteenthmonth');
 }
 function isIgnoredCustomBonus(b) {
   return b.id !== 1 && isReservedBonusName(b.name);
@@ -268,7 +268,7 @@ function saveBonusType() {
   const editingId = editId ? parseInt(editId) : null;
   const isStatutory = editingId === 1;
   if (!isStatutory && isReservedBonusName(name)) {
-    err.textContent='"13th Month Pay" is a reserved statutory bonus (RA 8515). Please use a different name.';
+    err.textContent='"13th Month Pay"-style names are reserved for the statutory bonus (RA 8515). Please use a different name.';
     err.style.display='block'; return;
   }
   if (bonusTypes.some(b => b.id !== editingId && normalizeBonusName(b.name) === normalizeBonusName(name))) {
