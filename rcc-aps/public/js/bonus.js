@@ -181,7 +181,16 @@ function renderBonusTypes() {
   if (!bonusTypes.length) { list.style.display='none'; empty.style.display='block'; return; }
   list.style.display='grid'; empty.style.display='none';
   const kindLabel = {months:'Months of Pay', fixed:'Fixed Amount', percent:'% of Gross'};
-  list.innerHTML = bonusTypes.map(b=>`
+  list.innerHTML = bonusTypes.map(b=>{
+    let schedBadge = '';
+    if (b.releaseDate) {
+      const d = parseDate(b.releaseDate);
+      if (!isNaN(d)) {
+        const activeNow = d <= new Date();
+        schedBadge = `<span class="badge ${activeNow?'b-green':'b-yellow'}" title="${activeNow?'Applies to payroll periods ending on/after':'Scheduled to apply starting'} ${b.releaseDate}">📅 ${activeNow?'Active since':'Scheduled'} ${b.releaseDate}</span>`;
+      }
+    }
+    return `
     <div class="card" style="margin:0">
       <div class="card-body" style="padding:20px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
@@ -190,6 +199,7 @@ function renderBonusTypes() {
             <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${esc(b.desc || '—')}</div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
+            ${schedBadge}
             <label class="switch" title="Enable / disable this bonus"><input type="checkbox" ${b.status==='Active'?'checked':''} onchange="toggleBonusType(${b.id})"/><span class="slider"></span></label>
             <span class="badge ${b.status==='Active'?'b-green':'b-gray'}" style="flex-shrink:0">● ${b.status}</span>
           </div>
@@ -207,7 +217,8 @@ function renderBonusTypes() {
           ${(b.id!==1 && isIgnoredCustomBonus(b)) ? '<span class="badge" style="align-self:center;background:#FFF8E1;border:1px solid #FFD54F;color:#6D4C00">⚠️ Ignored — reserved for statutory 13th Month Pay</span>' : ''}
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function openBonusTypeModal(id) {
@@ -221,6 +232,12 @@ function openBonusTypeModal(id) {
   nameEl.disabled = statutory;
   kindEl.disabled = statutory;
   if (statutory) nameEl.title = 'The name of the statutory bonus cannot be changed (RA 8515).'; else nameEl.title = '';
+  const dateEl = document.getElementById('bonReleaseDate');
+  if (dateEl) {
+    dateEl.value = (b && b.releaseDate) || '';
+    dateEl.disabled = statutory;
+    dateEl.title = statutory ? 'The 13th Month Pay is paid on or before December 24 (RA 8515).' : '';
+  }
   document.getElementById('bonValue').value = b ? b.value : '';
   document.getElementById('bonDesc').value = b ? b.desc : '';
   document.getElementById('bonDeMinimis').checked = !!(b && b.deMinimis);
@@ -235,10 +252,16 @@ function saveBonusType() {
   const value = parseFloat(document.getElementById('bonValue').value) || 0;
   const desc = document.getElementById('bonDesc').value.trim();
   const deMinimis = document.getElementById('bonDeMinimis').checked;
+  const dateEl = document.getElementById('bonReleaseDate');
+  const releaseDate = (dateEl && !dateEl.disabled) ? (dateEl.value || '').trim() : '';
   const err = document.getElementById('bonErr');
   err.style.display = 'none';
   if (!name) { err.textContent='Please enter a bonus name.'; err.style.display='block'; return; }
   if (!value || value<=0) { err.textContent='Please enter a valid multiplier or amount.'; err.style.display='block'; return; }
+  if (releaseDate && isNaN(parseDate(releaseDate))) {
+    err.textContent='Please enter a valid give date (or leave it blank to apply immediately).';
+    err.style.display='block'; return;
+  }
   const editId = document.getElementById('bonusTypeModal').dataset.editId;
   const editingId = editId ? parseInt(editId) : null;
   const isStatutory = editingId === 1;
@@ -256,10 +279,10 @@ function saveBonusType() {
   }
   if (editId) {
     const b = bonusTypes.find(x=>x.id===parseInt(editId));
-    if (b) { b.name=name; b.kind=kind; b.value=value; b.desc=desc; b.deMinimis=deMinimis; }
+    if (b) { b.name=name; b.kind=kind; b.value=value; b.desc=desc; b.deMinimis=deMinimis; b.releaseDate=releaseDate; }
     showToast('✅', `"${name}" updated successfully!`);
   } else {
-    bonusTypes.push({id:nextBonusId++, name, kind, value, desc, status:'Active', deMinimis});
+    bonusTypes.push({id:nextBonusId++, name, kind, value, desc, status:'Active', deMinimis, releaseDate});
     showToast('✅', `"${name}" added successfully!`);
   }
   closeModal('bonusTypeModal');

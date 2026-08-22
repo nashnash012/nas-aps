@@ -379,9 +379,27 @@ let lastCalc = null;
 // Defense-in-depth: legacy entries saved before the reserved-name/kind rules
 // (duplicates of "13th Month Pay" or custom Months-of-Pay bonuses) are ignored
 // in every computation, even if they still exist in stored data or a stale cache.
-function activeBonusTypes(emp, baseGross) {
+// Last calendar day of a payroll period string like "November 2026".
+function periodEndDate(periodStr) {
+  const parts = String(periodStr || '').trim().split(/\s+/);
+  const m = MONTHS.indexOf(parts[0]);
+  const y = parseInt(parts[1]);
+  if (m < 0 || isNaN(y)) return null;
+  return new Date(y, m + 1, 0);
+}
+
+function activeBonusTypes(emp, baseGross, periodEnd) {
   return bonusTypes
-    .filter(b => b.status === 'Active' && b.id !== 1 && !isIgnoredCustomBonus(b))
+    .filter(b => {
+      if (b.status !== 'Active' || b.id === 1 || isIgnoredCustomBonus(b)) return false;
+      // Give-date scheduling: a bonus with a release date only applies to
+      // payroll periods ending on or after that date.
+      if (b.releaseDate && periodEnd) {
+        const rd = parseDate(b.releaseDate);
+        if (!isNaN(rd) && rd > periodEnd) return false;
+      }
+      return true;
+    })
     .map(b => {
       let amount = 0;
       if (b.kind === 'fixed')       amount = b.value;
@@ -428,7 +446,7 @@ function computePayroll() {
 
   // Active bonus types (excl. the statutory 13th month, id=1) are added to gross.
   // De minimis benefits (BIR RR 11-2018) are tax-exempt & excluded from the ₱90k pool and contributions.
-  const bonuses = activeBonusTypes(emp, gross);
+  const bonuses = activeBonusTypes(emp, gross, periodEndDate(period));
   const { deMinimisSum, taxableSum } = splitBonuses(bonuses);
   const grossTaxable = gross + taxableSum;
 
@@ -538,7 +556,7 @@ function renderPayrollSummary() {
   tbody.innerHTML = emps.map(emp => {
     const h = empHrsOrAbs(emp);
     const base = empGrossPay(emp);
-    const bonuses = activeBonusTypes(emp, base);
+    const bonuses = activeBonusTypes(emp, base, periodEndDate(period));
     const { deMinimisSum, taxableSum } = splitBonuses(bonuses);
     const gross = base + taxableSum;
     const thirteenth = isDec && isThirteenthActive() && thirteenthEligibility(emp, year).eligible ? computeThirteenth(emp, year) : 0;
@@ -591,7 +609,7 @@ function renderFinRecentActivity() {
   }
   tbody.innerHTML = emps.map(emp => {
     const base = empGrossPay(emp);
-    const bonuses = activeBonusTypes(emp, base);
+    const bonuses = activeBonusTypes(emp, base, periodEndDate(period));
     const { deMinimisSum, taxableSum } = splitBonuses(bonuses);
     const gross = base + taxableSum;
     const thirteenth = isDec && isThirteenthActive() && thirteenthEligibility(emp, year).eligible ? computeThirteenth(emp, year) : 0;
