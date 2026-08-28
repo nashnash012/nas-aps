@@ -45,7 +45,7 @@
   "nextUserId": 4,
   "cashAdvances": {
     "1": 0,
-    "2": 1000,
+    "2": 0,
     "3": 0
   },
   "bonusTypes": [
@@ -56,9 +56,29 @@
       "value": 1,
       "desc": "Statutory bonus per RA 8515",
       "status": "Active"
+    },
+    {
+      "id": 7,
+      "name": "sample bonus 13",
+      "kind": "months",
+      "value": 1,
+      "desc": "",
+      "status": "Active",
+      "deMinimis": false,
+      "releaseDate": ""
+    },
+    {
+      "id": 8,
+      "name": "sample bonus",
+      "kind": "fixed",
+      "value": 2000,
+      "desc": "",
+      "status": "Active",
+      "deMinimis": true,
+      "releaseDate": ""
     }
   ],
-  "nextBonusId": 4,
+  "nextBonusId": 9,
   "auth": {
     "1": {
       "id": 1,
@@ -93,15 +113,15 @@
   },
   "deductionCategories": [
     {
-      "id": 1,
-      "name": "rice",
+      "id": 2,
+      "name": "kaltas",
       "type": "fixed",
-      "amount": 1500,
-      "desc": "dzcfvsf",
+      "amount": 500,
+      "desc": "",
       "status": "Active"
     }
   ],
-  "nextDedCatId": 2,
+  "nextDedCatId": 3,
   "payrollRecords": [
     {
       "empId": 1,
@@ -155,19 +175,99 @@
       "year": 2026,
       "period": "January 2026",
       "gross": 38000,
-      "deMinimisSum": 0,
+      "deMinimisSum": 2000,
       "thirteenth": 0,
       "thirteenTaxable": 0,
       "thirteenExempt": 0,
       "thirteenTax": 0,
-      "net": 31951.67,
+      "net": 33451.67,
       "sss": 1750,
       "phil": 950,
       "pag": 100,
       "bir": 2248.33,
       "cash": 1000,
+      "bonuses": [
+        {
+          "name": "sample bonus",
+          "amount": 2000,
+          "deMinimis": true
+        }
+      ],
+      "date": "Aug 23, 2026",
+      "customDeds": [
+        {
+          "id": 2,
+          "name": "kaltas",
+          "amount": 500
+        }
+      ],
+      "customTotal": 500
+    },
+    {
+      "empId": 1,
+      "name": "Nash Valencia",
+      "month": 11,
+      "monthName": "November",
+      "year": 2026,
+      "period": "November 2026",
+      "gross": 24545.45,
+      "deMinimisSum": 0,
+      "thirteenth": 0,
+      "thirteenTaxable": 0,
+      "thirteenExempt": 0,
+      "thirteenTax": 0,
+      "net": 20840.79,
+      "sss": 1225,
+      "phil": 613.64,
+      "pag": 100,
+      "bir": 266.02,
+      "cash": 1000,
       "bonuses": [],
-      "date": "Aug 15, 2026"
+      "customDeds": [
+        {
+          "id": 2,
+          "name": "kaltas",
+          "amount": 500
+        }
+      ],
+      "customTotal": 500,
+      "date": "Aug 22, 2026"
+    },
+    {
+      "empId": 1,
+      "name": "Nash Valencia",
+      "month": 1,
+      "monthName": "January",
+      "year": 2026,
+      "period": "January 2026",
+      "gross": 45000,
+      "deMinimisSum": 2000,
+      "thirteenth": 0,
+      "thirteenTaxable": 0,
+      "thirteenExempt": 0,
+      "thirteenTax": 0,
+      "net": 39911.67,
+      "sss": 1750,
+      "phil": 1125,
+      "pag": 100,
+      "bir": 3613.33,
+      "cash": 0,
+      "bonuses": [
+        {
+          "name": "sample bonus",
+          "amount": 2000,
+          "deMinimis": true
+        }
+      ],
+      "customDeds": [
+        {
+          "id": 2,
+          "name": "kaltas",
+          "amount": 500
+        }
+      ],
+      "customTotal": 500,
+      "date": "Aug 23, 2026"
     }
   ],
   "bonusPayouts": {},
@@ -659,9 +759,12 @@
   ],
   "dedMeta": {},
   "bonusExemptionLimit": 90000,
-  "savedAt": "2026-08-21T22:01:17.734Z",
-  "profile": {
-    "empPhone": "09171234567",
-    "empAddr": "123 Mabini St., Angeles City, Pampanga"
-  }
+  "workDays": 22,
+  "profiles": {
+    "3": {
+      "empPhone": "09171234567",
+      "empAddr": "123 Mabini St., Angeles City, Pampanga"
+    }
+  },
+  "savedAt": "2026-08-22T19:27:39.760Z"
 }
