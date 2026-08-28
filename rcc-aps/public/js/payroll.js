@@ -398,10 +398,13 @@ function activeBonusTypes(emp, baseGross, periodEnd) {
       // Months-of-Pay customs mirror the statutory 13th Month Pay: December-only.
       if (b.kind === 'months' && !isDecemberPeriod) return false;
       // Give-date scheduling: a bonus with a release date only applies to
-      // payroll periods ending on or after that date.
+      // payroll periods ending on or after that date — and only once the
+      // give date has arrived (future-scheduled bonuses are never included,
+      // matching the "Scheduled / Active since" badge on Bonus Management).
       if (b.releaseDate && periodEnd) {
         const rd = parseDate(b.releaseDate);
-        if (!isNaN(rd) && rd > periodEnd) return false;
+        const now = new Date();
+        if (!isNaN(rd) && (rd > periodEnd || rd > now)) return false;
       }
       return true;
     })
