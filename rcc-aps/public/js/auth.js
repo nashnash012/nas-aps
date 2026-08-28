@@ -80,6 +80,7 @@ function handleLogin() {
 }
 
 function logout() {
+  if (typeof closeSidebar==='function') closeSidebar();
   document.querySelectorAll('.dashboard-page').forEach(p=>p.classList.remove('show'));
   const lp = document.getElementById('loginPage');
   lp.style.display = 'flex';
@@ -399,6 +400,7 @@ function printPayslip() {
 }
 
 function showFinPage(id, btn) {
+  if (typeof closeSidebar==='function') closeSidebar();
   ['finDashboard','finAnalytics','finBonus','finPayroll','finReports','finGovReport','finPayrollReport','finDeduction','finMyPayslip','finPayslipDetail','finMyProfile','finChangePassword',
    'finDedSSS','finDedPhilHealth','finDedPagIBIG','finDedBIR'].forEach(x=>{
     const el = document.getElementById(x);
@@ -423,6 +425,7 @@ function showFinPage(id, btn) {
 }
 
 function showEmpPage(id, btn) {
+  if (typeof closeSidebar==='function') closeSidebar();
   ['empDashboard','empPayslip','empProfile','empPassword','payslipDetailPage'].forEach(x=>{
     const el = document.getElementById(x);
     if (el) el.style.display = 'none';
@@ -435,6 +438,7 @@ function showEmpPage(id, btn) {
 }
 
 function showAdmPage(id, btn) {
+  if (typeof closeSidebar==='function') closeSidebar();
   ['admDashboard','admUsers','admDeduction','admMyPayslip','admPayslipDetail','admMyProfile','admChangePassword'].forEach(x=>{
     const el = document.getElementById(x);
     if (el) el.style.display = 'none';

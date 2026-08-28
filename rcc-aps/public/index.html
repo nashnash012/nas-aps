@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>RCC-APS | Automated Payroll System</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="css/style.css?v=20260822c"/>
+  <link rel="stylesheet" href="css/style.css?v=20260829"/>
+  <link rel="stylesheet" href="css/responsive.css?v=3"/>
 </head>
 <body>
 
@@ -15,14 +16,14 @@
 <div id="loginPage" style="display:flex;width:100%;min-height:100vh;font-family:'Source Sans 3',sans-serif">
 
   <!-- LEFT PANEL -->
-  <div style="width:43%;background:#6B1A1A;background:linear-gradient(160deg,#7B1E1E 0%,#4A0E0E 100%);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:48px 40px;position:relative;overflow:hidden">
+  <div class="login-left" style="width:43%;background:#6B1A1A;background:linear-gradient(160deg,#7B1E1E 0%,#4A0E0E 100%);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:48px 40px;position:relative;overflow:hidden">
 
     <!-- Background circles -->
     <div style="position:absolute;width:300px;height:300px;border-radius:50%;border:1px solid rgba(255,255,255,0.06);top:-80px;right:-80px"></div>
     <div style="position:absolute;width:200px;height:200px;border-radius:50%;border:1px solid rgba(255,255,255,0.04);bottom:100px;left:-60px"></div>
 
     <!-- RCC Logo -->
-    <img src="assets/RCC_LOGO.png" alt="RCC Logo" style="width:120px;height:120px;border-radius:50%;object-fit:cover;margin-bottom:32px;box-shadow:0 4px 20px rgba(0,0,0,0.3);border:3px solid rgba(201,168,76,0.5)"/>
+    <img class="lp-rcc" src="assets/RCC_LOGO.png" alt="RCC Logo" style="width:120px;height:120px;border-radius:50%;object-fit:cover;margin-bottom:32px;box-shadow:0 4px 20px rgba(0,0,0,0.3);border:3px solid rgba(201,168,76,0.5)"/>
 
     <!-- RCC-APS Logo -->
     <img src="assets/APS_LOGO.png" alt="APS Logo" style="height:100px;width:auto;margin-bottom:12px"/>
@@ -31,12 +32,12 @@
     <div style="width:48px;height:2px;background:linear-gradient(90deg,transparent,#C9A84C,transparent);margin-bottom:16px"></div>
 
     <!-- Tagline -->
-    <div style="font-size:13px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.7;margin-bottom:36px;max-width:280px">
+    <div class="lp-tagline" style="font-size:13px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.7;margin-bottom:36px;max-width:280px">
       A streamlined payroll management system built<br/>for accuracy, compliance, and transparency.
     </div>
 
     <!-- Feature Cards -->
-    <div style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px">
+    <div class="lp-feats" style="display:flex;flex-direction:column;gap:10px;width:100%;max-width:300px">
       <div style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px">
         <div style="width:36px;height:36px;background:rgba(201,168,76,0.25);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">⚡</div>
         <div>
@@ -62,7 +63,7 @@
   </div>
 
   <!-- RIGHT PANEL -->
-  <div style="flex:1;background:#F8F5F0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px;position:relative">
+  <div class="login-right" style="flex:1;background:#F8F5F0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px;position:relative">
 
     <!-- Login Form -->
     <div id="loginForm" style="width:100%;max-width:420px">
@@ -118,7 +119,7 @@
     </div>
 
     <!-- Footer -->
-    <div style="position:absolute;bottom:24px;font-size:11px;color:#BBB;text-align:center">
+    <div class="login-foot" style="position:absolute;bottom:24px;font-size:11px;color:#BBB;text-align:center">
       RCC-APS v1.0 · Republic Central Colleges · College of Computer Studies · © 2026
     </div>
   </div>
@@ -144,6 +145,7 @@
   </aside>
   <div class="dash-main">
     <div class="topbar">
+      <button class="menu-btn" onclick="toggleSidebar('empPage')" aria-label="Open menu">☰</button>
       <div class="tb-right">
         <div style="display:flex;align-items:center;gap:8px;background:#F5F0E8;border:1px solid #E0D0B8;border-radius:8px;padding:6px 14px;font-size:13px;color:#666">📅 <span id="empDateDisplay">May 03, 2026</span></div>
         <div style="display:flex;align-items:center;gap:10px"><div class="tb-avatar" id="empAvatar">JG</div><div><div class="tb-name" id="empTbName">Jhon Gerald Batuaan</div><div class="tb-role">Employee</div></div></div>
@@ -314,6 +316,7 @@
   </aside>
   <div class="dash-main">
     <div class="topbar">
+      <button class="menu-btn" onclick="toggleSidebar('financePage')" aria-label="Open menu">☰</button>
       <div class="tb-right">
         <div style="display:flex;align-items:center;gap:8px;background:#F5F0E8;border:1px solid #E0D0B8;border-radius:8px;padding:6px 14px;font-size:13px;color:#666">📅 <span id="finDateDisplay">May 03, 2026</span></div>
         <div style="display:flex;align-items:center;gap:10px"><div class="tb-avatar" style="background:#7D5A00">JC</div><div><div class="tb-name">John Cabigting</div><div class="tb-role">Finance Officer</div></div></div>
@@ -1141,6 +1144,7 @@
   </aside>
   <div class="dash-main">
     <div class="topbar">
+      <button class="menu-btn" onclick="toggleSidebar('adminPage')" aria-label="Open menu">☰</button>
       <div class="tb-right">
         <div style="display:flex;align-items:center;gap:8px;background:#F5F0E8;border:1px solid #E0D0B8;border-radius:8px;padding:6px 14px;font-size:13px;color:#666">
           📅 <span id="admDateDisplay">May 03, 2026</span>
@@ -1571,6 +1575,9 @@
 <!-- TOAST -->
 <div class="toast" id="toast"><span id="toastIcon">✅</span><span id="toastMsg"></span></div>
 
+<!-- SIDEBAR DRAWER BACKDROP (mobile) -->
+<div id="sbBackdrop" onclick="closeSidebar()"></div>
+
 <!-- ════════════════════════════════════════════════════════════
      JAVASCRIPT
 ════════════════════════════════════════════════════════════ -->
@@ -1581,7 +1588,7 @@
   <script src="js/reports.js?v=20260822g"></script>
   <script src="js/bonus.js?v=20260822m"></script>
   <script src="js/deductions.js?v=20260822i"></script>
-  <script src="js/ui.js?v=20260822g"></script>
+  <script src="js/ui.js?v=20260829b"></script>
 
 <!-- ═══ ACCESS DENIED SCREEN ═══════════════════════════════ -->
 <div id="accessDenied" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center">
