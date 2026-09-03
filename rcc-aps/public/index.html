@@ -1554,6 +1554,11 @@
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.45">The bonus is excluded from payroll periods ending before this date, and will <strong>not appear in any payroll until the give date arrives</strong>. Leave blank to apply immediately.</div>
       </div>
       <div>
+        <label style="display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:6px">📅 End Date <span style="color:#999;font-weight:400">(optional)</span></label>
+        <input id="bonEndDate" class="fi" type="date"/>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.45">Bonus <strong>auto-deactivates</strong> after this date. When it expires, you'll be prompted to set a new Give Date. Leave blank for no expiry.</div>
+      </div>
+      <div>
         <label style="display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:6px">Description <span style="color:#888;font-weight:400">(optional)</span></label>
         <input id="bonDesc" class="fi" placeholder="Brief description of this bonus"/>
       </div>
@@ -1572,6 +1577,61 @@
   </div>
 </div>
 
+<!-- BONUS DATE SCHEDULE MODAL (Give Date + End Date) -->
+<div class="modal-overlay" id="bonusDateModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:0;width:90%;max-width:520px;box-shadow:0 20px 60px rgba(0,0,0,0.2);animation:slideUp 0.3s ease">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #EEE8E0">
+      <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--maroon-dark)" id="bonusDateModalTitle">📅 Set Bonus Schedule</div>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;gap:16px">
+      <div style="background:#F1F8E9;border:1px solid #DCEDC8;border-radius:10px;padding:12px 14px;font-size:13px;color:#33691E">
+        <strong id="bonusDateModalBonusName">Bonus Name</strong> — set the schedule for this bonus.
+      </div>
+      <div style="display:flex;gap:16px">
+        <div style="flex:1">
+          <label style="display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:6px">📅 Give Date <span style="color:#C62828">*</span></label>
+          <input id="bonusDateGive" class="fi" type="date"/>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.45">When the bonus starts applying</div>
+        </div>
+        <div style="flex:1">
+          <label style="display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:6px">📅 End Date <span style="color:#999;font-weight:400">(optional)</span></label>
+          <input id="bonusDateEnd" class="fi" type="date"/>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.45">Bonus auto-deactivates after this date</div>
+        </div>
+      </div>
+      <div id="bonusDateErr" style="display:none;background:#FDECEA;border:1px solid #F5C6CB;color:#721C24;border-radius:8px;padding:10px 14px;font-size:13px"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid #EEE8E0">
+      <button onclick="skipBonusDateModal()" class="btn btn-outline" style="font-size:12px">⏭️ Skip — Apply Immediately</button>
+      <button onclick="saveBonusDateModal()" class="btn btn-primary">💾 Save Schedule</button>
+    </div>
+  </div>
+</div>
+
+<!-- END DATE PROMPT MODAL (Give Date arrived, no End Date set) -->
+<div class="modal-overlay" id="endDatePromptModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:400;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:0;width:90%;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,0.2);animation:slideUp 0.3s ease">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #EEE8E0">
+      <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--maroon-dark)">📅 Set End Date — Hanggan Kailan?</div>
+    </div>
+    <div style="padding:24px;display:flex;flex-direction:column;gap:16px">
+      <div style="background:#FFF8E1;border:1px solid #FFD54F;border-radius:10px;padding:12px 14px;font-size:13px;color:#6D4C00">
+        <strong id="endDatePromptBonusName">Bonus Name</strong> has reached its Give Date.
+        <div style="margin-top:4px">📅 Give Date: <strong id="endDatePromptGiveDate">—</strong></div>
+      </div>
+      <div>
+        <label style="display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:6px">📅 End Date <span style="color:#C62828">*</span></label>
+        <input id="endDatePromptInput" class="fi" type="date"/>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.45">Bonus will <strong>auto-deactivate</strong> after this date. You'll be prompted to set a new Give Date when it expires.</div>
+      </div>
+      <div id="endDatePromptErr" style="display:none;background:#FDECEA;border:1px solid #F5C6CB;color:#721C24;border-radius:8px;padding:10px 14px;font-size:13px"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid #EEE8E0">
+      <button onclick="saveEndDatePrompt()" class="btn btn-primary">💾 Save End Date</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"><span id="toastIcon">✅</span><span id="toastMsg"></span></div>
 
@@ -1582,13 +1642,13 @@
      JAVASCRIPT
 ════════════════════════════════════════════════════════════ -->
   <script src="js/core.js?v=20260822g"></script>
-  <script src="js/auth.js?v=20260822n"></script>
+  <script src="js/auth.js?v=20260903a"></script>
   <script src="js/employees.js?v=20260822c"></script>
   <script src="js/payroll.js?v=20260829c"></script>
   <script src="js/reports.js?v=20260822g"></script>
-  <script src="js/bonus.js?v=20260822m"></script>
+  <script src="js/bonus.js?v=20260903a"></script>
   <script src="js/deductions.js?v=20260822i"></script>
-  <script src="js/ui.js?v=20260829b"></script>
+  <script src="js/ui.js?v=20260903a"></script>
 
 <!-- ═══ ACCESS DENIED SCREEN ═══════════════════════════════ -->
 <div id="accessDenied" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center">

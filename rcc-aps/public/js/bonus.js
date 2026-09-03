@@ -135,6 +135,7 @@ function renderBonusModule() {
   if (titleEl) titleEl.textContent = '🎁 13th Month Pay Computation (RA 8515) — ' + year;
   renderPayoutBanner(year);
   renderBonusExemptionLimit();
+  checkBonusDates();
 }
 
 function renderBonusTable() {
@@ -185,11 +186,24 @@ function renderBonusTypes() {
   const kindLabel = {months:'Months of Pay', fixed:'Fixed Amount', percent:'% of Gross'};
   list.innerHTML = bonusTypes.map(b=>{
     let schedBadge = '';
-    if (b.releaseDate) {
+    if (b.releaseDate && b.endDate) {
+      const rd = parseDate(b.releaseDate), ed = parseDate(b.endDate);
+      if (!isNaN(rd) && !isNaN(ed)) {
+        const activeNow = rd <= new Date();
+        const expired = ed < new Date();
+        schedBadge = `<span class="badge ${expired?'b-gray':activeNow?'b-green':'b-yellow'}" title="${expired?'Expired':'Active'} ${b.releaseDate} → ${b.endDate}">📅 ${b.releaseDate} → ${b.endDate}</span>`;
+      }
+    } else if (b.releaseDate) {
       const d = parseDate(b.releaseDate);
       if (!isNaN(d)) {
         const activeNow = d <= new Date();
-        schedBadge = `<span class="badge ${activeNow?'b-green':'b-yellow'}" title="${activeNow?'Applies to payroll periods ending on/after':'Scheduled to apply starting'} ${b.releaseDate}">📅 ${activeNow?'Active since':'Scheduled'} ${b.releaseDate}</span>`;
+        schedBadge = `<span class="badge ${activeNow?'b-green':'b-yellow'}" title="${activeNow?'Active since':'Scheduled from'} ${b.releaseDate}">📅 ${activeNow?'Since':'From'} ${b.releaseDate}</span>`;
+      }
+    } else if (b.endDate) {
+      const ed = parseDate(b.endDate);
+      if (!isNaN(ed)) {
+        const expired = ed < new Date();
+        schedBadge = `<span class="badge ${expired?'b-gray':'b-yellow'}" title="${expired?'Expired':'Until'} ${b.endDate}">📅 Until ${b.endDate}</span>`;
       }
     }
     return `
@@ -241,6 +255,12 @@ function openBonusTypeModal(id) {
     dateEl.disabled = statutory;
     dateEl.title = statutory ? 'The 13th Month Pay is paid on or before December 24 (RA 8515).' : '';
   }
+  const endDateEl = document.getElementById('bonEndDate');
+  if (endDateEl) {
+    endDateEl.value = (b && b.endDate) || '';
+    endDateEl.disabled = statutory;
+    endDateEl.title = statutory ? 'The 13th Month Pay is paid on or before December 24 (RA 8515).' : '';
+  }
   document.getElementById('bonValue').value = b ? b.value : '';
   document.getElementById('bonDesc').value = b ? b.desc : '';
   document.getElementById('bonDeMinimis').checked = !!(b && b.deMinimis);
@@ -257,12 +277,22 @@ function saveBonusType() {
   const deMinimis = document.getElementById('bonDeMinimis').checked;
   const dateEl = document.getElementById('bonReleaseDate');
   const releaseDate = (dateEl && !dateEl.disabled) ? (dateEl.value || '').trim() : '';
+  const endDateEl = document.getElementById('bonEndDate');
+  const endDate = (endDateEl && !endDateEl.disabled) ? (endDateEl.value || '').trim() : '';
   const err = document.getElementById('bonErr');
   err.style.display = 'none';
   if (!name) { err.textContent='Please enter a bonus name.'; err.style.display='block'; return; }
   if (!value || value<=0) { err.textContent='Please enter a valid multiplier or amount.'; err.style.display='block'; return; }
   if (releaseDate && isNaN(parseDate(releaseDate))) {
     err.textContent='Please enter a valid give date (or leave it blank to apply immediately).';
+    err.style.display='block'; return;
+  }
+  if (endDate && isNaN(parseDate(endDate))) {
+    err.textContent='Please enter a valid end date (or leave it blank for no expiry).';
+    err.style.display='block'; return;
+  }
+  if (releaseDate && endDate && parseDate(endDate) < parseDate(releaseDate)) {
+    err.textContent='End Date must be on or after the Give Date.';
     err.style.display='block'; return;
   }
   const editId = document.getElementById('bonusTypeModal').dataset.editId;
@@ -278,10 +308,10 @@ function saveBonusType() {
   }
   if (editId) {
     const b = bonusTypes.find(x=>x.id===parseInt(editId));
-    if (b) { b.name=name; b.kind=kind; b.value=value; b.desc=desc; b.deMinimis=deMinimis; b.releaseDate=releaseDate; }
+    if (b) { b.name=name; b.kind=kind; b.value=value; b.desc=desc; b.deMinimis=deMinimis; b.releaseDate=releaseDate; b.endDate=endDate; }
     showToast('✅', `"${name}" updated successfully!`);
   } else {
-    bonusTypes.push({id:nextBonusId++, name, kind, value, desc, status:'Active', deMinimis, releaseDate});
+    bonusTypes.push({id:nextBonusId++, name, kind, value, desc, status:'Active', deMinimis, releaseDate, endDate});
     showToast('✅', `"${name}" added successfully!`);
   }
   closeModal('bonusTypeModal');
@@ -305,7 +335,13 @@ function deleteBonusType(id) {
 
 function toggleBonusType(id) {
   const b = bonusTypes.find(x=>x.id===id); if(!b) return;
-  b.status = b.status==='Active' ? 'Inactive' : 'Active';
+  if (b.status === 'Inactive') {
+    openBonusDateModal(b.id, 'activate');
+    return;
+  }
+  b.status = 'Inactive';
+  b.releaseDate = '';
+  b.endDate = '';
   saveDemo();
   renderBonusTypes();
   const year = parseInt(document.getElementById('bonYear')?.value||2026);
@@ -313,7 +349,115 @@ function toggleBonusType(id) {
   const countEl = document.getElementById('bonTypesCount');
   if (countEl) countEl.textContent = bonusTypes.filter(x=>x.status==='Active').length;
   updateCalc13thState();
-  showToast(b.status==='Active'?'✅':'⏸️', `"${b.name}" is now ${b.status==='Active'?'enabled':'disabled'}.`);
+  showToast('⏸️', `"${b.name}" is now disabled.`);
+}
+
+let _bonusDateModalId = null;
+let _bonusDateModalMode = null;
+
+function openBonusDateModal(id, mode) {
+  const b = bonusTypes.find(x=>x.id===id); if(!b) return;
+  _bonusDateModalId = id;
+  _bonusDateModalMode = mode || 'activate';
+  document.getElementById('bonusDateModalTitle').textContent = mode === 'restart' ? '📅 Bonus Expired — Set New Schedule' : '📅 Set Bonus Schedule';
+  document.getElementById('bonusDateModalBonusName').textContent = b.name;
+  document.getElementById('bonusDateGive').value = '';
+  document.getElementById('bonusDateEnd').value = '';
+  document.getElementById('bonusDateErr').style.display = 'none';
+  document.getElementById('bonusDateModal').style.display = 'flex';
+}
+
+function saveBonusDateModal() {
+  const b = bonusTypes.find(x=>x.id===_bonusDateModalId); if(!b) return;
+  const giveDate = (document.getElementById('bonusDateGive').value || '').trim();
+  const endDate = (document.getElementById('bonusDateEnd').value || '').trim();
+  const err = document.getElementById('bonusDateErr');
+  err.style.display = 'none';
+  if (!giveDate) { err.textContent = 'Please set a Give Date.'; err.style.display = 'block'; return; }
+  if (isNaN(parseDate(giveDate))) { err.textContent = 'Please enter a valid Give Date.'; err.style.display = 'block'; return; }
+  if (endDate && isNaN(parseDate(endDate))) { err.textContent = 'Please enter a valid End Date.'; err.style.display = 'block'; return; }
+  if (endDate && parseDate(endDate) < parseDate(giveDate)) { err.textContent = 'End Date must be on or after the Give Date.'; err.style.display = 'block'; return; }
+  b.releaseDate = giveDate;
+  b.endDate = endDate;
+  b.status = 'Active';
+  saveDemo();
+  closeModal('bonusDateModal');
+  renderBonusTypes();
+  const year = parseInt(document.getElementById('bonYear')?.value||2026);
+  renderPayoutBanner(year);
+  const countEl = document.getElementById('bonTypesCount');
+  if (countEl) countEl.textContent = bonusTypes.filter(x=>x.status==='Active').length;
+  updateCalc13thState();
+  showToast('✅', `"${b.name}" is now active! Give: ${giveDate}${endDate ? ' → End: ' + endDate : ''}`);
+}
+
+function skipBonusDateModal() {
+  const b = bonusTypes.find(x=>x.id===_bonusDateModalId); if(!b) return;
+  b.releaseDate = '';
+  b.endDate = '';
+  b.status = 'Active';
+  saveDemo();
+  closeModal('bonusDateModal');
+  renderBonusTypes();
+  const year = parseInt(document.getElementById('bonYear')?.value||2026);
+  renderPayoutBanner(year);
+  const countEl = document.getElementById('bonTypesCount');
+  if (countEl) countEl.textContent = bonusTypes.filter(x=>x.status==='Active').length;
+  updateCalc13thState();
+  showToast('✅', `"${b.name}" is now active (no date schedule).`);
+}
+
+let _endDatePromptId = null;
+
+function openEndDatePrompt(id) {
+  const b = bonusTypes.find(x=>x.id===id); if(!b) return;
+  _endDatePromptId = id;
+  document.getElementById('endDatePromptBonusName').textContent = b.name;
+  document.getElementById('endDatePromptGiveDate').textContent = b.releaseDate;
+  document.getElementById('endDatePromptInput').value = '';
+  document.getElementById('endDatePromptErr').style.display = 'none';
+  document.getElementById('endDatePromptModal').style.display = 'flex';
+}
+
+function saveEndDatePrompt() {
+  const b = bonusTypes.find(x=>x.id===_endDatePromptId); if(!b) return;
+  const endDate = (document.getElementById('endDatePromptInput').value || '').trim();
+  const err = document.getElementById('endDatePromptErr');
+  err.style.display = 'none';
+  if (!endDate) { err.textContent = 'Please set an End Date.'; err.style.display = 'block'; return; }
+  if (isNaN(parseDate(endDate))) { err.textContent = 'Please enter a valid End Date.'; err.style.display = 'block'; return; }
+  if (b.releaseDate && parseDate(endDate) < parseDate(b.releaseDate)) { err.textContent = 'End Date must be on or after the Give Date (' + b.releaseDate + ').'; err.style.display = 'block'; return; }
+  b.endDate = endDate;
+  saveDemo();
+  closeModal('endDatePromptModal');
+  renderBonusTypes();
+  showToast('✅', `"${b.name}" end date set to ${endDate}.`);
+}
+
+function checkBonusDates() {
+  const now = new Date();
+  const todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  for (const b of bonusTypes) {
+    if (b.status !== 'Active' || b.id === 1) continue;
+    if (b.endDate && b.endDate < todayStr) {
+      b.status = 'Inactive';
+      b.releaseDate = '';
+      b.endDate = '';
+      saveDemo();
+      renderBonusTypes();
+      const year = parseInt(document.getElementById('bonYear')?.value||2026);
+      renderPayoutBanner(year);
+      const countEl = document.getElementById('bonTypesCount');
+      if (countEl) countEl.textContent = bonusTypes.filter(x=>x.status==='Active').length;
+      showToast('⏸️', `"${b.name}" has expired and been deactivated.`);
+      openBonusDateModal(b.id, 'restart');
+      return;
+    }
+    if (b.releaseDate && !b.endDate && b.releaseDate <= todayStr) {
+      openEndDatePrompt(b.id);
+      return;
+    }
+  }
 }
 
 function isThirteenthActive() {

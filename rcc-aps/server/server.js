@@ -5,7 +5,7 @@ const hrisMock = require('./hris-mock');
 const { validateStateBody } = require('./state-validator');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT) || 3000;
 const DB_PATH = path.join(__dirname, 'db', 'db.json');
 const HRIS_API_URL = process.env.HRIS_API_URL || '';      // e.g. https://hris.rcc.edu.ph/api
 const HRIS_API_KEY = process.env.HRIS_API_KEY || '';      // bearer token for the HRIS API

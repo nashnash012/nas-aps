@@ -406,6 +406,11 @@ function activeBonusTypes(emp, baseGross, periodEnd) {
         const now = new Date();
         if (!isNaN(rd) && (rd > periodEnd || rd > now)) return false;
       }
+      // End-date expiry: a bonus never appears in payroll after its end date.
+      if (b.endDate && periodEnd) {
+        const ed = parseDate(b.endDate);
+        if (!isNaN(ed) && periodEnd > ed) return false;
+      }
       return true;
     })
     .map(b => {

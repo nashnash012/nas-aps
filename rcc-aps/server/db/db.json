@@ -55,30 +55,12 @@
       "kind": "months",
       "value": 1,
       "desc": "Statutory bonus per RA 8515",
-      "status": "Active"
-    },
-    {
-      "id": 7,
-      "name": "sample bonus 13",
-      "kind": "months",
-      "value": 1,
-      "desc": "",
       "status": "Active",
-      "deMinimis": false,
-      "releaseDate": ""
-    },
-    {
-      "id": 8,
-      "name": "sample bonus",
-      "kind": "fixed",
-      "value": 2000,
-      "desc": "",
-      "status": "Active",
-      "deMinimis": true,
-      "releaseDate": ""
+      "releaseDate": "",
+      "endDate": ""
     }
   ],
-  "nextBonusId": 9,
+  "nextBonusId": 17,
   "auth": {
     "1": {
       "id": 1,
@@ -268,6 +250,36 @@
       ],
       "customTotal": 500,
       "date": "Aug 23, 2026"
+    },
+    {
+      "empId": 1,
+      "name": "Nash Valencia",
+      "month": 10,
+      "monthName": "October",
+      "year": 2026,
+      "period": "October 2026",
+      "gross": 45000,
+      "deMinimisSum": 0,
+      "thirteenth": 0,
+      "thirteenTaxable": 0,
+      "thirteenExempt": 0,
+      "thirteenTax": 0,
+      "net": 37911.67,
+      "sss": 1750,
+      "phil": 1125,
+      "pag": 100,
+      "bir": 3613.33,
+      "cash": 0,
+      "bonuses": [],
+      "customDeds": [
+        {
+          "id": 2,
+          "name": "kaltas",
+          "amount": 500
+        }
+      ],
+      "customTotal": 500,
+      "date": "Sep 1, 2026"
     }
   ],
   "bonusPayouts": {},
@@ -766,5 +778,5 @@
       "empAddr": "123 Mabini St., Angeles City, Pampanga"
     }
   },
-  "savedAt": "2026-08-22T19:27:39.760Z"
+  "savedAt": "2026-09-03T13:06:17.817Z"
 }

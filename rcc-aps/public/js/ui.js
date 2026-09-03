@@ -16,6 +16,8 @@ function esc(s) {
 document.querySelectorAll('.modal-overlay').forEach(o=>{
   o.addEventListener('click', e=>{
     if (e.target === o) {
+      // Non-dismissable modals stay open until the user acts intentionally.
+      if (o.id === 'bonusDateModal' || o.id === 'endDatePromptModal') return;
       o.classList.remove('show');
       o.style.display = '';
     }
