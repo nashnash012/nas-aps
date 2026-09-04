@@ -11,7 +11,9 @@
       "salary": 45000,
       "classification": "Non-Teaching",
       "department": "IT Office",
-      "hireDate": "2020-01-10"
+      "hireDate": "2022-01-10",
+      "hourlyRate": 0,
+      "absenceDays": 0
     },
     {
       "id": 2,
@@ -24,7 +26,9 @@
       "salary": 38000,
       "classification": "Non-Teaching",
       "department": "Finance Office",
-      "hireDate": "2019-06-01"
+      "hireDate": "2023-01-15",
+      "hourlyRate": 0,
+      "absenceDays": 0
     },
     {
       "id": 3,
@@ -37,7 +41,7 @@
       "salary": 28500,
       "classification": "Teaching",
       "department": "College of Computer Studies",
-      "hireDate": "2025-06-01",
+      "hireDate": "2024-08-01",
       "hourlyRate": 190,
       "hoursWorked": 150
     }
@@ -823,14 +827,572 @@
       "startDate": "2026-09-10",
       "endDate": "2026-09-11",
       "days": 2
+    },
+    {
+      "empId": 1,
+      "typeId": 3,
+      "startDate": "2026-09-10",
+      "endDate": "2026-09-12",
+      "days": 3
     }
   ],
   "nextLeaveRecordId": 3,
+  "attendance": [
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-01",
+      "clockInAt": "2026-09-01T00:00:00.000Z",
+      "clockOutAt": "2026-09-01T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-02",
+      "clockInAt": "2026-09-02T00:00:00.000Z",
+      "clockOutAt": "2026-09-02T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-03",
+      "clockInAt": "2026-09-03T00:00:00.000Z",
+      "clockOutAt": "2026-09-03T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-04",
+      "clockInAt": "2026-09-04T00:00:00.000Z",
+      "clockOutAt": "2026-09-04T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-08",
+      "clockInAt": "2026-09-08T00:00:00.000Z",
+      "clockOutAt": "2026-09-08T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-09",
+      "clockInAt": "2026-09-09T00:00:00.000Z",
+      "clockOutAt": "2026-09-09T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-10",
+      "clockInAt": "2026-09-10T00:00:00.000Z",
+      "clockOutAt": "2026-09-10T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-11",
+      "clockInAt": "2026-09-11T00:00:00.000Z",
+      "clockOutAt": "2026-09-11T07:00:00.000Z",
+      "hours": 7
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-14",
+      "clockInAt": "2026-09-14T00:00:00.000Z",
+      "clockOutAt": "2026-09-14T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-15",
+      "clockInAt": "2026-09-15T00:00:00.000Z",
+      "clockOutAt": "2026-09-15T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-16",
+      "clockInAt": "2026-09-16T00:00:00.000Z",
+      "clockOutAt": "2026-09-16T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-17",
+      "clockInAt": "2026-09-17T00:00:00.000Z",
+      "clockOutAt": "2026-09-17T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-18",
+      "clockInAt": "2026-09-18T00:00:00.000Z",
+      "clockOutAt": "2026-09-18T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-21",
+      "clockInAt": "2026-09-21T00:00:00.000Z",
+      "clockOutAt": "2026-09-21T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-23",
+      "clockInAt": "2026-09-23T00:00:00.000Z",
+      "clockOutAt": "2026-09-23T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-24",
+      "clockInAt": "2026-09-24T00:00:00.000Z",
+      "clockOutAt": "2026-09-24T07:30:00.000Z",
+      "hours": 7.5
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-25",
+      "clockInAt": "2026-09-25T00:00:00.000Z",
+      "clockOutAt": "2026-09-25T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-28",
+      "clockInAt": "2026-09-28T00:00:00.000Z",
+      "clockOutAt": "2026-09-28T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 1,
+      "employeeId": "EMP-001",
+      "employeeEmail": "admin@rcc.edu.ph",
+      "date": "2026-09-30",
+      "clockInAt": "2026-09-30T00:00:00.000Z",
+      "clockOutAt": "2026-09-30T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-01",
+      "clockInAt": "2026-09-01T00:00:00.000Z",
+      "clockOutAt": "2026-09-01T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-02",
+      "clockInAt": "2026-09-02T00:00:00.000Z",
+      "clockOutAt": "2026-09-02T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-03",
+      "clockInAt": "2026-09-03T00:00:00.000Z",
+      "clockOutAt": "2026-09-03T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-04",
+      "clockInAt": "2026-09-04T00:00:00.000Z",
+      "clockOutAt": "2026-09-04T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-07",
+      "clockInAt": "2026-09-07T00:00:00.000Z",
+      "clockOutAt": "2026-09-07T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-08",
+      "clockInAt": "2026-09-08T00:00:00.000Z",
+      "clockOutAt": "2026-09-08T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-09",
+      "clockInAt": "2026-09-09T00:00:00.000Z",
+      "clockOutAt": "2026-09-09T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-10",
+      "clockInAt": "2026-09-10T00:00:00.000Z",
+      "clockOutAt": "2026-09-10T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-11",
+      "clockInAt": "2026-09-11T00:00:00.000Z",
+      "clockOutAt": "2026-09-11T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-14",
+      "clockInAt": "2026-09-14T00:00:00.000Z",
+      "clockOutAt": "2026-09-14T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-15",
+      "clockInAt": "2026-09-15T00:00:00.000Z",
+      "clockOutAt": "2026-09-15T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-16",
+      "clockInAt": "2026-09-16T00:00:00.000Z",
+      "clockOutAt": "2026-09-16T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-17",
+      "clockInAt": "2026-09-17T00:00:00.000Z",
+      "clockOutAt": "2026-09-17T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-18",
+      "clockInAt": "2026-09-18T00:00:00.000Z",
+      "clockOutAt": "2026-09-18T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-21",
+      "clockInAt": "2026-09-21T00:00:00.000Z",
+      "clockOutAt": "2026-09-21T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-22",
+      "clockInAt": "2026-09-22T00:00:00.000Z",
+      "clockOutAt": "2026-09-22T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-23",
+      "clockInAt": "2026-09-23T00:00:00.000Z",
+      "clockOutAt": "2026-09-23T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-24",
+      "clockInAt": "2026-09-24T00:00:00.000Z",
+      "clockOutAt": "2026-09-24T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-25",
+      "clockInAt": "2026-09-25T00:00:00.000Z",
+      "clockOutAt": "2026-09-25T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-28",
+      "clockInAt": "2026-09-28T00:00:00.000Z",
+      "clockOutAt": "2026-09-28T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-29",
+      "clockInAt": "2026-09-29T00:00:00.000Z",
+      "clockOutAt": "2026-09-29T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 2,
+      "employeeId": "EMP-002",
+      "employeeEmail": "finance@rcc.edu.ph",
+      "date": "2026-09-30",
+      "clockInAt": "2026-09-30T00:00:00.000Z",
+      "clockOutAt": "2026-09-30T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-01",
+      "clockInAt": "2026-09-01T00:00:00.000Z",
+      "clockOutAt": "2026-09-01T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-02",
+      "clockInAt": "2026-09-02T00:00:00.000Z",
+      "clockOutAt": "2026-09-02T06:00:00.000Z",
+      "hours": 6
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-03",
+      "clockInAt": "2026-09-03T00:00:00.000Z",
+      "clockOutAt": "2026-09-03T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-04",
+      "clockInAt": "2026-09-04T00:00:00.000Z",
+      "clockOutAt": "2026-09-04T04:00:00.000Z",
+      "hours": 4
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-08",
+      "clockInAt": "2026-09-08T00:00:00.000Z",
+      "clockOutAt": "2026-09-08T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-09",
+      "clockInAt": "2026-09-09T00:00:00.000Z",
+      "clockOutAt": "2026-09-09T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-10",
+      "clockInAt": "2026-09-10T00:00:00.000Z",
+      "clockOutAt": "2026-09-10T07:00:00.000Z",
+      "hours": 7
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-11",
+      "clockInAt": "2026-09-11T00:00:00.000Z",
+      "clockOutAt": "2026-09-11T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-14",
+      "clockInAt": "2026-09-14T00:00:00.000Z",
+      "clockOutAt": "2026-09-14T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-15",
+      "clockInAt": "2026-09-15T00:00:00.000Z",
+      "clockOutAt": "2026-09-15T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-16",
+      "clockInAt": "2026-09-16T00:00:00.000Z",
+      "clockOutAt": "2026-09-16T05:00:00.000Z",
+      "hours": 5
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-17",
+      "clockInAt": "2026-09-17T00:00:00.000Z",
+      "clockOutAt": "2026-09-17T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-18",
+      "clockInAt": "2026-09-18T00:00:00.000Z",
+      "clockOutAt": "2026-09-18T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-22",
+      "clockInAt": "2026-09-22T00:00:00.000Z",
+      "clockOutAt": "2026-09-22T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-23",
+      "clockInAt": "2026-09-23T00:00:00.000Z",
+      "clockOutAt": "2026-09-23T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-24",
+      "clockInAt": "2026-09-24T00:00:00.000Z",
+      "clockOutAt": "2026-09-24T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-25",
+      "clockInAt": "2026-09-25T00:00:00.000Z",
+      "clockOutAt": "2026-09-25T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-28",
+      "clockInAt": "2026-09-28T00:00:00.000Z",
+      "clockOutAt": "2026-09-28T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-29",
+      "clockInAt": "2026-09-29T00:00:00.000Z",
+      "clockOutAt": "2026-09-29T08:00:00.000Z",
+      "hours": 8
+    },
+    {
+      "empId": 3,
+      "employeeId": "EMP-003",
+      "employeeEmail": "employee@rcc.edu.ph",
+      "date": "2026-09-30",
+      "clockInAt": "2026-09-30T00:00:00.000Z",
+      "clockOutAt": "2026-09-30T06:00:00.000Z",
+      "hours": 6
+    }
+  ],
   "profiles": {
     "3": {
       "empPhone": "09171234567",
       "empAddr": "123 Mabini St., Angeles City, Pampanga"
     }
   },
-  "savedAt": "2026-09-04T04:25:57.859Z"
+  "savedAt": "2026-09-04T17:17:52.143Z"
 }
