@@ -42,7 +42,7 @@
       "hoursWorked": 150
     }
   ],
-  "nextUserId": 4,
+  "nextUserId": 8,
   "cashAdvances": {
     "1": 0,
     "2": 0,
@@ -816,6 +816,13 @@
       "startDate": "2026-09-01",
       "endDate": "2026-09-01",
       "days": 1
+    },
+    {
+      "empId": 1,
+      "typeId": 3,
+      "startDate": "2026-09-10",
+      "endDate": "2026-09-11",
+      "days": 2
     }
   ],
   "nextLeaveRecordId": 3,
@@ -825,5 +832,5 @@
       "empAddr": "123 Mabini St., Angeles City, Pampanga"
     }
   },
-  "savedAt": "2026-09-04T00:30:58.083Z"
+  "savedAt": "2026-09-04T04:25:57.859Z"
 }
