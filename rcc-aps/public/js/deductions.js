@@ -265,6 +265,47 @@ function renderLeaveRecords() {
 
 let nextLeaveRecordId = (_savedDemo && _savedDemo.nextLeaveRecordId) || (LEAVE_RECORDS.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1);
 
+// Render HRIS attendance (read-only, imported via sync). Shows one row per day.
+function renderAttendance() {
+  const list = document.getElementById('attendanceList');
+  const empty = document.getElementById('attendanceEmpty');
+  if (!list) return;
+
+  const records = (ATTENDANCE || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  if (!records.length) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  list.style.display = 'table-row-group';
+
+  list.innerHTML = records.map(r => {
+    const emp = users.find(u => u.id === r.empId);
+    const name = emp ? displayName(emp) : ('#USR-' + (r.empId || '?'));
+    const inTxt = fmtClock(r.clockInAt);
+    const outTxt = fmtClock(r.clockOutAt);
+    const hrs = r.hours != null ? r.hours : '—';
+    return `<tr>
+      <td><strong>${esc(name)}</strong></td>
+      <td>${esc(r.date || '—')}</td>
+      <td>${inTxt}</td>
+      <td>${outTxt}</td>
+      <td>${hrs} hrs</td>
+    </tr>`;
+  }).join('');
+}
+
+// Format an ISO UTC time into Manila local (UTC+8) HH:MM for display.
+function fmtClock(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  d.setMinutes(d.getMinutes() + 8 * 60); // UTC -> Asia/Manila
+  return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+}
+
 function openAddLeaveRecord() {
   const empSel = document.getElementById('leaveRecordEmp');
   const typeSel = document.getElementById('leaveRecordType');
@@ -698,12 +739,43 @@ function syncFromHris() {
           leavesAdded++;
         }
       });
+      // Import attendance (clock-in/out) from HRIS — dedupe by empId+date.
+      // Hours = clockOut - clockIn (+24h if graveyard). Matched by email.
+      let attAdded = 0;
+      (d.attendance || []).forEach(a => {
+        const email = (a.employeeEmail || a.employee_email || '').toLowerCase();
+        const emp = users.find(u => u.email.toLowerCase() === email);
+        if (!emp) return;
+        const date = a.date;
+        if (!date) return;
+        const exists = ATTENDANCE.find(r => r.empId === emp.id && r.date === date);
+        const hours = attendanceRecordHours(a);
+        if (exists) {
+          exists.clockInAt = a.clockInAt || exists.clockInAt;
+          exists.clockOutAt = a.clockOutAt || exists.clockOutAt;
+          exists.hours = hours;
+          exists.employeeId = a.employeeId || exists.employeeId;
+        } else {
+          ATTENDANCE.push({
+            empId: emp.id,
+            employeeId: a.employeeId || '',
+            employeeEmail: email,
+            date,
+            clockInAt: a.clockInAt || '',
+            clockOutAt: a.clockOutAt || '',
+            hours
+          });
+          attAdded++;
+        }
+      });
       saveDemo();
       renderUserTable(); renderAdminRecentUsers(); updateAdminStats();
       renderLeaveTypes();
+      renderAttendance();
       const msg = `HRIS sync complete — ${added} added, ${updated} updated, ${deactivated} deactivated`;
-      const leavesMsg = leavesAdded > 0 ? `, ${leavesAdded} leave records imported` : '';
-      showToast('✅', `${msg}${leavesMsg} (source: ${d.source})`);
+      const leavesMsg = leavesAdded > 0 ? `, ${leavesAdded} leave records` : '';
+      const attMsg = attAdded > 0 ? `, ${attAdded} attendance records` : '';
+      showToast('✅', `${msg}${leavesMsg}${attMsg} (source: ${d.source})`);
     })
     .catch(() => showToast('⚠️', 'HRIS sync failed. Make sure the server is running.'))
     .finally(() => { if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync from HRIS'; } });

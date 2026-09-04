@@ -1,6 +1,7 @@
 // Mock HRIS employee records.
 // Used while the real HRIS API is still under development.
-// Shape mirrors what the real HRIS API returns (snake_case fields).
+// Shape mirrors what the real HRIS API (RCC-HIROS) returns (camelCase fields
+// on attendance; employees/leaveRecords kept in the local mapping form).
 module.exports = {
   employees: [
     {
@@ -60,5 +61,72 @@ module.exports = {
       end_date: '2026-09-12',
       days: 3
     }
+  ],
+  // Per-day clock in/out (ISO 8601 UTC, Asia/Manila = UTC+8). One record per
+  // employee per workday. Absence is derived: a workday with no record and no
+  // approved leave = absent. Hours worked = clockOutAt - clockInAt (add 24h if
+  // clockOutAt < clockInAt for graveyard shifts).
+  attendance: [
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-01', clockInAt: '2026-09-01T00:00:00.000Z', clockOutAt: '2026-09-01T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-02', clockInAt: '2026-09-02T00:00:00.000Z', clockOutAt: '2026-09-02T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-03', clockInAt: '2026-09-03T00:00:00.000Z', clockOutAt: '2026-09-03T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-04', clockInAt: '2026-09-04T00:00:00.000Z', clockOutAt: '2026-09-04T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-08', clockInAt: '2026-09-08T00:00:00.000Z', clockOutAt: '2026-09-08T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-09', clockInAt: '2026-09-09T00:00:00.000Z', clockOutAt: '2026-09-09T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-10', clockInAt: '2026-09-10T00:00:00.000Z', clockOutAt: '2026-09-10T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-11', clockInAt: '2026-09-11T00:00:00.000Z', clockOutAt: '2026-09-11T07:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-14', clockInAt: '2026-09-14T00:00:00.000Z', clockOutAt: '2026-09-14T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-15', clockInAt: '2026-09-15T00:00:00.000Z', clockOutAt: '2026-09-15T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-16', clockInAt: '2026-09-16T00:00:00.000Z', clockOutAt: '2026-09-16T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-17', clockInAt: '2026-09-17T00:00:00.000Z', clockOutAt: '2026-09-17T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-18', clockInAt: '2026-09-18T00:00:00.000Z', clockOutAt: '2026-09-18T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-21', clockInAt: '2026-09-21T00:00:00.000Z', clockOutAt: '2026-09-21T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-23', clockInAt: '2026-09-23T00:00:00.000Z', clockOutAt: '2026-09-23T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-24', clockInAt: '2026-09-24T00:00:00.000Z', clockOutAt: '2026-09-24T07:30:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-25', clockInAt: '2026-09-25T00:00:00.000Z', clockOutAt: '2026-09-25T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-28', clockInAt: '2026-09-28T00:00:00.000Z', clockOutAt: '2026-09-28T08:00:00.000Z' },
+    { employeeId: 'EMP-001', employee_email: 'admin@rcc.edu.ph', date: '2026-09-30', clockInAt: '2026-09-30T00:00:00.000Z', clockOutAt: '2026-09-30T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-01', clockInAt: '2026-09-01T00:00:00.000Z', clockOutAt: '2026-09-01T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-02', clockInAt: '2026-09-02T00:00:00.000Z', clockOutAt: '2026-09-02T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-03', clockInAt: '2026-09-03T00:00:00.000Z', clockOutAt: '2026-09-03T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-04', clockInAt: '2026-09-04T00:00:00.000Z', clockOutAt: '2026-09-04T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-07', clockInAt: '2026-09-07T00:00:00.000Z', clockOutAt: '2026-09-07T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-08', clockInAt: '2026-09-08T00:00:00.000Z', clockOutAt: '2026-09-08T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-09', clockInAt: '2026-09-09T00:00:00.000Z', clockOutAt: '2026-09-09T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-10', clockInAt: '2026-09-10T00:00:00.000Z', clockOutAt: '2026-09-10T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-11', clockInAt: '2026-09-11T00:00:00.000Z', clockOutAt: '2026-09-11T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-14', clockInAt: '2026-09-14T00:00:00.000Z', clockOutAt: '2026-09-14T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-15', clockInAt: '2026-09-15T00:00:00.000Z', clockOutAt: '2026-09-15T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-16', clockInAt: '2026-09-16T00:00:00.000Z', clockOutAt: '2026-09-16T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-17', clockInAt: '2026-09-17T00:00:00.000Z', clockOutAt: '2026-09-17T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-18', clockInAt: '2026-09-18T00:00:00.000Z', clockOutAt: '2026-09-18T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-21', clockInAt: '2026-09-21T00:00:00.000Z', clockOutAt: '2026-09-21T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-22', clockInAt: '2026-09-22T00:00:00.000Z', clockOutAt: '2026-09-22T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-23', clockInAt: '2026-09-23T00:00:00.000Z', clockOutAt: '2026-09-23T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-24', clockInAt: '2026-09-24T00:00:00.000Z', clockOutAt: '2026-09-24T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-25', clockInAt: '2026-09-25T00:00:00.000Z', clockOutAt: '2026-09-25T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-28', clockInAt: '2026-09-28T00:00:00.000Z', clockOutAt: '2026-09-28T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-29', clockInAt: '2026-09-29T00:00:00.000Z', clockOutAt: '2026-09-29T08:00:00.000Z' },
+    { employeeId: 'EMP-002', employee_email: 'finance@rcc.edu.ph', date: '2026-09-30', clockInAt: '2026-09-30T00:00:00.000Z', clockOutAt: '2026-09-30T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-01', clockInAt: '2026-09-01T00:00:00.000Z', clockOutAt: '2026-09-01T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-02', clockInAt: '2026-09-02T00:00:00.000Z', clockOutAt: '2026-09-02T06:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-03', clockInAt: '2026-09-03T00:00:00.000Z', clockOutAt: '2026-09-03T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-04', clockInAt: '2026-09-04T00:00:00.000Z', clockOutAt: '2026-09-04T04:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-08', clockInAt: '2026-09-08T00:00:00.000Z', clockOutAt: '2026-09-08T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-09', clockInAt: '2026-09-09T00:00:00.000Z', clockOutAt: '2026-09-09T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-10', clockInAt: '2026-09-10T00:00:00.000Z', clockOutAt: '2026-09-10T07:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-11', clockInAt: '2026-09-11T00:00:00.000Z', clockOutAt: '2026-09-11T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-14', clockInAt: '2026-09-14T00:00:00.000Z', clockOutAt: '2026-09-14T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-15', clockInAt: '2026-09-15T00:00:00.000Z', clockOutAt: '2026-09-15T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-16', clockInAt: '2026-09-16T00:00:00.000Z', clockOutAt: '2026-09-16T05:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-17', clockInAt: '2026-09-17T00:00:00.000Z', clockOutAt: '2026-09-17T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-18', clockInAt: '2026-09-18T00:00:00.000Z', clockOutAt: '2026-09-18T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-22', clockInAt: '2026-09-22T00:00:00.000Z', clockOutAt: '2026-09-22T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-23', clockInAt: '2026-09-23T00:00:00.000Z', clockOutAt: '2026-09-23T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-24', clockInAt: '2026-09-24T00:00:00.000Z', clockOutAt: '2026-09-24T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-25', clockInAt: '2026-09-25T00:00:00.000Z', clockOutAt: '2026-09-25T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-28', clockInAt: '2026-09-28T00:00:00.000Z', clockOutAt: '2026-09-28T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-29', clockInAt: '2026-09-29T00:00:00.000Z', clockOutAt: '2026-09-29T08:00:00.000Z' },
+    { employeeId: 'EMP-003', employee_email: 'employee@rcc.edu.ph', date: '2026-09-30', clockInAt: '2026-09-30T00:00:00.000Z', clockOutAt: '2026-09-30T06:00:00.000Z' }
   ]
 };

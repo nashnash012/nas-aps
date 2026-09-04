@@ -31,6 +31,9 @@ let LEAVE_TYPES = (_savedDemo && _savedDemo.leaveTypes) || [
 ];
 let NEXT_LEAVE_TYPE_ID = (_savedDemo && _savedDemo.nextLeaveTypeId) || 6;
 let LEAVE_RECORDS = (_savedDemo && _savedDemo.leaveRecords) || [];
+// Per-day clock-in/out imported from HRIS. Matched to a local user by email.
+// Record shape: { empId, employeeId, date (YYYY-MM-DD local), clockInAt, clockOutAt, hours }
+let ATTENDANCE = (_savedDemo && _savedDemo.attendance) || [];
 
 // Get leave breakdown for an employee in a given month/year
 function getLeaveBreakdown(empId, monthNum, year) {
@@ -71,6 +74,86 @@ function getLeaveBreakdown(empId, monthNum, year) {
 function getUnpaidDays(empId, monthNum, year) {
   const { totalUnpaidDays } = getLeaveBreakdown(empId, monthNum, year);
   return totalUnpaidDays;
+}
+
+// ── ATTENDANCE HELPERS ────────────────────────────────────────
+const HOURS_PER_DAY = 8; // payroll policy: 1 absent/unpaid day = 8 hours
+
+// Exact Mon-Fri calendar days of a month (matches WORK_DAYS=22 for a standard month).
+function getPeriodWorkingDays(monthNum, year) {
+  const days = [];
+  const last = new Date(year, monthNum, 0).getDate();
+  for (let d = 1; d <= last; d++) {
+    const dow = new Date(year, monthNum - 1, d).getDay();
+    if (dow >= 1 && dow <= 5) days.push(d);
+  }
+  return days;
+}
+
+// Hours worked in a period = sum of (clockOut - clockIn), +24h if graveyard
+// (clockOut < clockIn). Dates are matched by the stored 'date' field.
+function getAttendanceHours(empId, monthNum, year) {
+  const recs = ATTENDANCE.filter(r =>
+    r.empId === empId &&
+    parseInt(String(r.date).slice(0, 4), 10) === year &&
+    parseInt(String(r.date).slice(5, 7), 10) === monthNum
+  );
+  return recs.reduce((sum, r) => sum + (parseFloat(r.hours) || 0), 0);
+}
+
+// PHP icon hours for a clockIn/clockOut (returns the day's hours, computing if needed).
+function attendanceRecordHours(r) {
+  if (r.hours != null) return parseFloat(r.hours) || 0;
+  const a = new Date(r.clockInAt).getTime();
+  const b = new Date(r.clockOutAt).getTime();
+  if (isNaN(a) || isNaN(b)) return 0;
+  let diff = (b - a) / 3600000;
+  if (diff < 0) diff += 24; // graveyard shift
+  return Math.max(0, Math.round(diff * 100) / 100);
+}
+
+// Set of dates (YYYY-MM-DD) with an attendance record for an employee.
+function getAttendanceDaySet(empId) {
+  const s = new Set();
+  ATTENDANCE.forEach(r => { if (r.empId === empId && r.date) s.add(r.date); });
+  return s;
+}
+
+// Set of dates covered by ANY leave record for the employee in the period.
+// Uses the leave's stored days / start/end to build a day set.
+function getLeaveCoveredDaySet(empId, monthNum, year) {
+  const s = new Set();
+  LEAVE_RECORDS.filter(r => r.empId === empId).forEach(rec => {
+    const start = new Date(rec.startDate + 'T00:00:00');
+    const end = new Date(rec.endDate + 'T00:00:00');
+    const days = rec.days || Math.floor((end - start) / 86400000) + 1;
+    for (let i = 0; i < days; i++) {
+      const day = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      if ((day.getMonth() + 1) === monthNum && day.getFullYear() === year) {
+        s.add(day.getFullYear() + '-' + String(day.getMonth() + 1).padStart(2, '0') + '-' + String(day.getDate()).padStart(2, '0'));
+      }
+    }
+  });
+  return s;
+}
+
+// Absent days = working days with no clock-in record AND no approved leave.
+function getDetectedAbsences(empId, monthNum, year) {
+  const attDays = getAttendanceDaySet(empId);
+  const leaveDays = getLeaveCoveredDaySet(empId, monthNum, year);
+  const workingDays = getPeriodWorkingDays(monthNum, year);
+  let count = 0;
+  workingDays.forEach(d => {
+    const key = year + '-' + String(monthNum).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+    if (!attDays.has(key) && !leaveDays.has(key)) count++;
+  });
+  return count;
+}
+
+// Total unpaid days for the payroll = unpaid leave days + detected absences.
+function getTotalUnpaidDaysAll(empId, monthNum, year) {
+  const { totalUnpaidDays } = getLeaveBreakdown(empId, monthNum, year);
+  return totalUnpaidDays + getDetectedAbsences(empId, monthNum, year);
 }
 
 // ── PAYROLL RECORDS (per employee per month) ─────────────────
@@ -400,16 +483,18 @@ function loadEmployeeData() {
   meta.style.display = 'block';
   document.getElementById('calcGrossFieldLabel').textContent = isTeaching ? 'Hourly Rate (₱)' : 'Monthly Base Salary (₱)';
   
+  const period = document.getElementById('payPeriod').value || 'December 2026';
+  const [monthName, yearStr] = period.split(' ');
+  const year = parseInt(yearStr) || 2026;
+  const monthNum = MONTHS.indexOf(monthName) + 1;
+
   if (isTeaching) {
     document.getElementById('calcAttLabel').textContent = 'Hours Worked';
-    attEl.value = emp.hoursWorked || '';
+    const attHours = getAttendanceHours(emp.id, monthNum, year);
+    attEl.value = (attHours > 0) ? attHours : (emp.hoursWorked || '');
   } else {
-    // For Non-Teaching, auto-populate absences from leave records
-    const period = document.getElementById('payPeriod').value || 'December 2026';
-    const [monthName, yearStr] = period.split(' ');
-    const year = parseInt(yearStr) || 2026;
-    const monthNum = MONTHS.indexOf(monthName) + 1;
-    const { totalUnpaidDays } = getLeaveBreakdown(emp.id, monthNum, year);
+    // For Non-Teaching, auto-populate absences = unpaid leave + detected absences
+    const totalUnpaidDays = getTotalUnpaidDaysAll(emp.id, monthNum, year);
     document.getElementById('calcAttLabel').textContent = 'Absences (days, ÷' + WORK_DAYS + ')';
     attEl.value = totalUnpaidDays;
   }
@@ -434,40 +519,53 @@ function renderLeaveBreakdown(empId) {
   const monthNum = MONTHS.indexOf(monthName) + 1;
   
   const { breakdown, totalPaidDays, totalUnpaidDays } = getLeaveBreakdown(empId, monthNum, year);
-  
-  if (breakdown.length === 0) {
+  const absentDays = getDetectedAbsences(empId, monthNum, year);
+  const totalDly = totalUnpaidDays + absentDays;
+
+  if (breakdown.length === 0 && totalDly === 0) {
     container.style.display = 'none';
     return;
   }
-  
+
   container.style.display = 'block';
   const emp = users.find(u => u.id === empId);
-  const base = emp ? (parseFloat(emp.salary) || 0) : 0;
-  const dailyRate = base / WORK_DAYS;
-  
-  let html = '<div style="font-size:12px;font-weight:700;color:var(--maroon-dark);margin-bottom:8px">📅 LEAVE BREAKDOWN — ' + monthName + ' ' + year + '</div>';
+  const isTeaching = emp && emp.classification === 'Teaching';
+  // Per-day deduction value: Teaching = 8h × hourly rate; Non-Teaching = salary / WORK_DAYS.
+  const dayValue = isTeaching
+    ? (HOURS_PER_DAY * (parseFloat(emp.hourlyRate) || 0))
+    : ((parseFloat(emp.salary) || 0) / WORK_DAYS);
+  const totalDeduction = totalDly * dayValue;
+
+  let html = '<div style="font-size:12px;font-weight:700;color:var(--maroon-dark);margin-bottom:8px">📅 LEAVE &amp; ATTENDANCE — ' + monthName + ' ' + year + '</div>';
   html += '<div style="display:grid;gap:4px">';
-  
+
   breakdown.forEach(item => {
     const label = item.isPaid ? '(Paid)' : '(Unpaid)';
     const color = item.isPaid ? '#2E7D32' : '#C62828';
-    const deduction = item.isPaid ? '' : '  −' + fmt(item.days * dailyRate);
+    const deduction = item.isPaid ? '' : '  −' + fmt(item.days * dayValue);
     html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 8px;background:' + (item.isPaid ? '#E8F5E9' : '#FFEBEE') + ';border-radius:6px">';
     html += '<span><strong>' + esc(item.name) + '</strong> <span style="color:' + color + '">' + label + '</span></span>';
     html += '<span>' + item.days + ' day' + (item.days > 1 ? 's' : '') + deduction + '</span>';
     html += '</div>';
   });
-  
+
+  if (absentDays > 0) {
+    html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 8px;background:#FFF3E0;border-radius:6px">';
+    html += '<span><strong>🚫 Absent (no clock-in)</strong> <span style="color:#E65100">(Unpaid)</span></span>';
+    html += '<span>' + absentDays + ' day' + (absentDays > 1 ? 's' : '') + '  −' + fmt(absentDays * dayValue) + '</span>';
+    html += '</div>';
+  }
+
   html += '</div>';
   html += '<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">';
   html += 'Total: ' + (totalPaidDays > 0 ? '<span style="color:#2E7D32">' + totalPaidDays + ' paid</span>' : '');
-  html += (totalPaidDays > 0 && totalUnpaidDays > 0 ? ' · ' : '');
-  html += (totalUnpaidDays > 0 ? '<span style="color:#C62828">' + totalUnpaidDays + ' unpaid</span>' : '');
-  if (totalUnpaidDays > 0) {
-    html += ' → Deduction: <strong style="color:#C62828">' + fmt(totalUnpaidDays * dailyRate) + '</strong>';
+  html += (totalPaidDays > 0 && totalDly > 0 ? ' · ' : '');
+  html += (totalDly > 0 ? '<span style="color:#C62828">' + totalDly + ' unpaid</span>' : '');
+  if (totalDly > 0) {
+    html += ' → Deduction: <strong style="color:#C62828">' + fmt(totalDeduction) + '</strong>';
   }
   html += '</div>';
-  
+
   container.innerHTML = html;
 }
 
@@ -565,11 +663,19 @@ function computePayroll() {
   const isDec = /^december/i.test(monthName);
 
   let gross = 0, meta = '';
+  let teachingUnpaidDays = 0, teachingDeduct = 0;
   if (isTeaching) {
     const h = Math.max(0, parseFloat(attEl.value) || 0);
     const r = Math.max(0, parseFloat(rateEl.value) || 0);
-    gross = parseFloat((h * r).toFixed(2));
-    meta = `${h} hrs × ₱${r.toLocaleString('en-PH',{minimumFractionDigits:2})} = ${fmt(gross)}`;
+    const monthNum = MONTHS.indexOf(monthName) + 1;
+    // Unpaid = unpaid leaves + detected absences (no clock-in, no leave)
+    teachingUnpaidDays = getTotalUnpaidDaysAll(emp.id, monthNum, year);
+    // Deduct 8 hours per unpaid day (payroll policy for hours-work staff)
+    teachingDeduct = teachingUnpaidDays * HOURS_PER_DAY * r;
+    gross = parseFloat((h * r - teachingDeduct).toFixed(2));
+    meta = `${h} hrs × ₱${r.toLocaleString('en-PH',{minimumFractionDigits:2})}`;
+    if (teachingUnpaidDays > 0) meta += ` − ${teachingUnpaidDays} unpaid day(s) × 8h × ₱${r} = ${fmt(gross)}`;
+    else meta += ` = ${fmt(gross)}`;
   } else {
     const base = Math.max(0, parseFloat(rateEl.value) || 0);
     const a = Math.max(0, parseFloat(attEl.value) || 0);
@@ -619,6 +725,7 @@ function computePayroll() {
   document.getElementById('calcEarnings').innerHTML = `
     <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">${emp.classification==='Teaching'?'Hours Worked × Rate':'Monthly Base Salary'}</span><span style="font-weight:600">${meta}</span></div>
     <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">${emp.classification==='Teaching'?'Hourly Earnings':'Base Salary'}</span><span style="font-weight:600">${fmt(gross)}</span></div>
+    ${isTeaching && teachingUnpaidDays > 0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px;color:#C62828"><span style="color:var(--text-muted)">🚫 Absent / Unpaid (no clock-in or unpaid leave) — '+teachingUnpaidDays+' day(s) × 8h × ₱'+fmt(rateEl.value)+'</span><span style="font-weight:600">−'+fmt(teachingDeduct)+'</span></div>' : ''}
     ${bonuses.map(b=>'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">🎁 '+esc(b.name)+' <span style="font-size:11px;color:'+(b.deMinimis?'#2E7D32':'var(--text-muted)')+'">— '+(b.deMinimis?'de minimis (tax-exempt)':'taxable bonus')+'</span></span><span style="font-weight:600">+'+fmt(b.amount)+'</span></div>').join('')}
     ${thirteenth>0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">🎁 13th Month Pay (RA 8515) <span style="font-size:11px;color:#2E7D32">— exempt up to '+fmt(BONUS_EXEMPTION_LIMIT)+'/yr</span></span><span style="font-weight:700;color:var(--maroon-dark)">+'+fmt(thirteenSplit.exempt13)+'</span></div>' : ''}
     ${thirteenth>0 && thirteenSplit.taxable13>0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">⚠️ 13th Month excess <span style="font-size:11px;color:#C62828">— taxable (over '+fmt(BONUS_EXEMPTION_LIMIT)+')</span></span><span style="font-weight:600;color:#C62828">+'+fmt(thirteenSplit.taxable13)+'</span></div>' : ''}

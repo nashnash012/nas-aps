@@ -47,22 +47,53 @@ function mapHrisEmployee(h) {
   };
 }
 
-async function fetchHrisEmployees() {
+// Normalize an attendance record from either the real API or mock into a shape
+// the client can consume: kept as one-per-day clock-in/out with the employee
+// email attached so the client can match it to a local user.
+function mapHrisAttendance(a) {
+  return {
+    employeeId: a.employee_id || a.employeeId || '',
+    employeeEmail: (a.employee_email || a.email || '').toLowerCase(),
+    date: a.date || (a.attendanceDate || ''),
+    clockInAt: a.clock_in_at || a.clockInAt || '',
+    clockOutAt: a.clock_out_at || a.clockOutAt || ''
+  };
+}
+
+async function fetchHrisData() {
+  const headers = { Accept: 'application/json' };
+  if (HRIS_API_KEY) headers.Authorization = 'Bearer ' + HRIS_API_KEY;
   if (HRIS_API_URL) {
     try {
-      const headers = { Accept: 'application/json' };
-      if (HRIS_API_KEY) headers.Authorization = 'Bearer ' + HRIS_API_KEY;
-      const res = await fetch(`${HRIS_API_URL}/employees`, { headers });
-      if (res.ok) {
-        const body = await res.json();
-        const list = Array.isArray(body) ? body : (body.employees || body.data || []);
-        if (list.length) return { source: 'HRIS API', employees: list.map(mapHrisEmployee) };
+      const [empRes, attRes, leaveRes] = await Promise.all([
+        fetch(`${HRIS_API_URL}/employees`, { headers }),
+        fetch(`${HRIS_API_URL}/attendance`, { headers }),
+        fetch(`${HRIS_API_URL}/leave-requests`, { headers })
+      ]);
+      if (empRes.ok) {
+        const employees = (Array.isArray(await empRes.json().catch(()=>[])) ? await empRes.json() : []);
+        const attendance = attRes.ok ? await attRes.json().catch(() => []) : [];
+        const leaves = leaveRes.ok ? await leaveRes.json().catch(() => []) : [];
+        const empList = (Array.isArray(employees) ? employees : (employees.employees || employees.data || []));
+        const attList = (Array.isArray(attendance) ? attendance : (attendance.attendance || attendance.data || []));
+        const leaveList = (Array.isArray(leaves) ? leaves : (leaves.leaveRecords || leaves.data || []));
+        return {
+          source: 'HRIS API',
+          employees: empList.map(mapHrisEmployee),
+          attendance: attList.map(mapHrisAttendance),
+          leaveRecords: leaveList
+        };
       }
     } catch (e) {
       console.warn('[HRIS] API unreachable, using mock data.');
     }
   }
-  return { source: 'mock data', employees: hrisMock.employees.map(mapHrisEmployee), leaveRecords: hrisMock.leaveRecords || [] };
+  return {
+    source: 'mock data',
+    employees: hrisMock.employees.map(mapHrisEmployee),
+    attendance: (hrisMock.attendance || []).map(mapHrisAttendance),
+    leaveRecords: hrisMock.leaveRecords || []
+  };
 }
 
 app.get('/api/health', (req, res) => {
@@ -80,8 +111,8 @@ app.get('/api/hris/status', (req, res) => {
 });
 
 app.get('/api/hris/sync', async (req, res) => {
-  const result = await fetchHrisEmployees();
-  res.json({ source: result.source, employees: result.employees, leaveRecords: result.leaveRecords || [] });
+  const result = await fetchHrisData();
+  res.json({ source: result.source, employees: result.employees, attendance: result.attendance || [], leaveRecords: result.leaveRecords || [] });
 });
 
 app.get('/api/data', (req, res) => {
