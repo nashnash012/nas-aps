@@ -67,5 +67,28 @@ module.exports = {
       hours_worked: 0,
       absence_days: 0
     }
+  ],
+  leaveRecords: [
+    {
+      employee_email: 'mark@rcc.edu.ph',
+      leave_type: 'Sick Leave',
+      start_date: '2026-09-01',
+      end_date: '2026-09-02',
+      days: 2
+    },
+    {
+      employee_email: 'mark@rcc.edu.ph',
+      leave_type: 'Personal Leave',
+      start_date: '2026-09-15',
+      end_date: '2026-09-15',
+      days: 1
+    },
+    {
+      employee_email: 'admin@rcc.edu.ph',
+      leave_type: 'Vacation Leave',
+      start_date: '2026-09-10',
+      end_date: '2026-09-12',
+      days: 3
+    }
   ]
 };

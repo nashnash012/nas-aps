@@ -33,6 +33,9 @@ function saveDemo() {
       deductionCategories, nextDedCatId, payrollRecords, bonusPayouts,
       sssTable, philData, pagData, birData, dedMeta, bonusExemptionLimit: BONUS_EXEMPTION_LIMIT,
       workDays: WORK_DAYS,
+      leaveTypes: (typeof LEAVE_TYPES !== 'undefined') ? LEAVE_TYPES : [],
+      nextLeaveTypeId: (typeof NEXT_LEAVE_TYPE_ID !== 'undefined') ? NEXT_LEAVE_TYPE_ID : 1,
+      leaveRecords: (typeof LEAVE_RECORDS !== 'undefined') ? LEAVE_RECORDS : [],
       profiles: PROFILES,
       savedAt: new Date().toISOString()
     };

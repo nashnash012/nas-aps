@@ -417,7 +417,7 @@ function showFinPage(id, btn) {
   if (id === 'finAnalytics') renderAnalytics();
   if (id === 'finBonus') renderBonusModule();
   if (id === 'finPayroll') { if (typeof checkBonusDates==='function') checkBonusDates(); populateCalcEmployees(); renderPayrollSummary(); }
-  if (id === 'finDeduction') { renderDeductionCategories(); renderDedBanner(); renderWorkDaysSetting(); }
+  if (id === 'finDeduction') { renderDeductionCategories(); renderLeaveTypes(); renderDedBanner(); renderWorkDaysSetting(); }
   if (id === 'finMyPayslip') renderFinPayslipList();
   if (id === 'finPayrollReport') {
     document.getElementById('reportOutput').style.display = 'none';

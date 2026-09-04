@@ -21,6 +21,58 @@ let payrollRecords = (_savedDemo && _savedDemo.payrollRecords) || [];
 // 13th-month payout tracking: { empId_year: { date } }
 let bonusPayouts = (_savedDemo && _savedDemo.bonusPayouts) || {};
 
+// ── LEAVE DATA ────────────────────────────────────────────────
+let LEAVE_TYPES = (_savedDemo && _savedDemo.leaveTypes) || [
+  { id: 1, name: 'Sick Leave', isPaid: true },
+  { id: 2, name: 'Personal Leave', isPaid: false },
+  { id: 3, name: 'Vacation Leave', isPaid: false },
+  { id: 4, name: 'Maternity Leave', isPaid: true },
+  { id: 5, name: 'Paternity Leave', isPaid: true }
+];
+let NEXT_LEAVE_TYPE_ID = (_savedDemo && _savedDemo.nextLeaveTypeId) || 6;
+let LEAVE_RECORDS = (_savedDemo && _savedDemo.leaveRecords) || [];
+
+// Get leave breakdown for an employee in a given month/year
+function getLeaveBreakdown(empId, monthNum, year) {
+  const empRecords = LEAVE_RECORDS.filter(r => r.empId === empId);
+  const breakdown = {};
+  let totalUnpaidDays = 0;
+  let totalPaidDays = 0;
+
+  empRecords.forEach(record => {
+    const start = new Date(record.startDate);
+    const end = new Date(record.endDate);
+    const recMonth = start.getMonth() + 1;
+    const recYear = start.getFullYear();
+    
+    if (recMonth === monthNum && recYear === year) {
+      const leaveType = LEAVE_TYPES.find(lt => lt.id === record.typeId);
+      if (!leaveType) return;
+      
+      const days = record.days || Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+      
+      if (!breakdown[leaveType.name]) {
+        breakdown[leaveType.name] = { name: leaveType.name, isPaid: leaveType.isPaid, days: 0 };
+      }
+      breakdown[leaveType.name].days += days;
+      
+      if (leaveType.isPaid) {
+        totalPaidDays += days;
+      } else {
+        totalUnpaidDays += days;
+      }
+    }
+  });
+
+  return { breakdown: Object.values(breakdown), totalPaidDays, totalUnpaidDays };
+}
+
+// Get total unpaid days for an employee in a given month/year
+function getUnpaidDays(empId, monthNum, year) {
+  const { totalUnpaidDays } = getLeaveBreakdown(empId, monthNum, year);
+  return totalUnpaidDays;
+}
+
 // ── PAYROLL RECORDS (per employee per month) ─────────────────
 // Employee classification helpers
 const EMP_CLASS = { Teaching: {badge:'b-blue'}, 'Non-Teaching': {badge:'b-gold'} };
@@ -303,6 +355,12 @@ function onPayPeriodChange() {
   updateCalc13thState();
   updateCalcStatusBadge();
   renderPayrollSummary();
+  // Update leave breakdown when period changes
+  const empId = parseInt(document.getElementById('calcEmp').value);
+  if (empId) {
+    // Re-run loadEmployeeData to update absences from leave records
+    loadEmployeeData();
+  }
 }
 
 function filterCalcEmployees() {
@@ -341,14 +399,76 @@ function loadEmployeeData() {
   document.getElementById('calcMetaDept').textContent = emp.department || '—';
   meta.style.display = 'block';
   document.getElementById('calcGrossFieldLabel').textContent = isTeaching ? 'Hourly Rate (₱)' : 'Monthly Base Salary (₱)';
-  document.getElementById('calcAttLabel').textContent = isTeaching ? 'Hours Worked' : 'Absences (days, ÷' + WORK_DAYS + ')';
+  
+  if (isTeaching) {
+    document.getElementById('calcAttLabel').textContent = 'Hours Worked';
+    attEl.value = emp.hoursWorked || '';
+  } else {
+    // For Non-Teaching, auto-populate absences from leave records
+    const period = document.getElementById('payPeriod').value || 'December 2026';
+    const [monthName, yearStr] = period.split(' ');
+    const year = parseInt(yearStr) || 2026;
+    const monthNum = MONTHS.indexOf(monthName) + 1;
+    const { totalUnpaidDays } = getLeaveBreakdown(emp.id, monthNum, year);
+    document.getElementById('calcAttLabel').textContent = 'Absences (days, ÷' + WORK_DAYS + ')';
+    attEl.value = totalUnpaidDays;
+  }
+  
   salEl.value = isTeaching ? (emp.hourlyRate||'') : (emp.salary||'');
-  attEl.value = isTeaching ? (emp.hoursWorked||'') : (emp.absenceDays||0);
   cashEl.value = getEmpCashAdvance(emp.id) || '';
   empty.style.display = 'none';
   res.style.display = 'block';
   computePayroll();
   updateCalcStatusBadge();
+  renderLeaveBreakdown(emp.id);
+}
+
+// Render leave breakdown for the selected employee and period
+function renderLeaveBreakdown(empId) {
+  const container = document.getElementById('leaveBreakdown');
+  if (!container) return;
+  
+  const period = document.getElementById('payPeriod').value || 'December 2026';
+  const [monthName, yearStr] = period.split(' ');
+  const year = parseInt(yearStr) || 2026;
+  const monthNum = MONTHS.indexOf(monthName) + 1;
+  
+  const { breakdown, totalPaidDays, totalUnpaidDays } = getLeaveBreakdown(empId, monthNum, year);
+  
+  if (breakdown.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+  
+  container.style.display = 'block';
+  const emp = users.find(u => u.id === empId);
+  const base = emp ? (parseFloat(emp.salary) || 0) : 0;
+  const dailyRate = base / WORK_DAYS;
+  
+  let html = '<div style="font-size:12px;font-weight:700;color:var(--maroon-dark);margin-bottom:8px">📅 LEAVE BREAKDOWN — ' + monthName + ' ' + year + '</div>';
+  html += '<div style="display:grid;gap:4px">';
+  
+  breakdown.forEach(item => {
+    const label = item.isPaid ? '(Paid)' : '(Unpaid)';
+    const color = item.isPaid ? '#2E7D32' : '#C62828';
+    const deduction = item.isPaid ? '' : '  −' + fmt(item.days * dailyRate);
+    html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 8px;background:' + (item.isPaid ? '#E8F5E9' : '#FFEBEE') + ';border-radius:6px">';
+    html += '<span><strong>' + esc(item.name) + '</strong> <span style="color:' + color + '">' + label + '</span></span>';
+    html += '<span>' + item.days + ' day' + (item.days > 1 ? 's' : '') + deduction + '</span>';
+    html += '</div>';
+  });
+  
+  html += '</div>';
+  html += '<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">';
+  html += 'Total: ' + (totalPaidDays > 0 ? '<span style="color:#2E7D32">' + totalPaidDays + ' paid</span>' : '');
+  html += (totalPaidDays > 0 && totalUnpaidDays > 0 ? ' · ' : '');
+  html += (totalUnpaidDays > 0 ? '<span style="color:#C62828">' + totalUnpaidDays + ' unpaid</span>' : '');
+  if (totalUnpaidDays > 0) {
+    html += ' → Deduction: <strong style="color:#C62828">' + fmt(totalUnpaidDays * dailyRate) + '</strong>';
+  }
+  html += '</div>';
+  
+  container.innerHTML = html;
 }
 
 // Shows a warning badge when the selected employee already has a released

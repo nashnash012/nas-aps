@@ -62,7 +62,7 @@ async function fetchHrisEmployees() {
       console.warn('[HRIS] API unreachable, using mock data.');
     }
   }
-  return { source: 'mock data', employees: hrisMock.employees.map(mapHrisEmployee) };
+  return { source: 'mock data', employees: hrisMock.employees.map(mapHrisEmployee), leaveRecords: hrisMock.leaveRecords || [] };
 }
 
 app.get('/api/health', (req, res) => {
@@ -81,7 +81,7 @@ app.get('/api/hris/status', (req, res) => {
 
 app.get('/api/hris/sync', async (req, res) => {
   const result = await fetchHrisEmployees();
-  res.json({ source: result.source, employees: result.employees });
+  res.json({ source: result.source, employees: result.employees, leaveRecords: result.leaveRecords || [] });
 });
 
 app.get('/api/data', (req, res) => {
@@ -104,6 +104,39 @@ app.post('/api/data', (req, res) => {
 app.get('/api/employees', (req, res) => {
   const db = readDB();
   res.json(db.users || []);
+});
+
+// ── LEAVE ENDPOINTS ────────────────────────────────────────────
+app.get('/api/leaves', (req, res) => {
+  const db = readDB();
+  res.json({
+    leaveTypes: db.leaveTypes || [],
+    nextLeaveTypeId: db.nextLeaveTypeId || 1,
+    leaveRecords: db.leaveRecords || []
+  });
+});
+
+app.post('/api/leave-types', (req, res) => {
+  try {
+    const db = readDB();
+    db.leaveTypes = req.body.leaveTypes || db.leaveTypes || [];
+    db.nextLeaveTypeId = req.body.nextLeaveTypeId || db.nextLeaveTypeId || 1;
+    writeDB(db);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'Failed to save leave types.' });
+  }
+});
+
+app.post('/api/leave-records', (req, res) => {
+  try {
+    const db = readDB();
+    db.leaveRecords = req.body.leaveRecords || [];
+    writeDB(db);
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'Failed to save leave records.' });
+  }
 });
 
 app.listen(PORT, () => {

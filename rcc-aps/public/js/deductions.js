@@ -114,6 +114,96 @@ document.addEventListener('change', e => {
 function exportReport() { showToast('📥','Report exported to PDF/Excel successfully!'); }
 
 
+// ── LEAVE TYPES MANAGEMENT ────────────────────────────────────
+function renderLeaveTypes() {
+  const list = document.getElementById('leaveTypeList');
+  const empty = document.getElementById('leaveTypeEmpty');
+  if (!list) return;
+
+  const types = LEAVE_TYPES;
+  if (!types.length) {
+    list.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  list.style.display = 'grid';
+  empty.style.display = 'none';
+
+  list.innerHTML = types.map(lt => `
+    <div class="card" style="margin:0">
+      <div class="card-body" style="padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--maroon-dark)">${esc(lt.name)}</div>
+          </div>
+          <span class="badge ${lt.isPaid ? 'b-green' : 'b-red'}" style="flex-shrink:0">● ${lt.isPaid ? 'Paid' : 'Unpaid'}</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+          <div style="background:${lt.isPaid ? '#E8F5E9' : '#FFEBEE'};border:1px solid ${lt.isPaid ? '#A5D6A7' : '#FFCDD2'};border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;color:${lt.isPaid ? '#2E7D32' : '#C62828'}">
+            ${lt.isPaid ? '✅ Paid — No deduction' : '❌ Unpaid — Deducted from gross'}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="editLeaveType(${lt.id})">✏️ Edit</button>
+          <button class="btn btn-outline btn-sm" style="color:#C62828;border-color:#FFCDD2" onclick="deleteLeaveType(${lt.id})">🗑️ Remove</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function openAddLeaveType() {
+  document.getElementById('leaveTypeModalTitle').textContent = 'Add Leave Type';
+  document.getElementById('leaveTypeName').value = '';
+  document.getElementById('leaveTypePaid').value = 'false';
+  document.getElementById('leaveTypeErr').style.display = 'none';
+  document.getElementById('leaveTypeModal').style.display = 'flex';
+  document.getElementById('leaveTypeModal').dataset.editId = '';
+}
+
+function editLeaveType(id) {
+  const lt = LEAVE_TYPES.find(x => x.id === id);
+  if (!lt) return;
+  document.getElementById('leaveTypeModalTitle').textContent = 'Edit Leave Type';
+  document.getElementById('leaveTypeName').value = lt.name;
+  document.getElementById('leaveTypePaid').value = lt.isPaid ? 'true' : 'false';
+  document.getElementById('leaveTypeErr').style.display = 'none';
+  document.getElementById('leaveTypeModal').style.display = 'flex';
+  document.getElementById('leaveTypeModal').dataset.editId = id;
+}
+
+function saveLeaveType() {
+  const name = document.getElementById('leaveTypeName').value.trim();
+  const isPaid = document.getElementById('leaveTypePaid').value === 'true';
+  const err = document.getElementById('leaveTypeErr');
+  err.style.display = 'none';
+
+  if (!name) { err.textContent = 'Please enter a leave type name.'; err.style.display = 'block'; return; }
+
+  const editId = document.getElementById('leaveTypeModal').dataset.editId;
+  if (editId) {
+    const lt = LEAVE_TYPES.find(x => x.id === parseInt(editId));
+    if (lt) { lt.name = name; lt.isPaid = isPaid; }
+    showToast('✅', `"${name}" updated successfully!`);
+  } else {
+    LEAVE_TYPES.push({ id: NEXT_LEAVE_TYPE_ID++, name, isPaid });
+    showToast('✅', `"${name}" added successfully!`);
+  }
+  closeModal('leaveTypeModal');
+  saveDemo();
+  renderLeaveTypes();
+}
+
+function deleteLeaveType(id) {
+  const lt = LEAVE_TYPES.find(x => x.id === id);
+  if (!lt) return;
+  if (confirm(`Remove "${lt.name}"? This cannot be undone.`)) {
+    LEAVE_TYPES = LEAVE_TYPES.filter(x => x.id !== id);
+    saveDemo();
+    renderLeaveTypes();
+    showToast('🗑️', `"${lt.name}" removed.`);
+  }
+}
+
 // ── USER MANAGEMENT ───────────────────────────────────────────
 const roleColor = {'System Admin':'#880E4F','Finance Officer':'#7D5A00','Employee':'#1565C0'};
 const roleBadge = {'System Admin':'b-pink','Finance Officer':'b-gold','Employee':'b-blue'};
@@ -437,9 +527,41 @@ function syncFromHris() {
           deactivated++;
         }
       });
+      // Process leave records from HRIS
+      let leavesAdded = 0;
+      (d.leaveRecords || []).forEach(lr => {
+        const email = lr.employee_email.toLowerCase();
+        const emp = users.find(u => u.email.toLowerCase() === email);
+        if (!emp) return;
+        // Find or create leave type
+        const leaveTypeName = lr.leave_type || 'Other Leave';
+        let lt = LEAVE_TYPES.find(x => x.name.toLowerCase() === leaveTypeName.toLowerCase());
+        if (!lt) {
+          lt = { id: NEXT_LEAVE_TYPE_ID++, name: leaveTypeName, isPaid: false };
+          LEAVE_TYPES.push(lt);
+        }
+        // Check for duplicate leave record
+        const exists = LEAVE_RECORDS.find(r =>
+          r.empId === emp.id && r.typeId === lt.id &&
+          r.startDate === lr.start_date && r.endDate === lr.end_date
+        );
+        if (!exists) {
+          LEAVE_RECORDS.push({
+            empId: emp.id,
+            typeId: lt.id,
+            startDate: lr.start_date,
+            endDate: lr.end_date,
+            days: lr.days || 1
+          });
+          leavesAdded++;
+        }
+      });
       saveDemo();
       renderUserTable(); renderAdminRecentUsers(); updateAdminStats();
-      showToast('✅', `HRIS sync complete — ${added} added, ${updated} updated, ${deactivated} deactivated (source: ${d.source})`);
+      renderLeaveTypes();
+      const msg = `HRIS sync complete — ${added} added, ${updated} updated, ${deactivated} deactivated`;
+      const leavesMsg = leavesAdded > 0 ? `, ${leavesAdded} leave records imported` : '';
+      showToast('✅', `${msg}${leavesMsg} (source: ${d.source})`);
     })
     .catch(() => showToast('⚠️', 'HRIS sync failed. Make sure the server is running.'))
     .finally(() => { if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync from HRIS'; } });
