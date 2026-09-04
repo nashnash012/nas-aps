@@ -265,6 +265,35 @@ function renderLeaveRecords() {
 
 let nextLeaveRecordId = (_savedDemo && _savedDemo.nextLeaveRecordId) || (LEAVE_RECORDS.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1);
 
+// Render the imported HRIS attendance (time-in/time-out) table.
+function renderAttendance() {
+  const list = document.getElementById('attendanceList');
+  const empty = document.getElementById('attendanceEmpty');
+  if (!list) return;
+
+  const records = (typeof ATTENDANCE !== 'undefined') ? ATTENDANCE : [];
+  if (!records.length) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  list.style.display = 'table-row-group';
+  empty.style.display = 'none';
+
+  const sorted = records.slice().sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  list.innerHTML = sorted.map(at => {
+    const emp = users.find(u => u.id === at.empId);
+    const name = emp ? displayName(emp) : ('#USR-' + (at.empId || '?'));
+    return `<tr>
+      <td><strong>${esc(name)}</strong></td>
+      <td>${esc(at.date || '—')}</td>
+      <td>${esc(at.timeIn || '—')}</td>
+      <td>${esc(at.timeOut || '—')}</td>
+    </tr>`;
+  }).join('');
+}
+
 function openAddLeaveRecord() {
   const empSel = document.getElementById('leaveRecordEmp');
   const typeSel = document.getElementById('leaveRecordType');
@@ -629,8 +658,8 @@ function confirmRemove(id) {
 
 // ── HRIS SYNC ─────────────────────────────────────────────────
 function syncFromHris() {
-  const btn = document.getElementById('hrisSyncBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing...'; }
+  const btns = ['hrisSyncBtn', 'hrisAttSyncBtn'].map(id => document.getElementById(id)).filter(Boolean);
+  btns.forEach(b => { b.disabled = true; b.textContent = '⏳ Syncing...'; });
   fetch('/api/hris/sync')
     .then(r => r.json())
     .then(d => {
@@ -698,15 +727,37 @@ function syncFromHris() {
           leavesAdded++;
         }
       });
+      // Process attendance (time-in/time-out) from HRIS
+      let attendanceAdded = 0;
+      (d.attendance || []).forEach(at => {
+        const email = (at.employee_email || '').toLowerCase();
+        const emp = users.find(u => u.email.toLowerCase() === email);
+        if (!emp) return;
+        // Check for duplicate attendance entry (same employee + same date)
+        const exists = (typeof ATTENDANCE !== 'undefined') && ATTENDANCE.find(r =>
+          r.empId === emp.id && r.date === at.date
+        );
+        if (!exists) {
+          ATTENDANCE.push({
+            empId: emp.id,
+            date: at.date,
+            timeIn: at.time_in || '',
+            timeOut: at.time_out || ''
+          });
+          attendanceAdded++;
+        }
+      });
       saveDemo();
       renderUserTable(); renderAdminRecentUsers(); updateAdminStats();
       renderLeaveTypes();
+      renderAttendance();
       const msg = `HRIS sync complete — ${added} added, ${updated} updated, ${deactivated} deactivated`;
       const leavesMsg = leavesAdded > 0 ? `, ${leavesAdded} leave records imported` : '';
-      showToast('✅', `${msg}${leavesMsg} (source: ${d.source})`);
+      const attMsg = attendanceAdded > 0 ? `, ${attendanceAdded} attendance records imported` : '';
+      showToast('✅', `${msg}${leavesMsg}${attMsg} (source: ${d.source})`);
     })
     .catch(() => showToast('⚠️', 'HRIS sync failed. Make sure the server is running.'))
-    .finally(() => { if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync from HRIS'; } });
+    .finally(() => { btns.forEach(b => { b.disabled = false; b.textContent = b.id === 'hrisAttSyncBtn' ? '🔄 Import from HRIS' : '🔄 Sync from HRIS'; }); });
 }
 
 // ── DEDUCTION MODAL ───────────────────────────────────────────

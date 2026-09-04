@@ -32,6 +32,64 @@ let LEAVE_TYPES = (_savedDemo && _savedDemo.leaveTypes) || [
 let NEXT_LEAVE_TYPE_ID = (_savedDemo && _savedDemo.nextLeaveTypeId) || 6;
 let LEAVE_RECORDS = (_savedDemo && _savedDemo.leaveRecords) || [];
 
+// ── ATTENDANCE DATA ───────────────────────────────────────────
+// Daily time-in/time-out records imported from HRIS:
+//   { empId, date: 'YYYY-MM-DD', timeIn, timeOut }
+// Absence auto-detection: a day with NO time-in record is an absence, unless
+// that day is covered by an approved leave (paid or unpaid).
+let ATTENDANCE = (_savedDemo && _savedDemo.attendance) || [];
+
+// Days an employee actually clocked in during a given month/year.
+function getAttendanceDays(empId, monthNum, year) {
+  return ATTENDANCE.filter(r => {
+    if (r.empId !== empId) return false;
+    const d = new Date(r.date);
+    if (isNaN(d)) return false;
+    return (d.getMonth() + 1) === monthNum && d.getFullYear() === year;
+  });
+}
+
+// Count the attendance (days with a time-in) for an employee in a month/year.
+function countAttendanceDays(empId, monthNum, year) {
+  return getAttendanceDays(empId, monthNum, year).length;
+}
+
+// Days covered by an approved leave record in a month/year (paid or unpaid).
+// Used to keep leave-covered days from being flagged as absent when the
+// employee has no time-in on those days.
+function getLeaveCoveredDays(empId, monthNum, year) {
+  const covered = new Set();
+  LEAVE_RECORDS.filter(r => r.empId === empId).forEach(record => {
+    const s = new Date(record.startDate);
+    const e = new Date(record.endDate);
+    if (isNaN(s) || isNaN(e)) return;
+    const days = record.days || (Math.floor((e - s) / (1000 * 60 * 60 * 24)) + 1);
+    for (let i = 0; i < Math.max(1, days); i++) {
+      const day = new Date(s.getFullYear(), s.getMonth(), s.getDate() + i);
+      if ((day.getMonth() + 1) === monthNum && day.getFullYear() === year) {
+        covered.add(day.getDate());
+      }
+    }
+  });
+  return covered;
+}
+
+// Auto-detected absences (unpaid) from attendance for a month/year:
+//   workingDays (WORK_DAYS baseline) − days with a time-in − leave-covered days
+function countAttendanceAbsences(empId, monthNum, year) {
+  const attendanceDays = countAttendanceDays(empId, monthNum, year);
+  const leaveCovered = getLeaveCoveredDays(empId, monthNum, year).size;
+  const total = (parseFloat(WORK_DAYS) || 0) - attendanceDays - leaveCovered;
+  return Math.max(0, Math.round(total * 100) / 100);
+}
+
+// Total absence deduction in days for a selected employee/period:
+//   auto-detected absences + unpaid leave days (paid leaves are not deducted)
+function getTotalAbsenceDays(empId, monthNum, year) {
+  const { totalUnpaidDays } = getLeaveBreakdown(empId, monthNum, year);
+  return countAttendanceAbsences(empId, monthNum, year) + totalUnpaidDays;
+}
+
 // Get leave breakdown for an employee in a given month/year
 function getLeaveBreakdown(empId, monthNum, year) {
   const empRecords = LEAVE_RECORDS.filter(r => r.empId === empId);
@@ -404,14 +462,13 @@ function loadEmployeeData() {
     document.getElementById('calcAttLabel').textContent = 'Hours Worked';
     attEl.value = emp.hoursWorked || '';
   } else {
-    // For Non-Teaching, auto-populate absences from leave records
+    // For Non-Teaching, auto-populate absences from attendance + leave records
     const period = document.getElementById('payPeriod').value || 'December 2026';
     const [monthName, yearStr] = period.split(' ');
     const year = parseInt(yearStr) || 2026;
     const monthNum = MONTHS.indexOf(monthName) + 1;
-    const { totalUnpaidDays } = getLeaveBreakdown(emp.id, monthNum, year);
     document.getElementById('calcAttLabel').textContent = 'Absences (days, ÷' + WORK_DAYS + ')';
-    attEl.value = totalUnpaidDays;
+    attEl.value = getTotalAbsenceDays(emp.id, monthNum, year);
   }
   
   salEl.value = isTeaching ? (emp.hourlyRate||'') : (emp.salary||'');
@@ -434,20 +491,22 @@ function renderLeaveBreakdown(empId) {
   const monthNum = MONTHS.indexOf(monthName) + 1;
   
   const { breakdown, totalPaidDays, totalUnpaidDays } = getLeaveBreakdown(empId, monthNum, year);
-  
-  if (breakdown.length === 0) {
+  const absentDays = countAttendanceAbsences(empId, monthNum, year);
+  const totalUnpaid = absentDays + totalUnpaidDays;
+
+  if (breakdown.length === 0 && absentDays <= 0 && totalUnpaidDays <= 0) {
     container.style.display = 'none';
     return;
   }
-  
+
   container.style.display = 'block';
   const emp = users.find(u => u.id === empId);
   const base = emp ? (parseFloat(emp.salary) || 0) : 0;
   const dailyRate = base / WORK_DAYS;
-  
-  let html = '<div style="font-size:12px;font-weight:700;color:var(--maroon-dark);margin-bottom:8px">📅 LEAVE BREAKDOWN — ' + monthName + ' ' + year + '</div>';
+
+  let html = '<div style="font-size:12px;font-weight:700;color:var(--maroon-dark);margin-bottom:8px">📊 LEAVE & ATTENDANCE — ' + monthName + ' ' + year + '</div>';
   html += '<div style="display:grid;gap:4px">';
-  
+
   breakdown.forEach(item => {
     const label = item.isPaid ? '(Paid)' : '(Unpaid)';
     const color = item.isPaid ? '#2E7D32' : '#C62828';
@@ -457,17 +516,26 @@ function renderLeaveBreakdown(empId) {
     html += '<span>' + item.days + ' day' + (item.days > 1 ? 's' : '') + deduction + '</span>';
     html += '</div>';
   });
-  
+
+  // Auto-detected absence row (no time-in and no approved leave on those days)
+  if (absentDays > 0) {
+    html += '<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 8px;background:#FFEBEE;border-radius:6px">';
+    html += '<span><strong>🚫 Absent (no time-in)</strong> <span style="color:#C62828">(Unpaid)</span></span>';
+    html += '<span>' + absentDays + ' day' + (absentDays > 1 ? 's' : '') + '  −' + fmt(absentDays * dailyRate) + '</span>';
+    html += '</div>';
+  }
+
   html += '</div>';
   html += '<div style="margin-top:8px;font-size:11px;color:var(--text-muted)">';
-  html += 'Total: ' + (totalPaidDays > 0 ? '<span style="color:#2E7D32">' + totalPaidDays + ' paid</span>' : '');
-  html += (totalPaidDays > 0 && totalUnpaidDays > 0 ? ' · ' : '');
-  html += (totalUnpaidDays > 0 ? '<span style="color:#C62828">' + totalUnpaidDays + ' unpaid</span>' : '');
-  if (totalUnpaidDays > 0) {
-    html += ' → Deduction: <strong style="color:#C62828">' + fmt(totalUnpaidDays * dailyRate) + '</strong>';
+  const parts = [];
+  if (totalPaidDays > 0) parts.push('<span style="color:#2E7D32">' + totalPaidDays + ' paid</span>');
+  if (totalUnpaid > 0) parts.push('<span style="color:#C62828">' + totalUnpaid + ' unpaid</span>');
+  html += 'Total: ' + parts.join(' · ');
+  if (totalUnpaid > 0) {
+    html += ' → Deduction: <strong style="color:#C62828">' + fmt(totalUnpaid * dailyRate) + '</strong>';
   }
   html += '</div>';
-  
+
   container.innerHTML = html;
 }
 
