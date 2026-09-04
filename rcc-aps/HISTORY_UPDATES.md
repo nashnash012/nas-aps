@@ -16,6 +16,26 @@
 
 ## History
 
+### Sep 5, 2026 — MySQL Migration (JSON → Relational Database)
+- Lumipat ang persistence mula `server/db/db.json` patungong **MySQL relational tables**
+  (`rcc_aps` database, MariaDB 10.4 sa XAMPP)
+- 16 tables: `users`, `auth`, `profiles`, `cash_advances`, `bonus_types`,
+  `bonus_payouts`, `deduction_categories`, `payroll_records`, `sss_table`,
+  `phil_data`, `pag_data`, `bir_table`, `app_config`, `leave_types`,
+  `leave_records`, `attendance`
+- Bagong files: `server/db/sql/schema.sql`, `server/migrate-db.js`, `server/db.js`
+- Bagong endpooint: `GET /api/db/status` (MySQL health + table counts)
+- Migration script: `npm run migrate-db` (idempotent, transactional)
+- DB config sa env vars: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
+  (default: localhost / root / (empty) / rcc_aps)
+- Frontend ay hindi kailangang i-rewrite — ang `/api/data` bridge ay MySQL-backed
+  na at shape-compatible; validated end-to-end (login page renders, HRIS sync,
+  employees, leaves, full state round-trip)
+- Rollback point: `git tag backup-before-mysql-migration`
+- Commits: `b325675`, `98ec820`
+
+### Aug 15, 2026 — Capstone Docs Added
+
 ### Aug 15, 2026 — Capstone Docs Added
 - Resource Requirements (WBS table) — `capstone-resource-requirements.md`
 - RAM feed (DACI matrix) — `capstone-ram-feed.md`
@@ -50,4 +70,5 @@
 - [ ] I-verify ang PPA output ng AI
 - [ ] I-verify ang POA output ng AI
 - [ ] Punuan ang Letter of Transmittal (adviser name, address, course/year)
+- [ ] I-verify na maayos ang MySQL config sa ibang machine (START.bat)
 - [ ] Idagdag ang mga susunod na tasks dito
