@@ -22,14 +22,44 @@ rcc-aps/
 │   └── assets/             # Brand images (RCC / APS logos)
 ├── server/
 │   ├── server.js           # Express server + REST API
+│   ├── db.js               # MySQL data-access layer (assemble/persist state)
+│   ├── migrate-db.js       # db.json -> MySQL migration script
+│   ├── hris-mock.js        # Fallback HRIS demo data
 │   └── db/
-│       └── db.json         # JSON database (seeded with demo data)
+│       ├── db.json         # Legacy JSON export (source for `npm run migrate-db`)
+│       └── sql/schema.sql  # MySQL relational schema (rcc_aps database)
 └── package.json
 ```
 
 ## Requirements
 
 - Node.js 18+ (comes with `npm`)
+- MySQL / MariaDB (XAMPP default: `localhost:3306`, user `root`, no password)
+
+## Database Setup (MySQL)
+
+The RCC-APS stores all data in the `rcc_aps` MySQL database (16 relational
+tables). First-time setup:
+
+1. Start MySQL (XAMPP Control Panel → Start MySQL, or run `mysqld`).
+2. Create the schema:
+   ```bash
+   mysql -u root < server/db/sql/schema.sql
+   ```
+3. (Optional) Import the legacy JSON data:
+   ```bash
+   npm run migrate-db
+   ```
+
+Database connection is configured through environment variables with these
+defaults:
+
+| Variable      | Default     |
+|---------------|-------------|
+| `DB_HOST`     | `localhost` |
+| `DB_USER`     | `root`      |
+| `DB_PASSWORD` | *(empty)*   |
+| `DB_NAME`     | `rcc_aps`   |
 
 ## Running the System
 
@@ -40,9 +70,9 @@ npm start
 
 Then open **http://localhost:3000**
 
-The frontend keeps a copy of its state in `localStorage` and syncs it to the backend
-JSON database (`server/db/db.json`) through the REST API at `/api/data`. If the server
-is not running, the app still works fully from `localStorage`.
+The frontend keeps a copy of its state in `localStorage` and syncs it to MySQL
+through the REST API at `/api/data`. If the server is not running, the app still
+works fully from `localStorage`; when the server returns, the newer copy wins.
 
 ## Demo Accounts
 
@@ -54,12 +84,15 @@ is not running, the app still works fully from `localStorage`.
 
 ## API Endpoints
 
-| Method | Endpoint        | Description                            |
-|--------|-----------------|----------------------------------------|
-| GET    | `/api/health`   | Server status                          |
-| GET    | `/api/data`     | Full persisted application state       |
-| POST   | `/api/data`     | Persist application state              |
-| GET    | `/api/employees`| List of employee records               |
+| Method | Endpoint          | Description                            |
+|--------|-------------------|----------------------------------------|
+| GET    | `/api/health`     | Server status                          |
+| GET    | `/api/db/status`  | MySQL connection health + table counts |
+| GET    | `/api/data`       | Full persisted application state       |
+| POST   | `/api/data`       | Persist application state              |
+| GET    | `/api/employees`  | List of employee records               |
+| GET    | `/api/leaves`     | Leave types and records                |
+| GET    | `/api/hris/sync`  | Sync employee/attendance/leave from HRIS (mock fallback) |
 
 ## Compliance Highlights
 

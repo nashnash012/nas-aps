@@ -45,7 +45,29 @@ if %NODE_MAJOR% LSS 18 (
 echo [OK] Node.js %NODE_MAJOR%.x detected (satisfies requirement).
 
 REM ============================================================
-REM CHECK 3: Are the dependencies (node_modules) installed?
+REM CHECK 3: Is MySQL/MariaDB reachable on localhost:3306?
+REM The system now stores data in the "rcc_aps" MySQL database.
+REM ============================================================
+set MYSQL_OK=0
+where mysql >nul 2>nul
+if not errorlevel 1 (
+    mysql -u root -e "SELECT 1" >nul 2>nul
+    if not errorlevel 1 set MYSQL_OK=1
+)
+if "%MYSQL_OK%"=="0" (
+    echo.
+    echo [NOTICE] MySQL is not reachable on localhost:3306 yet.
+    echo The system stores data in the "rcc_aps" database. Without MySQL:
+    echo   - Logins and the app will still load from the browser's localStorage.
+    echo   - Data will NOT persist to the database until MySQL is running.
+    echo.
+    echo Please start MySQL first (e.g. XAMPP Control Panel -^> Start MySQL),
+    echo then run this file again for full database persistence.
+    echo.
+)
+
+REM ============================================================
+REM CHECK 4: Are the dependencies (node_modules) installed?
 REM If not, download/install them automatically.
 REM ============================================================
 if not exist node_modules (
