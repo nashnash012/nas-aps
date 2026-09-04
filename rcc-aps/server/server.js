@@ -3,47 +3,35 @@ const fs = require('fs');
 const path = require('path');
 const hrisMock = require('./hris-mock');
 const { validateStateBody } = require('./state-validator');
+const db = require('./db');
 
 const app = express();
 const PORT = parseInt(process.env.PORT) || 3000;
-const DB_PATH = path.join(__dirname, 'db', 'db.json');
 const HRIS_API_URL = process.env.HRIS_API_URL || '';      // e.g. https://hris.rcc.edu.ph/api
 const HRIS_API_KEY = process.env.HRIS_API_KEY || '';      // bearer token for the HRIS API
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-function readDB() {
-  try {
-    return JSON.parse(fs.readFileSync(DB_PATH, 'utf8'));
-  } catch (e) {
-    return {};
-  }
-}
+// Routes that must be handled by the browser (SPA fallback).
 
-function writeDB(data) {
-  // Atomic write: write to a temp file then rename, so a crash mid-write
-  // can never leave db.json truncated/corrupted.
-  const tmp = DB_PATH + '.tmp';
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8');
-  fs.renameSync(tmp, DB_PATH);
-}
-
+// ── HRIS DATA ────────────────────────────────────────────────
 function mapHrisEmployee(h) {
   return {
-    first: h.first_name || h.first || '',
-    last: h.last_name || h.last || '',
+    first: h.first_name || h.firstName || h.first || '',
+    last: h.last_name || h.lastName || h.last || '',
     email: (h.email || '').toLowerCase(),
     password: h.password || '',
     role: h.role || 'Employee',
-    status: h.status || 'Active',
+    status: (h.active === false || h.status === 'Inactive') ? 'Inactive' : (h.status || 'Active'),
     department: h.department || '',
-    classification: h.classification || 'Non-Teaching',
-    salary: h.salary || h.monthly_salary || 0,
+    classification: (h.contractType === 'Part-Time') ? 'Teaching' : (h.classification || 'Non-Teaching'),
+    salary: h.salary || h.monthly_salary || h.monthlySalary || 0,
     hourlyRate: h.hourly_rate || h.hourlyRate || 0,
     hireDate: h.hire_date || h.hireDate || '',
     hoursWorked: h.hours_worked || h.hoursWorked || 0,
-    absenceDays: h.absence_days || h.absenceDays || 0
+    absenceDays: h.absence_days || h.absenceDays || 0,
+    employeeId: h.employeeId || h.employee_id || ''
   };
 }
 
@@ -60,18 +48,20 @@ function mapHrisAttendance(a) {
   };
 }
 
+// Fetch employees/attendance/leaves from the live HRIS. Falls back to the
+// bundled mock dataset when no endpoint is configured or the API is offline.
 async function fetchHrisData() {
-  const headers = { Accept: 'application/json' };
-  if (HRIS_API_KEY) headers.Authorization = 'Bearer ' + HRIS_API_KEY;
   if (HRIS_API_URL) {
     try {
+      const headers = { Accept: 'application/json' };
+      if (HRIS_API_KEY) headers.Authorization = 'Bearer ' + HRIS_API_KEY;
       const [empRes, attRes, leaveRes] = await Promise.all([
         fetch(`${HRIS_API_URL}/employees`, { headers }),
         fetch(`${HRIS_API_URL}/attendance`, { headers }),
         fetch(`${HRIS_API_URL}/leave-requests`, { headers })
       ]);
       if (empRes.ok) {
-        const employees = (Array.isArray(await empRes.json().catch(()=>[])) ? await empRes.json() : []);
+        const employees = await empRes.json().catch(() => []);
         const attendance = attRes.ok ? await attRes.json().catch(() => []) : [];
         const leaves = leaveRes.ok ? await leaveRes.json().catch(() => []) : [];
         const empList = (Array.isArray(employees) ? employees : (employees.employees || employees.data || []));
@@ -96,8 +86,22 @@ async function fetchHrisData() {
   };
 }
 
+// ── HEALTH & DB STATUS ───────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'RCC-APS Payroll System API', hris: HRIS_API_URL ? 'connected' : 'mock' });
+  res.json({ status: 'ok', service: 'RCC-APS Payroll System API', database: 'MySQL', hris: HRIS_API_URL ? 'connected' : 'mock' });
+});
+
+app.get('/api/db/status', async (req, res) => {
+  const st = await db.status();
+  res.json({
+    engine: 'MySQL',
+    connected: st.connected,
+    host: st.host,
+    database: st.database,
+    serverTime: st.serverTime,
+    counts: st.counts || null,
+    error: st.error || null
+  });
 });
 
 app.get('/api/hris/status', (req, res) => {
@@ -115,61 +119,88 @@ app.get('/api/hris/sync', async (req, res) => {
   res.json({ source: result.source, employees: result.employees, attendance: result.attendance || [], leaveRecords: result.leaveRecords || [] });
 });
 
-app.get('/api/data', (req, res) => {
-  res.json(readDB());
+// ── STATE (MySQL-backed, frontend-blob compatible) ───────────
+app.get('/api/data', async (req, res) => {
+  try {
+    const state = await db.assembleState();
+    res.json(state);
+  } catch (e) {
+    console.error('[DB] read failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to read from MySQL.' });
+  }
 });
 
-app.post('/api/data', (req, res) => {
+app.post('/api/data', async (req, res) => {
   const check = validateStateBody(req.body || {});
   if (!check.ok) {
     return res.status(400).json({ ok: false, error: check.error });
   }
   try {
-    writeDB(req.body);
+    await db.persistState(req.body);
+    res.json({ ok: true });
   } catch (e) {
-    return res.status(500).json({ ok: false, error: 'Failed to persist data.' });
+    console.error('[DB] write failed:', e.message);
+    return res.status(500).json({ ok: false, error: 'Failed to persist data to MySQL.' });
   }
-  res.json({ ok: true });
 });
 
-app.get('/api/employees', (req, res) => {
-  const db = readDB();
-  res.json(db.users || []);
-});
-
-// ── LEAVE ENDPOINTS ────────────────────────────────────────────
-app.get('/api/leaves', (req, res) => {
-  const db = readDB();
-  res.json({
-    leaveTypes: db.leaveTypes || [],
-    nextLeaveTypeId: db.nextLeaveTypeId || 1,
-    leaveRecords: db.leaveRecords || []
-  });
-});
-
-app.post('/api/leave-types', (req, res) => {
+// ── EMPLOYEES ────────────────────────────────────────────────
+app.get('/api/employees', async (req, res) => {
   try {
-    const db = readDB();
-    db.leaveTypes = req.body.leaveTypes || db.leaveTypes || [];
-    db.nextLeaveTypeId = req.body.nextLeaveTypeId || db.nextLeaveTypeId || 1;
-    writeDB(db);
+    const state = await db.assembleState();
+    res.json(state.users || []);
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'Failed to read employees.' });
+  }
+});
+
+// ── LEAVE ENDPOINTS ──────────────────────────────────────────
+app.get('/api/leaves', async (req, res) => {
+  try {
+    const state = await db.assembleState();
+    res.json({
+      leaveTypes: state.leaveTypes || [],
+      nextLeaveTypeId: state.nextLeaveTypeId || 1,
+      leaveRecords: state.leaveRecords || []
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: 'Failed to read leaves.' });
+  }
+});
+
+app.post('/api/leave-types', async (req, res) => {
+  try {
+    const state = await db.assembleState();
+    state.leaveTypes = req.body.leaveTypes || state.leaveTypes || [];
+    state.nextLeaveTypeId = req.body.nextLeaveTypeId || state.nextLeaveTypeId || 1;
+    await db.persistState(state);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: 'Failed to save leave types.' });
   }
 });
 
-app.post('/api/leave-records', (req, res) => {
+app.post('/api/leave-records', async (req, res) => {
   try {
-    const db = readDB();
-    db.leaveRecords = req.body.leaveRecords || [];
-    writeDB(db);
+    const state = await db.assembleState();
+    state.leaveRecords = req.body.leaveRecords || [];
+    await db.persistState(state);
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ ok: false, error: 'Failed to save leave records.' });
   }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
+  try {
+    const st = await db.status();
+    if (st.connected) {
+      console.log(`[MySQL] Connected to ${st.host}/${st.database} @ ${st.serverTime}`);
+    } else {
+      console.warn('[MySQL] WARNING: database unreachable — ' + st.error);
+    }
+  } catch (e) {
+    console.warn('[MySQL] WARNING: database unreachable — ' + e.message);
+  }
   console.log(`RCC-APS Payroll System running at http://localhost:${PORT}`);
 });
