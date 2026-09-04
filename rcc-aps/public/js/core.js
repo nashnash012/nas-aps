@@ -36,6 +36,7 @@ function saveDemo() {
       leaveTypes: (typeof LEAVE_TYPES !== 'undefined') ? LEAVE_TYPES : [],
       nextLeaveTypeId: (typeof NEXT_LEAVE_TYPE_ID !== 'undefined') ? NEXT_LEAVE_TYPE_ID : 1,
       leaveRecords: (typeof LEAVE_RECORDS !== 'undefined') ? LEAVE_RECORDS : [],
+      nextLeaveRecordId: (typeof nextLeaveRecordId !== 'undefined') ? nextLeaveRecordId : 1,
       profiles: PROFILES,
       savedAt: new Date().toISOString()
     };

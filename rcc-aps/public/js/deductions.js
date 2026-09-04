@@ -149,6 +149,7 @@ function renderLeaveTypes() {
         </div>
       </div>
     </div>`).join('');
+  renderLeaveRecords();
 }
 
 function openAddLeaveType() {
@@ -201,6 +202,147 @@ function deleteLeaveType(id) {
     saveDemo();
     renderLeaveTypes();
     showToast('🗑️', `"${lt.name}" removed.`);
+  }
+}
+
+// ── LEAVE RECORDS MANAGEMENT ──────────────────────────────────
+let leaveRecordDaysManuallySet = false;
+
+// Inclusive day count between two ISO date strings (matches payroll.js).
+function computeLeaveDays(start, end) {
+  const s = new Date(start);
+  const e = new Date(end);
+  if (isNaN(s) || isNaN(e) || e < s) return 0;
+  return Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+// Recompute the Days field from the chosen start/end dates unless the user
+// explicitly typed a value, and show a live preview of the resulting deduction.
+function updateLeaveRecordDays() {
+  const startEl = document.getElementById('leaveRecordStart');
+  const endEl = document.getElementById('leaveRecordEnd');
+  const daysEl = document.getElementById('leaveRecordDays');
+  if (!startEl || !endEl || !daysEl) return;
+  if (startEl.value && endEl.value && !leaveRecordDaysManuallySet) {
+    daysEl.value = computeLeaveDays(startEl.value, endEl.value) || '';
+  }
+}
+
+function renderLeaveRecords() {
+  const list = document.getElementById('leaveRecordList');
+  const empty = document.getElementById('leaveRecordEmpty');
+  if (!list) return;
+
+  const records = LEAVE_RECORDS;
+  if (!records.length) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  list.style.display = 'table-row-group';
+  empty.style.display = 'none';
+
+  list.innerHTML = records.map(rec => {
+    const emp = users.find(u => u.id === rec.empId);
+    const lt = LEAVE_TYPES.find(t => t.id === rec.typeId);
+    const name = emp ? displayName(emp) : ('#USR-' + (rec.empId || '?'));
+    const typeName = lt ? esc(lt.name) : 'Leave Type ' + rec.typeId;
+    const paid = lt ? lt.isPaid : false;
+    return `<tr>
+      <td><strong>${esc(name)}</strong></td>
+      <td>${typeName}</td>
+      <td>${esc(rec.startDate || '—')} → ${esc(rec.endDate || '—')}</td>
+      <td>${rec.days || computeLeaveDays(rec.startDate, rec.endDate)}</td>
+      <td><span class="badge ${paid ? 'b-green' : 'b-red'}">● ${paid ? 'Paid' : 'Unpaid'}</span></td>
+      <td><div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="editLeaveRecord(${rec.id || rec._rid})">✏️ Edit</button>
+        <button class="btn btn-outline btn-sm" style="color:#C62828;border-color:#FFCDD2" onclick="deleteLeaveRecord(${rec.id || rec._rid})">🗑️ Remove</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+let nextLeaveRecordId = (_savedDemo && _savedDemo.nextLeaveRecordId) || (LEAVE_RECORDS.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1);
+
+function openAddLeaveRecord() {
+  const empSel = document.getElementById('leaveRecordEmp');
+  const typeSel = document.getElementById('leaveRecordType');
+  if (empSel) empSel.innerHTML = users
+    .filter(u => u.status === 'Active' && (u.role === 'Employee' || u.role === 'Finance Officer' || u.role === 'System Admin'))
+    .map(u => `<option value="${u.id}">${esc(displayName(u))} — ${esc(u.classification || '')}</option>`).join('');
+  if (typeSel) typeSel.innerHTML = LEAVE_TYPES
+    .map(t => `<option value="${t.id}">${esc(t.name)} (${t.isPaid ? 'Paid' : 'Unpaid'})</option>`).join('');
+
+  document.getElementById('leaveRecordModalTitle').textContent = 'Add Leave Record';
+  document.getElementById('leaveRecordStart').value = '';
+  document.getElementById('leaveRecordEnd').value = '';
+  document.getElementById('leaveRecordDays').value = '';
+  document.getElementById('leaveRecordErr').style.display = 'none';
+  document.getElementById('leaveRecordModal').dataset.editId = '';
+  leaveRecordDaysManuallySet = false;
+  document.getElementById('leaveRecordModal').style.display = 'flex';
+}
+
+function editLeaveRecord(id) {
+  const rec = LEAVE_RECORDS.find(r => r.id === id);
+  if (!rec) return;
+  const empSel = document.getElementById('leaveRecordEmp');
+  const typeSel = document.getElementById('leaveRecordType');
+  if (empSel) empSel.innerHTML = users
+    .filter(u => u.status === 'Active' && (u.role === 'Employee' || u.role === 'Finance Officer' || u.role === 'System Admin'))
+    .map(u => `<option value="${u.id}">${esc(displayName(u))} — ${esc(u.classification || '')}</option>`).join('');
+  if (typeSel) typeSel.innerHTML = LEAVE_TYPES
+    .map(t => `<option value="${t.id}">${esc(t.name)} (${t.isPaid ? 'Paid' : 'Unpaid'})</option>`).join('');
+
+  document.getElementById('leaveRecordModalTitle').textContent = 'Edit Leave Record';
+  document.getElementById('leaveRecordEmp').value = rec.empId;
+  document.getElementById('leaveRecordType').value = rec.typeId;
+  document.getElementById('leaveRecordStart').value = rec.startDate || '';
+  document.getElementById('leaveRecordEnd').value = rec.endDate || '';
+  document.getElementById('leaveRecordDays').value = rec.days || '';
+  document.getElementById('leaveRecordErr').style.display = 'none';
+  document.getElementById('leaveRecordModal').dataset.editId = id;
+  leaveRecordDaysManuallySet = true;
+  document.getElementById('leaveRecordModal').style.display = 'flex';
+}
+
+function saveLeaveRecord() {
+  const empId = parseInt(document.getElementById('leaveRecordEmp').value) || 0;
+  const typeId = parseInt(document.getElementById('leaveRecordType').value) || 0;
+  const startDate = document.getElementById('leaveRecordStart').value;
+  const endDate = document.getElementById('leaveRecordEnd').value;
+  const days = parseFloat(document.getElementById('leaveRecordDays').value);
+  const err = document.getElementById('leaveRecordErr');
+  err.style.display = 'none';
+
+  if (!empId) { err.textContent = 'Please select an employee.'; err.style.display = 'block'; return; }
+  if (!typeId) { err.textContent = 'Please select a leave type.'; err.style.display = 'block'; return; }
+  if (!startDate || !endDate) { err.textContent = 'Please enter both start and end dates.'; err.style.display = 'block'; return; }
+  if (new Date(endDate) < new Date(startDate)) { err.textContent = 'End date cannot be before the start date.'; err.style.display = 'block'; return; }
+  if (!(days > 0)) { err.textContent = 'Please enter the number of days (or make sure dates are valid).'; err.style.display = 'block'; return; }
+
+  const editId = document.getElementById('leaveRecordModal').dataset.editId;
+  if (editId) {
+    const rec = LEAVE_RECORDS.find(r => r.id === parseInt(editId));
+    if (rec) { rec.empId = empId; rec.typeId = typeId; rec.startDate = startDate; rec.endDate = endDate; rec.days = days; }
+    showToast('✅', 'Leave record updated successfully!');
+  } else {
+    LEAVE_RECORDS.push({ id: nextLeaveRecordId++, empId, typeId, startDate, endDate, days });
+    showToast('✅', 'Leave record added successfully!');
+  }
+  closeModal('leaveRecordModal');
+  saveDemo();
+  renderLeaveRecords();
+}
+
+function deleteLeaveRecord(id) {
+  if (confirm('Remove this leave record? This cannot be undone.')) {
+    LEAVE_RECORDS = LEAVE_RECORDS.filter(r => r.id !== id);
+    nextLeaveRecordId = LEAVE_RECORDS.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1;
+    saveDemo();
+    renderLeaveRecords();
+    showToast('🗑️', 'Leave record removed.');
   }
 }
 

@@ -772,11 +772,58 @@
   "dedMeta": {},
   "bonusExemptionLimit": 90000,
   "workDays": 22,
+  "leaveTypes": [
+    {
+      "id": 1,
+      "name": "Sick Leave",
+      "isPaid": true
+    },
+    {
+      "id": 2,
+      "name": "Personal Leave",
+      "isPaid": false
+    },
+    {
+      "id": 3,
+      "name": "Vacation Leave",
+      "isPaid": false
+    },
+    {
+      "id": 4,
+      "name": "Maternity Leave",
+      "isPaid": true
+    },
+    {
+      "id": 5,
+      "name": "Paternity Leave",
+      "isPaid": true
+    }
+  ],
+  "nextLeaveTypeId": 6,
+  "leaveRecords": [
+    {
+      "id": 1,
+      "empId": 1,
+      "typeId": 2,
+      "startDate": "2026-09-04",
+      "endDate": "2026-09-04",
+      "days": 1
+    },
+    {
+      "id": 2,
+      "empId": 1,
+      "typeId": 1,
+      "startDate": "2026-09-01",
+      "endDate": "2026-09-01",
+      "days": 1
+    }
+  ],
+  "nextLeaveRecordId": 3,
   "profiles": {
     "3": {
       "empPhone": "09171234567",
       "empAddr": "123 Mabini St., Angeles City, Pampanga"
     }
   },
-  "savedAt": "2026-09-03T13:06:17.817Z"
+  "savedAt": "2026-09-04T00:30:58.083Z"
 }
