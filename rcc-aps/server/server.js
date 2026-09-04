@@ -62,7 +62,7 @@ async function fetchHrisEmployees() {
       console.warn('[HRIS] API unreachable, using mock data.');
     }
   }
-  return { source: 'mock data', employees: hrisMock.employees.map(mapHrisEmployee), leaveRecords: hrisMock.leaveRecords || [], attendance: hrisMock.attendance || [] };
+  return { source: 'mock data', employees: hrisMock.employees.map(mapHrisEmployee), leaveRecords: hrisMock.leaveRecords || [] };
 }
 
 app.get('/api/health', (req, res) => {
@@ -81,7 +81,7 @@ app.get('/api/hris/status', (req, res) => {
 
 app.get('/api/hris/sync', async (req, res) => {
   const result = await fetchHrisEmployees();
-  res.json({ source: result.source, employees: result.employees, leaveRecords: result.leaveRecords || [], attendance: result.attendance || [] });
+  res.json({ source: result.source, employees: result.employees, leaveRecords: result.leaveRecords || [] });
 });
 
 app.get('/api/data', (req, res) => {
