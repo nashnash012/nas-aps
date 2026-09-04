@@ -47,13 +47,15 @@ echo [OK] Node.js %NODE_MAJOR%.x detected (satisfies requirement).
 REM ============================================================
 REM CHECK 3: Is MySQL/MariaDB reachable on localhost:3306?
 REM The system now stores data in the "rcc_aps" MySQL database.
+REM Tries the XAMPP bundled client first (common on demo machines),
+REM then falls back to a PATH-installed mysql client.
 REM ============================================================
 set MYSQL_OK=0
-where mysql >nul 2>nul
-if not errorlevel 1 (
-    mysql -u root -e "SELECT 1" >nul 2>nul
-    if not errorlevel 1 set MYSQL_OK=1
-)
+set "MYSQL_CLI=mysql"
+if exist "C:\xampp\mysql\bin\mysql.exe" set "MYSQL_CLI=C:\xampp\mysql\bin\mysql.exe"
+if exist "D:\xampp\mysql\bin\mysql.exe" set "MYSQL_CLI=D:\xampp\mysql\bin\mysql.exe"
+"%MYSQL_CLI%" -u root -e "SELECT 1" >nul 2>nul
+if not errorlevel 1 set MYSQL_OK=1
 if "%MYSQL_OK%"=="0" (
     echo.
     echo [NOTICE] MySQL is not reachable on localhost:3306 yet.
@@ -64,6 +66,8 @@ if "%MYSQL_OK%"=="0" (
     echo Please start MySQL first (e.g. XAMPP Control Panel -^> Start MySQL),
     echo then run this file again for full database persistence.
     echo.
+) else (
+    echo [OK] MySQL is reachable ^(localhost:3306^). Data will persist to the "rcc_aps" database.
 )
 
 REM ============================================================
