@@ -12,7 +12,7 @@ where node >nul 2>nul
 if errorlevel 1 (
     echo [ERROR] Node.js is NOT installed on this computer.
     echo.
-    echo This system requires Node.js (JavaScript runtime) to run.
+    echo This system requires Node.js ^(JavaScript runtime^) to run.
     echo.
     echo Download it for FREE from: https://nodejs.org
     echo Install it, then run this file again.
@@ -63,7 +63,7 @@ if "%MYSQL_OK%"=="0" (
     echo   - Logins and the app will still load from the browser's localStorage.
     echo   - Data will NOT persist to the database until MySQL is running.
     echo.
-    echo Please start MySQL first (e.g. XAMPP Control Panel -^> Start MySQL),
+    echo Please start MySQL first ^(e.g. XAMPP Control Panel -^> Start MySQL^),
     echo then run this file again for full database persistence.
     echo.
 ) else (
@@ -77,7 +77,7 @@ REM ============================================================
 if not exist node_modules (
     echo.
     echo [NOTICE] Dependencies not found. Installing them now...
-    echo (This downloads the required packages. Please wait a moment...)
+    echo ^(This downloads the required packages. Please wait a moment...^)
     echo.
     call npm install
     if errorlevel 1 (
