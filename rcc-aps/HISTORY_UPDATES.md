@@ -68,12 +68,24 @@
     deduction override inputs (fixed = pre-filled default, percent = auto
     % of gross). Na-verify: Nash (Sept) net ₱23,450.97, Jhon Gerald (Sept)
     gross ₱25,080 — kapareho ng original.
+- **Payroll calculation fix #2 (pagkalat ng "hindi gumagana"):** ang
+  absence detection dati ay binibilang ang lahat ng walang clock-in na
+  working day bilang absent kahit walang attendance records ang buwang
+  iyon — kaya sa mga buwang walang data (hal. default December 2026)
+  lumalabas ₱0 / negative ang gross para sa lahat. Inayos: kapag walang
+  kahit isang attendance record ang empleyado para sa period, walang
+  matukoy na absence (graceful fallback sa stored `hoursWorked`/
+  `absenceDays`); may records dating months (kagaya ng September 2026)
+  ay pareho pa rin ang resulta sa original. Na-verify: Sep Nash net
+  ₱23,450.97, Jan/Dec positive full-salary + 13th month sa December.
 - Files: lahat ng `client/src/pages/**`, `client/src/components/{ui,Layout,
   Sidebar,Navbar}.jsx`, `client/src/App.jsx`, `client/LoginPage.jsx`,
   `client/vite.config.js`, `server/server.js`, `.gitignore`, `README.md`,
   `HISTORY_UPDATES.md`, `START.bat`, `client/src/lib/payroll.js`,
-  `client/src/pages/finance/PayrollCalculator.jsx`; rebuilt: `client/dist`
-- Commits: *(pending)*
+  `client/src/pages/finance/PayrollCalculator.jsx`, `client/src/lib/payroll.js`;
+  rebuilt: `client/dist`
+- Commits: `618e1c9` (payroll calculator parity), *(pending)* — fix #2 (absence
+  detection fallback) at ang belt-and-suspenders nito
 
 ### Sep 9, 2026 — Original Design Restored as Primary UI (panelist-approved look)
 - Binalik ang **original Vanilla JS frontend** (`public_old/`) bilang pangunahing

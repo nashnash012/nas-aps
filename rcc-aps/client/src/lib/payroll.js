@@ -80,6 +80,10 @@ function getLeaveCoveredDaySet(empId, monthNum, year, leaveRecords) {
 }
 
 export function getDetectedAbsences(empId, monthNum, year, attendance, leaveRecords) {
+  const monthRecs = attendance.filter(r => r.empId === empId &&
+    parseInt(String(r.date).slice(0, 4), 10) === year &&
+    parseInt(String(r.date).slice(5, 7), 10) === monthNum);
+  if (!monthRecs.length) return 0;
   const attDays = getAttendanceDaySet(empId, attendance);
   const leaveDays = getLeaveCoveredDaySet(empId, monthNum, year, leaveRecords);
   const workingDays = getPeriodWorkingDays(monthNum, year);
