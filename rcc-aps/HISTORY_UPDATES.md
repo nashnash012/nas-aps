@@ -45,10 +45,17 @@
 - **Backup:** inilipat ang `public_old/` (original Vanilla JS) mula
   `rcc-aps/` patungo sa repository root bilang git-ignored backup
   (idagdag ang `public_old/` sa `.gitignore`).
+- **START.bat** na-update para sa bagong setup: hard block kung hindi
+  ma-reach ang MySQL (kailangan na sa login at lahat ng data, wala nang
+  localStorage fallback); auto-install ng React dependencies
+  (`npm --prefix client install`) at auto-rebuild ng `client/dist`
+  (`npm --prefix client run build`) kung kulang o outdated ang build —
+  may per-file timestamp check (`dir /s /b` + `%%~tF` vs `dist\index.html`)
+  at artifact verification pagkatapos ng install/build.
 - Files: lahat ng `client/src/pages/**`, `client/src/components/{ui,Layout,
   Sidebar,Navbar}.jsx`, `client/src/App.jsx`, `client/LoginPage.jsx`,
   `client/vite.config.js`, `server/server.js`, `.gitignore`, `README.md`,
-  `HISTORY_UPDATES.md`; rebuilt: `client/dist`
+  `HISTORY_UPDATES.md`, `START.bat`; rebuilt: `client/dist`
 - Commits: *(pending)*
 
 ### Sep 9, 2026 — Original Design Restored as Primary UI (panelist-approved look)
