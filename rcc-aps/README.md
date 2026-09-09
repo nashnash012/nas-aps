@@ -6,30 +6,35 @@
 
 ```
 rcc-aps/
-├── public/                 # Frontend (static files)
-│   ├── index.html          # Single-page application
-│   ├── css/
-│   │   └── style.css       # All styling
-│   ├── js/                 # Application modules
-│   │   ├── core.js         # State, persistence, auth constants, format helpers
-│   │   ├── auth.js         # Login, profile, page navigation, payslip data
-│   │   ├── employees.js    # Employee portal functions
-│   │   ├── payroll.js      # Payroll calculator, records, users data
-│   │   ├── reports.js      # Government contribution report, analytics
-│   │   ├── bonus.js        # Bonus management (13th month, de minimis)
-│   │   ├── deductions.js   # Deduction categories, user management, modals
-│   │   └── ui.js           # Modal helpers, toasts
-│   └── assets/             # Brand images (RCC / APS logos)
+├── client/                 # React production app (Vite), full faithful UI
+│   ├── src/
+│   │   ├── api/            # Axios API layer (auth, data, leaves)
+│   │   ├── components/     # Layout, Sidebar, Navbar, ui (Modal/Toast), ProtectedRoute
+│   │   ├── hooks/          # useAuth (AuthProvider / JWT session)
+│   │   ├── lib/            # Payroll math (ported from Vanilla JS — unchanged)
+│   │   │   ├── payroll.js  # SSS/PhilHealth/Pag-IBIG/BIR, 13th Month, bonuses
+│   │   │   └── utils.js    # Format helpers (₱, escaping)
+│   │   ├── pages/          # admin/, finance/, employee/, shared pages
+│   │   └── styles/         # style.css + responsive.css (the approved design)
+│   ├── public/             # Brand images (RCC / APS logos)
+│   ├── index.html
+│   └── vite.config.js      # base '/', dev proxy /api → :3000, port 5173
 ├── server/
-│   ├── server.js           # Express server + REST API
+│   ├── server.js           # Express server + REST API + JWT-protected routes
 │   ├── db.js               # MySQL data-access layer (assemble/persist state)
-│   ├── migrate-db.js       # db.json -> MySQL migration script
+│   ├── migrate-db.js       # db.json -> MySQL migration (bcrypt-hashed auth)
+│   ├── auth-router.js      # /api/auth login, me, change-password (JWT)
+│   ├── middleware/jwt.js   # requireAuth / requireRole / JWT_SECRET
 │   ├── hris-mock.js        # Fallback HRIS demo data
 │   └── db/
 │       ├── db.json         # Legacy JSON export (source for `npm run migrate-db`)
 │       └── sql/schema.sql  # MySQL relational schema (rcc_aps database)
 └── package.json
 ```
+
+> `public_old/` (original Vanilla JS frontend — the panelist-approved design)
+> is kept as a **backup only** at the repository root and is git-ignored.
+> The live system is the React app above.
 
 ## Requirements
 
@@ -61,18 +66,43 @@ defaults:
 | `DB_PASSWORD` | *(empty)*   |
 | `DB_NAME`     | `rcc_aps`   |
 
+## Authentication (JWT)
+
+The backend issues a signed JWT on login (`/api/auth/login`). The `/api/data`,
+`/api/employees`, `/api/leaves`, `/api/leave-types`, `/api/leave-records` and
+`/api/hris/sync` routes require a valid `Authorization: Bearer <token>` header
+(401 otherwise); `/api/auth/*` and the health/status endpoints are public.
+The React app attaches the token via an Axios interceptor and redirects to
+`/login` on 401. Sessions expire after 8 hours.
+
+Demo account passwords are stored as **bcrypt hashes**; legacy plain-text
+passwords are auto-upgraded to hashes on first successful login.
+
 ## Running the System
+
+### Production at :3000
 
 ```bash
 npm install
-npm start
+npm --prefix client install
+npm --prefix client run build   # compile React into client/dist (base /)
+npm start                       # Express serves the React build at
+                                # http://localhost:3000
 ```
 
-Then open **http://localhost:3000**
+The React build is served at the **root** (`http://localhost:3000`) — a full
+faithful reproduction of the panelist-approved design. After any UI change,
+rebuild with `npm --prefix client run build` so `client/dist` stays in sync.
 
-The frontend keeps a copy of its state in `localStorage` and syncs it to MySQL
-through the REST API at `/api/data`. If the server is not running, the app still
-works fully from `localStorage`; when the server returns, the newer copy wins.
+### Development (Vite hot-reload, API proxied to :3000)
+
+```bash
+npm start                       # backend (API) on :3000
+npm --prefix client run dev     # React app on http://localhost:5173
+```
+
+The frontend keeps a copy of its state in MySQL through the REST API at
+`/api/data`.
 
 ## Demo Accounts
 
@@ -88,11 +118,14 @@ works fully from `localStorage`; when the server returns, the newer copy wins.
 |--------|-------------------|----------------------------------------|
 | GET    | `/api/health`     | Server status                          |
 | GET    | `/api/db/status`  | MySQL connection health + table counts |
-| GET    | `/api/data`       | Full persisted application state       |
-| POST   | `/api/data`       | Persist application state              |
-| GET    | `/api/employees`  | List of employee records               |
-| GET    | `/api/leaves`     | Leave types and records                |
-| GET    | `/api/hris/sync`  | Sync employee/attendance/leave from HRIS (mock fallback) |
+| POST   | `/api/auth/login` | Log in → returns a JWT token          |
+| GET    | `/api/auth/me`    | Current user from token (requires auth)|
+| POST   | `/api/auth/change-password` | Change own password (requires auth)|
+| GET    | `/api/data`       | Full persisted application state (requires auth) |
+| POST   | `/api/data`       | Persist application state (requires auth)         |
+| GET    | `/api/employees`  | List of employee records (requires auth)          |
+| GET    | `/api/leaves`     | Leave types and records (requires auth)           |
+| GET    | `/api/hris/sync`  | Sync employee/attendance/leave from HRIS (mock fallback, requires auth) |
 
 ## Compliance Highlights
 

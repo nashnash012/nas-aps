@@ -5,8 +5,10 @@
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
+const bcrypt = require('bcrypt');
 
 const DB_PATH = path.join(__dirname, 'db', 'db.json');
+const BCRYPT_ROUNDS = 10;
 const CFG = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -55,12 +57,17 @@ async function run() {
     for (const k of Object.keys(authObj)) {
       const a = authObj[k];
       if (!a) continue;
+      // Hash plain-text demo passwords (bcrypt). Already-hashed values pass through.
+      let pass = a.pass || '';
+      if (pass && !(pass.startsWith('$2b$') || pass.startsWith('$2a$'))) {
+        pass = await bcrypt.hash(pass, BCRYPT_ROUNDS);
+      }
       await conn.query(
         `INSERT INTO auth (id, email, pass, label, icon, page, role, status)
          VALUES (?,?,?,?,?,?,?,?)
          ON DUPLICATE KEY UPDATE email=VALUES(email)`,
         [a.id != null ? a.id : parseInt(k, 10) || 0,
-         (a.email || '').toLowerCase(), a.pass || '', a.label || '',
+         (a.email || '').toLowerCase(), pass, a.label || '',
          a.icon || '', a.page || '', a.role || 'employee', a.status || 'Active']
       );
     }
