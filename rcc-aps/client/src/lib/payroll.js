@@ -100,6 +100,12 @@ export function getAttendanceHours(empId, monthNum, year, attendance) {
   return recs.reduce((sum, r) => sum + (parseFloat(r.hours) || 0), 0);
 }
 
+// Total unpaid days for the payroll = unpaid leave days + detected absences.
+export function totalUnpaidDays(empId, monthNum, year, state) {
+  const { totalUnpaidDays: unpaid } = getLeaveBreakdown(empId, monthNum, year, (state && state.leaveRecords) || [], (state && state.leaveTypes) || []);
+  return unpaid + getDetectedAbsences(empId, monthNum, year, (state && state.attendance) || [], (state && state.leaveRecords) || []);
+}
+
 // ── EMPLOYEE PAY ──────────────────────────────────────────────
 export const EMP_CLASS = { Teaching: { badge: 'b-blue' }, 'Non-Teaching': { badge: 'b-gold' } };
 

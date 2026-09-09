@@ -52,10 +52,27 @@
   (`npm --prefix client run build`) kung kulang o outdated ang build —
   may per-file timestamp check (`dir /s /b` + `%%~tF` vs `dist\index.html`)
   at artifact verification pagkatapos ng install/build.
+- **Payroll calculation fix (parity sa original):** ang math engine
+  (`client/src/lib/payroll.js`) ay faithful port na, pero ang Payroll
+  Calculator dati ay gumagamit ng *stored* na `hoursWorked`/`absenceDays`
+  kaysa sa totoong attendance/leave records. Naibalik ang public_old wiring:
+  - Non-Teaching "Absences" → auto = unpaid leaves + detected absences
+    (`totalUnpaidDays`, bagong export).
+  - Teaching "Hours" → auto = attendance hours kung may records, kung hindi
+    stored `hoursWorked`.
+  - Auto re-prefill kapag nagbago ang pay period (kagaya ng
+    `onPayPeriodChange` sa original).
+  - 13th Month Pay = December-only: auto-check + enabled lang sa December
+    (RA 8515), disabled sa ibang buwan.
+  - Idinagdag ang 📅 Leave & Attendance breakdown panel at per-run custom
+    deduction override inputs (fixed = pre-filled default, percent = auto
+    % of gross). Na-verify: Nash (Sept) net ₱23,450.97, Jhon Gerald (Sept)
+    gross ₱25,080 — kapareho ng original.
 - Files: lahat ng `client/src/pages/**`, `client/src/components/{ui,Layout,
   Sidebar,Navbar}.jsx`, `client/src/App.jsx`, `client/LoginPage.jsx`,
   `client/vite.config.js`, `server/server.js`, `.gitignore`, `README.md`,
-  `HISTORY_UPDATES.md`, `START.bat`; rebuilt: `client/dist`
+  `HISTORY_UPDATES.md`, `START.bat`, `client/src/lib/payroll.js`,
+  `client/src/pages/finance/PayrollCalculator.jsx`; rebuilt: `client/dist`
 - Commits: *(pending)*
 
 ### Sep 9, 2026 — Original Design Restored as Primary UI (panelist-approved look)
