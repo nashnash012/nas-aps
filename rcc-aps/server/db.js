@@ -1,6 +1,5 @@
-// MySQL data-access layer for RCC-APS.
-// Replaces the JSON-file (db.json) persistence with relational tables in the
-// rcc_aps database. Exposes:
+// MySQL data-access layer for RCC-APS. MySQL (rcc_aps) is the single source
+// of truth for all application state. Exposes:
 //   - assembleState()  : read all tables -> a full state object (frontend shape)
 //   - persistState(s)  : write a full state object into the tables (transaction)
 //   - status()         : connection health info for /api/db/status
