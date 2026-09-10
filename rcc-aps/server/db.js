@@ -362,10 +362,8 @@ async function persistState(s) {
   }
 }
 
-// ── UPDATE PASSWORD ──────────────────────────────────────────
-// Used by auth-router to store bcrypt-hashed passwords.
-async function updatePassword(userId, hashedPassword) {
-  await q('UPDATE auth SET pass = ? WHERE id = ?', [hashedPassword, userId]);
+async function updatePassword(userId, hashed) {
+  await q('UPDATE auth SET pass = ? WHERE id = ?', [hashed, userId]);
 }
 
 module.exports = { assembleState, persistState, status, q, updatePassword };

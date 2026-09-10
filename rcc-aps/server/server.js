@@ -4,8 +4,7 @@ const path = require('path');
 const hrisMock = require('./hris-mock');
 const { validateStateBody } = require('./state-validator');
 const db = require('./db');
-const authRouter = require('./auth-router');
-const { requireAuth, requireRole } = require('./middleware/jwt');
+const { requireAuth } = require('./middleware/jwt');
 
 const app = express();
 const PORT = parseInt(process.env.PORT) || 3000;
@@ -13,15 +12,10 @@ const HRIS_API_URL = process.env.HRIS_API_URL || '';      // e.g. https://hris.r
 const HRIS_API_KEY = process.env.HRIS_API_KEY || '';      // bearer token for the HRIS API
 
 app.use(express.json({ limit: '10mb' }));
+app.use('/api/auth', require('./auth-router'));
+app.use(express.static(path.join(__dirname, '..', 'public')));
 
-// ── AUTH ROUTES (public) ──────────────────────────────────────
-app.use('/api/auth', authRouter);
-
-// ── STATIC FILES ──────────────────────────────────────────────
-// Serve the React production build (the design approved by the
-// panelists) at the root. Run `npm run build` in /client after any
-// UI change so dist/ stays in sync.
-app.use(express.static(path.join(__dirname, '..', 'client', 'dist')));
+// Routes that must be handled by the browser (SPA fallback).
 
 // ── HRIS DATA ────────────────────────────────────────────────
 function mapHrisEmployee(h) {
@@ -122,14 +116,13 @@ app.get('/api/hris/status', (req, res) => {
   });
 });
 
-// ── HRIS SYNC (protected) ────────────────────────────────────
-app.get('/api/hris/sync', requireAuth, async (req, res) => {
+app.get('/api/hris/sync', async (req, res) => {
   const result = await fetchHrisData();
   res.json({ source: result.source, employees: result.employees, attendance: result.attendance || [], leaveRecords: result.leaveRecords || [] });
 });
 
 // ── STATE (MySQL-backed, frontend-blob compatible) ───────────
-app.get('/api/data', requireAuth, async (req, res) => {
+app.get('/api/data', async (req, res) => {
   try {
     const state = await db.assembleState();
     res.json(state);
@@ -154,7 +147,7 @@ app.post('/api/data', requireAuth, async (req, res) => {
 });
 
 // ── EMPLOYEES ────────────────────────────────────────────────
-app.get('/api/employees', requireAuth, async (req, res) => {
+app.get('/api/employees', async (req, res) => {
   try {
     const state = await db.assembleState();
     res.json(state.users || []);
@@ -163,8 +156,8 @@ app.get('/api/employees', requireAuth, async (req, res) => {
   }
 });
 
-// ── LEAVE ENDPOINTS (protected) ──────────────────────────────
-app.get('/api/leaves', requireAuth, async (req, res) => {
+// ── LEAVE ENDPOINTS ──────────────────────────────────────────
+app.get('/api/leaves', async (req, res) => {
   try {
     const state = await db.assembleState();
     res.json({
@@ -198,17 +191,6 @@ app.post('/api/leave-records', requireAuth, async (req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: 'Failed to save leave records.' });
   }
-});
-
-// ── SPA FALLBACK (React at root) ─────────────────────────────
-// Serve the React index.html for any non-API GET that did not match a
-// static asset, so its client-side routes resolve on reload.
-app.use((req, res, next) => {
-  if (req.method === 'GET' && !req.path.startsWith('/api/')) {
-    const index = path.join(__dirname, '..', 'client', 'dist', 'index.html');
-    if (fs.existsSync(index)) return res.sendFile(index);
-  }
-  next();
 });
 
 app.listen(PORT, async () => {

@@ -164,6 +164,9 @@ tr:hover td{background:#FEFCF8}
 .search-wrap{position:relative;flex:1;min-width:180px}
 .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--text-muted);pointer-events:none}
 .search-inp{width:100%;padding:9px 12px 9px 34px;border:1.5px solid var(--border);border-radius:9px;font-family:"Source Sans 3",sans-serif;font-size:13px;color:var(--text);outline:none;transition:all 0.2s;background:var(--white)}
+.combobox .search-inp{padding-right:30px}
+.combobox-arrow{position:absolute;right:6px;top:50%;transform:translateY(-50%);border:none;background:transparent;color:var(--text-muted);cursor:pointer;font-size:11px;padding:4px 6px;line-height:1;transition:color 0.2s}
+.combobox-arrow:hover{color:var(--maroon)}
 .search-inp:focus{border-color:var(--maroon)}
 .combobox{position:relative}
 .combobox-list{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--white);border:1.5px solid var(--border);border-radius:9px;max-height:220px;overflow-y:auto;z-index:100;box-shadow:0 10px 30px rgba(0,0,0,0.12)}
