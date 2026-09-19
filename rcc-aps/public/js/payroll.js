@@ -698,8 +698,8 @@ function activeBonusTypes(emp, baseGross, periodEnd) {
   const isDecemberPeriod = !!periodEnd && periodEnd.getMonth() === 11;
   return bonusTypes
     .filter(b => {
-      if (b.status !== 'Active' || b.id === 1 || isIgnoredCustomBonus(b)) return false;
-      // Months-of-Pay customs mirror the statutory 13th Month Pay: December-only.
+      if (b.status !== 'Active') return false;
+      // Months-of-Pay bonuses apply to December payroll runs only.
       if (b.kind === 'months' && !isDecemberPeriod) return false;
       // Give-date scheduling: a bonus with a release date only applies to
       // payroll periods ending on or after that date — and only once the

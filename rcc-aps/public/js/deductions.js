@@ -240,10 +240,17 @@ function renderLeaveRecords() {
     empty.style.display = 'block';
     return;
   }
+
+  // Filter by selected employee
+  const selectedEmpId = parseInt(document.getElementById('leaveRecEmp')?.value) || 0;
+  const filtered = records.filter(rec => {
+    return !selectedEmpId || rec.empId === selectedEmpId;
+  });
+
   list.style.display = 'table-row-group';
   empty.style.display = 'none';
 
-  list.innerHTML = records.map(rec => {
+  list.innerHTML = filtered.map(rec => {
     const emp = users.find(u => u.id === rec.empId);
     const lt = LEAVE_TYPES.find(t => t.id === rec.typeId);
     const name = emp ? displayName(emp) : ('#USR-' + (rec.empId || '?'));
@@ -265,6 +272,74 @@ function renderLeaveRecords() {
 
 let nextLeaveRecordId = (_savedDemo && _savedDemo.nextLeaveRecordId) || (LEAVE_RECORDS.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1);
 
+// ── LEAVE RECORDS EMPLOYEE FILTER (combobox) ──────────────────
+function leaveRecEmpOptions() {
+  return users.filter(u => u.status === 'Active' && (u.role === 'Employee' || u.role === 'Finance Officer' || u.role === 'System Admin'));
+}
+function getLeaveRecEmpQuery() {
+  return ((document.getElementById('leaveRecEmpSearch') || {}).value || '').toLowerCase().trim();
+}
+function leaveRecEmpMatches(u) {
+  const q = getLeaveRecEmpQuery();
+  if (!q) return true;
+  const name = `${u.first} ${u.last}`.toLowerCase();
+  return name.includes(q) || (u.email || '').toLowerCase().includes(q);
+}
+function renderLeaveRecEmpList(list, show) {
+  const box = document.getElementById('leaveRecEmpList');
+  if (!box) return;
+  const allItem = `<div class="combobox-item" onclick="selectLeaveRecEmp(0)" style="font-weight:600;color:var(--maroon-dark)">📋 All Employees</div>`;
+  box.innerHTML = allItem + (list.length
+    ? list.map(u => `<div class="combobox-item" onclick="selectLeaveRecEmp(${u.id})">${esc(displayName(u))} — ${u.classification}</div>`).join('')
+    : '<div class="combobox-empty">No employee found.</div>');
+  box.classList.toggle('show', show !== false);
+}
+function openLeaveRecEmpList() {
+  renderLeaveRecEmpList(leaveRecEmpOptions().filter(leaveRecEmpMatches));
+}
+function toggleLeaveRecEmpList(e) {
+  if (e) e.stopPropagation();
+  const box = document.getElementById('leaveRecEmpList');
+  if (box && box.classList.contains('show')) closeLeaveRecEmpList();
+  else openLeaveRecEmpList();
+}
+function closeLeaveRecEmpList() {
+  const box = document.getElementById('leaveRecEmpList');
+  if (box) box.classList.remove('show');
+}
+function onLeaveRecEmpInput() {
+  openLeaveRecEmpList();
+}
+function onLeaveRecEmpKey(e) {
+  if (e.key === 'Escape') { closeLeaveRecEmpList(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); openLeaveRecEmpList(); return; }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const item = document.querySelector('#leaveRecEmpList .combobox-item');
+    if (item) item.click();
+  }
+  if (e.key === 'Backspace' && !e.target.value) {
+    selectLeaveRecEmp(0);
+  }
+}
+function selectLeaveRecEmp(id) {
+  document.getElementById('leaveRecEmp').value = id;
+  const inp = document.getElementById('leaveRecEmpSearch');
+  if (id === 0) {
+    inp.value = '';
+    inp.placeholder = 'All Employees';
+  } else {
+    const emp = users.find(u => u.id === id);
+    if (emp) inp.value = displayName(emp);
+  }
+  closeLeaveRecEmpList();
+  renderLeaveRecords();
+}
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('leaveRecEmpWrap');
+  if (wrap && !wrap.contains(e.target)) closeLeaveRecEmpList();
+});
+
 // Render HRIS attendance (read-only, imported via sync). Shows one row per day.
 function renderAttendance() {
   const list = document.getElementById('attendanceList');
@@ -278,10 +353,17 @@ function renderAttendance() {
     if (empty) empty.style.display = 'block';
     return;
   }
+
+  // Filter by selected employee
+  const selectedEmpId = parseInt(document.getElementById('attEmp')?.value) || 0;
+  const filtered = records.filter(r => {
+    return !selectedEmpId || r.empId === selectedEmpId;
+  });
+
   if (empty) empty.style.display = 'none';
   list.style.display = 'table-row-group';
 
-  list.innerHTML = records.map(r => {
+  list.innerHTML = filtered.map(r => {
     const emp = users.find(u => u.id === r.empId);
     const name = emp ? displayName(emp) : ('#USR-' + (r.empId || '?'));
     const inTxt = fmtClock(r.clockInAt);
@@ -305,6 +387,74 @@ function fmtClock(iso) {
   d.setMinutes(d.getMinutes() + 8 * 60); // UTC -> Asia/Manila
   return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
 }
+
+// ── ATTENDANCE EMPLOYEE FILTER (combobox) ─────────────────────
+function attEmpOptions() {
+  return users.filter(u => u.status === 'Active' && (u.role === 'Employee' || u.role === 'Finance Officer' || u.role === 'System Admin'));
+}
+function getAttEmpQuery() {
+  return ((document.getElementById('attEmpSearch') || {}).value || '').toLowerCase().trim();
+}
+function attEmpMatches(u) {
+  const q = getAttEmpQuery();
+  if (!q) return true;
+  const name = `${u.first} ${u.last}`.toLowerCase();
+  return name.includes(q) || (u.email || '').toLowerCase().includes(q);
+}
+function renderAttEmpList(list, show) {
+  const box = document.getElementById('attEmpList');
+  if (!box) return;
+  const allItem = `<div class="combobox-item" onclick="selectAttEmp(0)" style="font-weight:600;color:var(--maroon-dark)">📋 All Employees</div>`;
+  box.innerHTML = allItem + (list.length
+    ? list.map(u => `<div class="combobox-item" onclick="selectAttEmp(${u.id})">${esc(displayName(u))} — ${u.classification}</div>`).join('')
+    : '<div class="combobox-empty">No employee found.</div>');
+  box.classList.toggle('show', show !== false);
+}
+function openAttEmpList() {
+  renderAttEmpList(attEmpOptions().filter(attEmpMatches));
+}
+function toggleAttEmpList(e) {
+  if (e) e.stopPropagation();
+  const box = document.getElementById('attEmpList');
+  if (box && box.classList.contains('show')) closeAttEmpList();
+  else openAttEmpList();
+}
+function closeAttEmpList() {
+  const box = document.getElementById('attEmpList');
+  if (box) box.classList.remove('show');
+}
+function onAttEmpInput() {
+  openAttEmpList();
+}
+function onAttEmpKey(e) {
+  if (e.key === 'Escape') { closeAttEmpList(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); openAttEmpList(); return; }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const item = document.querySelector('#attEmpList .combobox-item');
+    if (item) item.click();
+  }
+  if (e.key === 'Backspace' && !e.target.value) {
+    selectAttEmp(0);
+  }
+}
+function selectAttEmp(id) {
+  document.getElementById('attEmp').value = id;
+  const inp = document.getElementById('attEmpSearch');
+  if (id === 0) {
+    inp.value = '';
+    inp.placeholder = 'All Employees';
+  } else {
+    const emp = users.find(u => u.id === id);
+    if (emp) inp.value = displayName(emp);
+  }
+  closeAttEmpList();
+  renderAttendance();
+}
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('attEmpWrap');
+  if (wrap && !wrap.contains(e.target)) closeAttEmpList();
+});
 
 function openAddLeaveRecord() {
   const empSel = document.getElementById('leaveRecordEmp');
