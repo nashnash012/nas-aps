@@ -150,10 +150,10 @@ tr:hover td{background:#FEFCF8}
 .btn-primary:hover{box-shadow:0 4px 14px rgba(107,26,26,0.3);transform:translateY(-1px)}
 .btn-gold{background:var(--gold);color:var(--maroon-dark);font-weight:700}
 .btn-gold:hover{background:var(--gold-light);transform:translateY(-1px)}
-.btn-outline{background:transparent;color:var(--maroon);border:1.5px solid var(--maroon)}
+.btn-outline{background:transparent;color:var(--maroon);border:1.5px solid var(--maroon);justify-content:center}
 .btn-outline:hover{background:var(--gold-pale)}
-.btn-danger{background:transparent;color:#C62828;border:1.5px solid #EF9A9A}
-.btn-danger:hover{background:#FFEBEE}
+.btn-danger{background:#C62828;color:#fff;border:none;justify-content:center}
+.btn-danger:hover{background:#B71C1C;transform:translateY(-1px);box-shadow:0 4px 14px rgba(198,40,40,0.3)}
 .btn-sm{padding:6px 12px;font-size:12px}
 .btn-icon{width:32px;height:32px;padding:0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;font-size:15px}
 
