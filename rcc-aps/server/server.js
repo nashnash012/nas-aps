@@ -4,6 +4,7 @@ const path = require('path');
 const hrisMock = require('./hris-mock');
 const { validateStateBody } = require('./state-validator');
 const db = require('./db');
+const { init } = require('./db/init');
 const { requireAuth } = require('./middleware/jwt');
 
 const app = express();
@@ -195,6 +196,10 @@ app.post('/api/leave-records', requireAuth, async (req, res) => {
 
 app.listen(PORT, async () => {
   try {
+    const result = await init();
+    if (result.seeded) {
+      console.log('[MySQL] First-run auto-init complete — database created and seeded.');
+    }
     const st = await db.status();
     if (st.connected) {
       console.log(`[MySQL] Connected to ${st.host}/${st.database} @ ${st.serverTime}`);
@@ -202,7 +207,7 @@ app.listen(PORT, async () => {
       console.warn('[MySQL] WARNING: database unreachable — ' + st.error);
     }
   } catch (e) {
-    console.warn('[MySQL] WARNING: database unreachable — ' + e.message);
+    console.warn('[MySQL] WARNING: init failed — ' + e.message);
   }
   console.log(`RCC-APS Payroll System running at http://localhost:${PORT}`);
 });
