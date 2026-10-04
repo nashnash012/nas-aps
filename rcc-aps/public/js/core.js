@@ -19,34 +19,37 @@ function currentUid() {
   return (typeof loggedInUser !== 'undefined' && loggedInUser && loggedInUser.id) || 0;
 }
 function saveDemo() {
-  try {
-    const uid = currentUid();
-    if (uid) {
-      const pp = document.getElementById('empPhone');
-      const pa = document.getElementById('empAddr');
-      if (pp && pa && (pp.value.trim() || pa.value.trim())) {
-        PROFILES[uid] = { empPhone: pp.value, empAddr: pa.value };
+  return new Promise((resolve) => {
+    try {
+      const uid = currentUid();
+      if (uid) {
+        const pp = document.getElementById('empPhone');
+        const pa = document.getElementById('empAddr');
+        if (pp && pa && (pp.value.trim() || pa.value.trim())) {
+          PROFILES[uid] = { empPhone: pp.value, empAddr: pa.value };
+        }
       }
+      const state = {
+        users, nextUserId, cashAdvances, bonusTypes, nextBonusId, auth: USERS_AUTH,
+        deductionCategories, nextDedCatId, payrollRecords, bonusPayouts,
+        sssTable, philData, pagData, birData, dedMeta, bonusExemptionLimit: BONUS_EXEMPTION_LIMIT,
+        workDays: WORK_DAYS,
+        leaveTypes: (typeof LEAVE_TYPES !== 'undefined') ? LEAVE_TYPES : [],
+        nextLeaveTypeId: (typeof NEXT_LEAVE_TYPE_ID !== 'undefined') ? NEXT_LEAVE_TYPE_ID : 1,
+        leaveRecords: (typeof LEAVE_RECORDS !== 'undefined') ? LEAVE_RECORDS : [],
+        nextLeaveRecordId: (typeof nextLeaveRecordId !== 'undefined') ? nextLeaveRecordId : 1,
+        attendance: (typeof ATTENDANCE !== 'undefined') ? ATTENDANCE : [],
+        profiles: PROFILES,
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem(DEMO_KEY, JSON.stringify(state));
+      pushToServer(state).then(() => {
+        resolve(true);
+      });
+    } catch(e){
+      resolve(false);
     }
-    const state = {
-      users, nextUserId, cashAdvances, bonusTypes, nextBonusId, auth: USERS_AUTH,
-      deductionCategories, nextDedCatId, payrollRecords, bonusPayouts,
-      sssTable, philData, pagData, birData, dedMeta, bonusExemptionLimit: BONUS_EXEMPTION_LIMIT,
-      workDays: WORK_DAYS,
-      leaveTypes: (typeof LEAVE_TYPES !== 'undefined') ? LEAVE_TYPES : [],
-      nextLeaveTypeId: (typeof NEXT_LEAVE_TYPE_ID !== 'undefined') ? NEXT_LEAVE_TYPE_ID : 1,
-      leaveRecords: (typeof LEAVE_RECORDS !== 'undefined') ? LEAVE_RECORDS : [],
-      nextLeaveRecordId: (typeof nextLeaveRecordId !== 'undefined') ? nextLeaveRecordId : 1,
-      attendance: (typeof ATTENDANCE !== 'undefined') ? ATTENDANCE : [],
-      profiles: PROFILES,
-      savedAt: new Date().toISOString()
-    };
-    localStorage.setItem(DEMO_KEY, JSON.stringify(state));
-    pushToServer(state);
-  } catch(e){
-    // Surface storage failures (e.g. quota exceeded) instead of failing silently.
-    if (typeof showToast === 'function') showToast('⚠️', 'Save failed locally: ' + ((e && e.message) || e));
-  }
+  });
 }
 function resetDemo() {
   localStorage.removeItem(DEMO_KEY);
@@ -54,53 +57,58 @@ function resetDemo() {
 }
 
 function pushToServer(state) {
-  const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
-  if (!token) return;
-  try {
-    fetch('/api/data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify(state)
-    })
-      .then(r => { if (r.status === 401) clearAuthToken(); })
-      .catch(() => {});
-  } catch(e){}
+  return new Promise((resolve) => {
+    const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+    if (!token) { resolve(false); return; }
+    try {
+      fetch('/api/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(state)
+      })
+        .then(r => { if (r.status === 401) clearAuthToken(); resolve(r.ok); })
+        .catch(() => { resolve(false); });
+    } catch(e) { resolve(false); }
+  });
 }
 function syncDemo() {
-  try {
-    const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
-    const headers = {};
-    if (token) headers['Authorization'] = 'Bearer ' + token;
-    fetch('/api/data', { headers })
-      .then(r => {
-        if (r.status === 401) { clearAuthToken(); return null; }
-        if (!r.ok) throw new Error('server offline');
-        return r.json();
-      })
-      .then(d => {
-        if (!d || !d.users || !d.users.length) return;
-        const localRaw = localStorage.getItem(DEMO_KEY);
-        let adopt = false;
-        if (!localRaw) {
-          adopt = true;
-        } else {
-          let local = null;
-          try { local = JSON.parse(localRaw); } catch(e) {}
-          const serverTime = Date.parse(d.savedAt) || 0;
-          const localTime  = Date.parse(local && local.savedAt) || 0;
-          if (serverTime >= localTime) adopt = true;
-          else pushToServer(local);
-        }
-        if (adopt) {
-          localStorage.setItem(DEMO_KEY, JSON.stringify(d));
-          // Refresh in-memory state so the current session reflects the server
-          // without a page reload (reload was removed to prevent refresh loops).
-          if (typeof applyServerData === 'function') applyServerData(d);
-          refreshVisiblePage();
-        }
-      })
-      .catch(() => {});
-  } catch(e){}
+  return new Promise((resolve) => {
+    try {
+      const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+      const headers = {};
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      fetch('/api/data', { headers })
+        .then(r => {
+          if (r.status === 401) { clearAuthToken(); resolve(false); return null; }
+          if (!r.ok) throw new Error('server offline');
+          return r.json();
+        })
+        .then(d => {
+          if (!d || !d.users || !d.users.length) { resolve(false); return; }
+          const localRaw = localStorage.getItem(DEMO_KEY);
+          let adopt = false;
+          if (!localRaw) {
+            adopt = true;
+          } else {
+            let local = null;
+            try { local = JSON.parse(localRaw); } catch(e) {}
+            const serverTime = Date.parse(d.savedAt) || 0;
+            const localTime  = Date.parse(local && local.savedAt) || 0;
+            if (serverTime >= localTime) adopt = true;
+            else pushToServer(local);
+          }
+          if (adopt) {
+            localStorage.setItem(DEMO_KEY, JSON.stringify(d));
+            if (typeof applyServerData === 'function') applyServerData(d);
+            refreshVisiblePage();
+            resolve(true);
+          } else {
+            resolve(false);
+          }
+        })
+        .catch(() => { resolve(false); });
+    } catch(e) { resolve(false); }
+  });
 }
 function refreshVisiblePage() {
   if (!(typeof loggedInUser !== 'undefined' && loggedInUser && loggedInUser.page)) return;
@@ -153,7 +161,7 @@ function removeAuth(userId) {
 function restoreProfileFields() {
   const pp = document.getElementById('empPhone');
   const pa = document.getElementById('empAddr');
-  if (!pp || !pa) return;
+  if (!pp || !pa) return; 
   const p = PROFILES[currentUid()] || {};
   pp.value = p.empPhone || '';
   pa.value = p.empAddr || '';

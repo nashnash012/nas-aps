@@ -767,12 +767,12 @@ function confirmDeactivate(id) {
   document.getElementById('confirmIcon').textContent='⚠️';
   document.getElementById('confirmMsg').innerHTML=`Are you sure you want to deactivate <strong>${esc(u.first+' '+u.last)}</strong>? Their access will be suspended.`;
   document.getElementById('confirmActionBtn').textContent='Deactivate';
-  document.getElementById('confirmActionBtn').onclick=()=>{ u.status='Inactive'; ensureAuth(u); closeModal('confirmModal'); renderUserTable(); renderAdminRecentUsers(); showToast('⏸',`${u.first} ${u.last} deactivated.`); };
+  document.getElementById('confirmActionBtn').onclick=()=>{ u.status='Inactive'; ensureAuth(u); saveDemo(); closeModal('confirmModal'); renderUserTable(); renderAdminRecentUsers(); showToast('⏸',`${u.first} ${u.last} deactivated.`); };
   document.getElementById('confirmModal').classList.add('show');
 }
 function reactivateUser(id) {
   const u=users.find(x=>x.id===id); if(!u) return;
-  u.status='Active'; ensureAuth(u); renderUserTable(); renderAdminRecentUsers();
+  u.status='Active'; ensureAuth(u); saveDemo(); renderUserTable(); renderAdminRecentUsers();
   showToast('✅',`${u.first} ${u.last} reactivated.`);
 }
 
@@ -848,13 +848,18 @@ function syncFromHris() {
           added++;
         }
       });
-      // Deactivate (NOT delete) any Active user missing from the HRIS pull,
-      // except the three seed accounts (one per role), so payroll history is preserved.
+// Deactivate (NOT delete) any Active user missing from the HRIS pull,
+      // except accounts that were previously synced from HRIS, so payroll history is preserved.
+      // Mga account na galing sa Add User (manual) ay hindi madedeactivate.
       const hrisEmails = new Set((d.employees || []).map(h => (h.email || '').toLowerCase()));
-      const seedEmails = ['admin@rcc.edu.ph', 'finance@rcc.edu.ph', 'employee@rcc.edu.ph'];
+      // HRIS_EMAILS mula sa localStorage (mga dati nang galing sa HRIS sync)
+      const prevHRIS_Emails = JSON.parse(localStorage.getItem('hrisSyncedEmails') || '[]');
+      const allHRIS_Emails = new Set([...prevHRIS_Emails, ...hrisEmails]);
+      // Store updated list para sa susunod na sync
+      localStorage.setItem('hrisSyncedEmails', JSON.stringify([...hrisEmails]));
       let deactivated = 0;
       users.forEach(u => {
-        if (u.status === 'Active' && !hrisEmails.has(u.email.toLowerCase()) && !seedEmails.includes(u.email.toLowerCase())) {
+        if (u.status === 'Active' && allHRIS_Emails.has(u.email.toLowerCase()) && !hrisEmails.has(u.email.toLowerCase())) {
           u.status = 'Inactive';
           ensureAuth(u);
           deactivated++;

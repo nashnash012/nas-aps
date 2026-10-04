@@ -238,24 +238,24 @@
         <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px">
           <div class="card">
             <div class="card-body" style="text-align:center">
-              <div style="width:80px;height:80px;border-radius:50%;background:var(--maroon);color:var(--white);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;margin:0 auto 16px;border:3px solid var(--gold)">JG</div>
-              <div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--maroon-dark)">Jhon Gerald Batuaan</div>
-              <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Employee</div>
-              <div style="margin-top:12px"><span class="badge b-green">● Active</span></div>
-              <div style="margin-top:16px;font-size:12px;color:var(--text-muted)">Employee ID<br/><strong style="color:var(--text)">#USR-001</strong></div>
+              <div id="empProfAvatar" style="width:80px;height:80px;border-radius:50%;background:var(--maroon);color:var(--white);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;margin:0 auto 16px;border:3px solid var(--gold)">JG</div>
+              <div id="empProfName" style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--maroon-dark)">Jhon Gerald Batuaan</div>
+              <div id="empProfRole" style="font-size:12px;color:var(--text-muted);margin-top:4px">Employee</div>
+              <div id="empProfStatus" style="margin-top:12px"><span class="badge b-green">● Active</span></div>
+              <div style="margin-top:16px;font-size:12px;color:var(--text-muted)">Employee ID<br/><strong id="empProfId" style="color:var(--text)">#USR-001</strong></div>
             </div>
           </div>
           <div class="card">
             <div class="card-head"><div class="card-title">✏️ Edit Contact Information</div></div>
             <div class="card-body">
               <div class="fg-row">
-                <div class="fg"><label class="fl">First Name</label><input class="fi" value="Jhon Gerald" readonly style="background:var(--bg);color:var(--text-muted)"/></div>
-                <div class="fg"><label class="fl">Last Name</label><input class="fi" value="Batuaan" readonly style="background:var(--bg);color:var(--text-muted)"/></div>
+                <div class="fg"><label class="fl">First Name</label><input class="fi" id="empProfFirst" value="Jhon Gerald" readonly style="background:var(--bg);color:var(--text-muted)"/></div>
+                <div class="fg"><label class="fl">Last Name</label><input class="fi" id="empProfLast" value="Batuaan" readonly style="background:var(--bg);color:var(--text-muted)"/></div>
               </div>
-              <div class="fg"><label class="fl">Email Address</label><input class="fi" value="employee@rcc.edu.ph" readonly style="background:var(--bg);color:var(--text-muted)"/></div>
+              <div class="fg"><label class="fl">Email Address</label><input class="fi" id="empProfEmail" value="employee@rcc.edu.ph" readonly style="background:var(--bg);color:var(--text-muted)"/></div>
               <div class="fg-row">
                 <div class="fg"><label class="fl">Phone Number</label><input class="fi" id="empPhone" value="09171234567" placeholder="09XXXXXXXXX"/></div>
-                <div class="fg"><label class="fl">Department</label><input class="fi" value="Finance Department" readonly style="background:var(--bg);color:var(--text-muted)"/></div>
+                <div class="fg"><label class="fl">Department</label><input class="fi" id="empProfDept" value="Finance Department" readonly style="background:var(--bg);color:var(--text-muted)"/></div>
               </div>
               <div class="fg"><label class="fl">Home Address</label><input class="fi" id="empAddr" value="123 Mabini St., Angeles City, Pampanga" placeholder="Enter your home address"/></div>
               <div style="margin-top:8px;display:flex;gap:10px">
@@ -319,7 +319,7 @@
       <button class="menu-btn" onclick="toggleSidebar('financePage')" aria-label="Open menu">☰</button>
       <div class="tb-right">
         <div style="display:flex;align-items:center;gap:8px;background:#F5F0E8;border:1px solid #E0D0B8;border-radius:8px;padding:6px 14px;font-size:13px;color:#666">📅 <span id="finDateDisplay">May 03, 2026</span></div>
-        <div style="display:flex;align-items:center;gap:10px"><div class="tb-avatar" style="background:#7D5A00">JC</div><div><div class="tb-name">John Cabigting</div><div class="tb-role">Finance Officer</div></div></div>
+        <div style="display:flex;align-items:center;gap:10px"><div class="tb-avatar" id="finAvatar" style="background:#7D5A00">JC</div><div><div class="tb-name" id="finTbName">John Cabigting</div><div class="tb-role">Finance Officer</div></div></div>
       </div>
     </div>
     <div class="dash-content">
@@ -512,24 +512,24 @@
         <div class="card" style="max-width:600px;margin-top:16px">
           <div class="card-body">
             <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
-              <div style="width:56px;height:56px;border-radius:50%;background:var(--maroon-dark);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#fff;flex-shrink:0">JC</div>
+              <div id="finProfAvatar" style="width:56px;height:56px;border-radius:50%;background:var(--maroon-dark);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#fff;flex-shrink:0">JC</div>
               <div>
-                <div style="font-weight:700;font-size:16px;color:var(--text)">John Cabigting</div>
-                <div style="font-size:12px;color:var(--text-muted)">Finance Officer</div>
+                <div id="finProfName" style="font-weight:700;font-size:16px;color:var(--text)">John Cabigting</div>
+                <div id="finProfRole" style="font-size:12px;color:var(--text-muted)">Finance Officer</div>
                 <button class="btn btn-outline btn-sm" style="margin-top:6px;padding:4px 12px;font-size:11px" onclick="showToast('📷','Photo upload coming soon.')">Change photo</button>
               </div>
             </div>
             <div class="fg-row">
-              <div class="fg"><label class="fl">First Name</label><input class="fi" value="John"/></div>
-              <div class="fg"><label class="fl">Last Name</label><input class="fi" value="Cabigting"/></div>
+              <div class="fg"><label class="fl">First Name</label><input class="fi" id="finProfFirst" value="John"/></div>
+              <div class="fg"><label class="fl">Last Name</label><input class="fi" id="finProfLast" value="Cabigting"/></div>
             </div>
-            <div class="fg"><label class="fl">Email</label><input class="fi" value="finance@rcc.edu.ph"/></div>
-            <div class="fg"><label class="fl">Phone</label><input class="fi" value="(+63) 917-555-2048"/></div>
-            <div class="fg"><label class="fl">Address</label><input class="fi" value="Brgy. San Nicolas, Angeles City, Pampanga"/></div>
+            <div class="fg"><label class="fl">Email</label><input class="fi" id="finProfEmail" value="finance@rcc.edu.ph"/></div>
+            <div class="fg"><label class="fl">Phone</label><input class="fi" id="finProfPhone" value="(+63) 917-555-2048"/></div>
+            <div class="fg"><label class="fl">Address</label><input class="fi" id="finProfAddr" value="Brgy. San Nicolas, Angeles City, Pampanga"/></div>
             <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
             <div class="fg-row">
-              <div class="fg"><label class="fl">Emergency Contact</label><input class="fi" value="Maria Cabigting"/></div>
-              <div class="fg"><label class="fl">Emergency Phone</label><input class="fi" value="(+63) 920-555-1180"/></div>
+              <div class="fg"><label class="fl">Emergency Contact</label><input class="fi" id="finProfEmergName" value="Maria Cabigting"/></div>
+              <div class="fg"><label class="fl">Emergency Phone</label><input class="fi" id="finProfEmergPhone" value="(+63) 920-555-1180"/></div>
             </div>
             <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">
               <button class="btn btn-outline" onclick="showFinPage('finDashboard',null)">Cancel</button>
@@ -1245,7 +1245,7 @@
         <div style="display:flex;align-items:center;gap:8px;background:#F5F0E8;border:1px solid #E0D0B8;border-radius:8px;padding:6px 14px;font-size:13px;color:#666">
           📅 <span id="admDateDisplay">May 03, 2026</span>
         </div>
-        <div style="display:flex;align-items:center;gap:10px"><div class="tb-avatar" style="background:#880E4F">NV</div><div><div class="tb-name">Nash Valencia</div><div class="tb-role">System Admin</div></div></div>
+        <div style="display:flex;align-items:center;gap:10px"><div class="tb-avatar" id="admAvatar" style="background:#880E4F">NV</div><div><div class="tb-name" id="admTbName">Nash Valencia</div><div class="tb-role">System Admin</div></div></div>
       </div>
     </div>
     <div class="dash-content">
@@ -1461,24 +1461,24 @@
         <div class="card" style="max-width:600px;margin-top:16px">
           <div class="card-body">
             <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--border)">
-              <div style="width:56px;height:56px;border-radius:50%;background:var(--maroon-dark);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#fff;flex-shrink:0">NV</div>
+              <div id="admProfAvatar" style="width:56px;height:56px;border-radius:50%;background:var(--maroon-dark);display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:#fff;flex-shrink:0">NV</div>
               <div>
-                <div style="font-weight:700;font-size:16px;color:var(--text)">Nash Valencia</div>
-                <div style="font-size:12px;color:var(--text-muted)">System Admin</div>
+                <div id="admProfName" style="font-weight:700;font-size:16px;color:var(--text)">Nash Valencia</div>
+                <div id="admProfRole" style="font-size:12px;color:var(--text-muted)">System Admin</div>
                 <button class="btn btn-outline btn-sm" style="margin-top:6px;padding:4px 12px;font-size:11px" onclick="showToast('📷','Photo upload coming soon.')">Change photo</button>
               </div>
             </div>
             <div class="fg-row">
-              <div class="fg"><label class="fl">First Name</label><input class="fi" value="Nash"/></div>
-              <div class="fg"><label class="fl">Last Name</label><input class="fi" value="Valencia"/></div>
+              <div class="fg"><label class="fl">First Name</label><input class="fi" id="admProfFirst" value="Nash"/></div>
+              <div class="fg"><label class="fl">Last Name</label><input class="fi" id="admProfLast" value="Valencia"/></div>
             </div>
-            <div class="fg"><label class="fl">Email</label><input class="fi" value="admin@rcc.edu.ph"/></div>
-            <div class="fg"><label class="fl">Phone</label><input class="fi" value="(+63) 918-555-3076"/></div>
-            <div class="fg"><label class="fl">Address</label><input class="fi" value="Brgy. Sto. Rosario, Angeles City, Pampanga"/></div>
+            <div class="fg"><label class="fl">Email</label><input class="fi" id="admProfEmail" value="admin@rcc.edu.ph"/></div>
+            <div class="fg"><label class="fl">Phone</label><input class="fi" id="admProfPhone" value="(+63) 918-555-3076"/></div>
+            <div class="fg"><label class="fl">Address</label><input class="fi" id="admProfAddr" value="Brgy. Sto. Rosario, Angeles City, Pampanga"/></div>
             <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
             <div class="fg-row">
-              <div class="fg"><label class="fl">Emergency Contact</label><input class="fi" value="Lourdes Valencia"/></div>
-              <div class="fg"><label class="fl">Emergency Phone</label><input class="fi" value="(+63) 921-555-4490"/></div>
+              <div class="fg"><label class="fl">Emergency Contact</label><input class="fi" id="admProfEmergName" value="Lourdes Valencia"/></div>
+              <div class="fg"><label class="fl">Emergency Phone</label><input class="fi" id="admProfEmergPhone" value="(+63) 921-555-4490"/></div>
             </div>
             <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:8px">
               <button class="btn btn-outline" onclick="showAdmPage('admDashboard',null)">Cancel</button>

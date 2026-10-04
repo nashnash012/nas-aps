@@ -105,6 +105,10 @@ function periodHasData(empId, monthNum, year) {
 function applyServerData(d) {
   if (!d) return;
   if (d.users) users = d.users;
+  if (d.auth && Object.keys(d.auth).length) {
+    Object.keys(USERS_AUTH).forEach(k => delete USERS_AUTH[k]);
+    Object.assign(USERS_AUTH, d.auth);
+  }
   if (d.nextUserId) nextUserId = d.nextUserId;
   if (d.cashAdvances) cashAdvances = d.cashAdvances;
   if (Array.isArray(d.payrollRecords)) payrollRecords = d.payrollRecords;

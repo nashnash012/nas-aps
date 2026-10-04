@@ -56,7 +56,8 @@ async function handleLogin() {
   }
   const u = res.user;
   loggedInUser = { id: u.id, email: u.email, role: u.role, label: u.label, icon: u.role === 'admin' ? '🔧' : u.role === 'finance' ? '💼' : '👤', page: u.page, status: u.status };
-  // Loading state
+  await syncDemo();
+  populateProfilePages();
   const btn = document.getElementById('loginBtn');
   btn.disabled = true;
   document.getElementById('btnText').textContent = 'Signing in...';
@@ -148,8 +149,58 @@ document.addEventListener('keydown', e => {
   if (lp && lp.style.display !== 'none') handleLogin();
 });
 
-// ── PAGE NAVIGATION ───────────────────────────────────────────
+function populateProfilePages() {
+  if (!loggedInUser) return;
+  const emp = users.find(u => u.id === loggedInUser.id);
+  if (!emp) return;
+  const el = id => document.getElementById(id);
+  const setVal = (id, v) => { const e = el(id); if (e) e.value = v; };
+  const setTxt = (id, v) => { const e = el(id); if (e) e.textContent = v; };
+  const initials = (emp.first[0] || '') + (emp.last[0] || '');
+  const roleLabel = emp.role || 'Employee';
+  const statusBadge = emp.status === 'Active'
+    ? '<span class="badge b-green">● Active</span>'
+    : '<span class="badge b-gray">● Inactive</span>';
+
+  setTxt('empProfAvatar', initials);
+  setTxt('empProfName', emp.first + ' ' + emp.last);
+  setTxt('empProfRole', roleLabel);
+  const st = el('empProfStatus'); if (st) st.innerHTML = statusBadge;
+  setTxt('empProfId', '#USR-00' + emp.id);
+  setVal('empProfFirst', emp.first);
+  setVal('empProfLast', emp.last);
+  setVal('empProfEmail', emp.email);
+  setVal('empProfDept', emp.department || '');
+  setTxt('finProfAvatar', initials);
+  setTxt('finProfName', emp.first + ' ' + emp.last);
+  setTxt('finProfRole', roleLabel);
+  setVal('finProfFirst', emp.first);
+  setVal('finProfLast', emp.last);
+  setVal('finProfEmail', emp.email);
+  setVal('finProfPhone', (PROFILES[loggedInUser.id] && PROFILES[loggedInUser.id].empPhone) || '');
+  setVal('finProfAddr', (PROFILES[loggedInUser.id] && PROFILES[loggedInUser.id].empAddr) || '');
+  setVal('finProfEmergName', '');
+  setVal('finProfEmergPhone', '');
+  setTxt('admProfAvatar', initials);
+  setTxt('admProfName', emp.first + ' ' + emp.last);
+  setTxt('admProfRole', roleLabel);
+  setVal('admProfFirst', emp.first);
+  setVal('admProfLast', emp.last);
+  setVal('admProfEmail', emp.email);
+  setVal('admProfPhone', (PROFILES[loggedInUser.id] && PROFILES[loggedInUser.id].empPhone) || '');
+  setVal('admProfAddr', (PROFILES[loggedInUser.id] && PROFILES[loggedInUser.id].empAddr) || '');
+  setVal('admProfEmergName', '');
+  setVal('admProfEmergPhone', '');
+  setTxt('empAvatar', initials);
+  setTxt('empTbName', emp.first + ' ' + emp.last);
+  setTxt('finAvatar', initials);
+  setTxt('finTbName', emp.first + ' ' + emp.last);
+  setTxt('admAvatar', initials);
+  setTxt('admTbName', emp.first + ' ' + emp.last);
+}
+
 function initPage(page) {
+  populateProfilePages();
   restoreProfileFields();
   setTopbarDates();
   if (page === 'empPage')     { renderEmpDashboard(); renderPayslipList(); }
