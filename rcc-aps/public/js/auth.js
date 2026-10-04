@@ -386,8 +386,9 @@ function viewPayslipDetail(period, empId) {
     ? `${emp.hoursWorked||0} hrs × ₱${(parseFloat(emp.hourlyRate)||0).toFixed(2)}`
     : 'Monthly Base Salary';
   const isDec = monthNum === 12;
+  const page = ROLE_PAGE[emp.role] || 'empPage';
 
-  const docId = empId === 3 ? 'psDoc' : empId === 2 ? 'finPsDoc' : 'admPsDoc';
+  const docId = page === 'empPage' ? 'psDoc' : page === 'financePage' ? 'finPsDoc' : 'admPsDoc';
   document.getElementById(docId).innerHTML = `
     <div style="text-align:center;margin-bottom:24px;padding-bottom:24px;border-bottom:2px solid var(--maroon-dark)">
       <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--maroon-dark)">Republic Central Colleges</div>
@@ -448,17 +449,17 @@ function viewPayslipDetail(period, empId) {
   `;
 
   // Show detail page based on role
-  if (empId === 3) {
+  if (page === 'empPage') {
     document.getElementById('empPayslip').style.display='none';
     document.getElementById('payslipDetailPage').style.display='block';
     document.getElementById('psBackBtn').onclick = ()=>{
       document.getElementById('payslipDetailPage').style.display='none';
       document.getElementById('empPayslip').style.display='block';
     };
-  } else if (empId === 2) {
+  } else if (page === 'financePage') {
     document.getElementById('finMyPayslip').style.display='none';
     document.getElementById('finPayslipDetail').style.display='block';
-  } else if (empId === 1) {
+  } else {
     document.getElementById('admMyPayslip').style.display='none';
     document.getElementById('admPayslipDetail').style.display='block';
   }
