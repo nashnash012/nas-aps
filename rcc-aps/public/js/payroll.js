@@ -937,6 +937,8 @@ function renderFinRecentActivity() {
   const monthNum = MONTHS.indexOf(monthName) + 1;
   const isDec = /^december/i.test(monthName);
   const emps = users.filter(u=>u.status==='Active' && (u.role==='Employee'||u.role==='Finance Officer'||u.role==='System Admin'));
+  const pending = emps.filter(emp=>!payrollRecords.find(r=>r.empId===emp.id && r.month===monthNum && r.year===year)).length;
+  const pe = document.getElementById('finPending'); if (pe) pe.textContent = pending;
   if (!emps.length) {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:20px">No active employees yet.</td></tr>';
     return;

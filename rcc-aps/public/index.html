@@ -157,7 +157,7 @@
       <div id="empDashboard">
         <div class="hero-banner">
           <div class="hero-left">
-            <div class="hero-tag">🌅 Good Morning</div>
+            <div class="hero-tag" id="empHeroTag">🌅 Good Morning</div>
             <div class="hero-name" id="empHeroName">Welcome back, Gerald! 👋</div>
             <div class="hero-sub" id="empHeroSub">Here is your payroll summary for April 2026.</div>
           </div>
@@ -329,7 +329,7 @@
         <div class="hero-banner">
           <div class="hero-left">
             <div class="hero-tag">💼 Finance Officer</div>
-            <div class="hero-name">Good Morning, John! 👋</div>
+            <div class="hero-name" id="finHeroName">Good Morning, John! 👋</div>
             <div class="hero-sub">April 2026 payroll is ready for processing.</div>
           </div>
           <div class="hero-stats">
@@ -524,7 +524,10 @@
               <div class="fg"><label class="fl">Last Name</label><input class="fi" id="finProfLast" value="Cabigting"/></div>
             </div>
             <div class="fg"><label class="fl">Email</label><input class="fi" id="finProfEmail" value="finance@rcc.edu.ph"/></div>
-            <div class="fg"><label class="fl">Phone</label><input class="fi" id="finProfPhone" value="(+63) 917-555-2048"/></div>
+            <div class="fg-row">
+              <div class="fg"><label class="fl">Phone</label><input class="fi" id="finProfPhone" value="(+63) 917-555-2048"/></div>
+              <div class="fg"><label class="fl">Department</label><input class="fi" id="finProfDept" value="Finance Office" readonly style="background:var(--bg);color:var(--text-muted)"/></div>
+            </div>
             <div class="fg"><label class="fl">Address</label><input class="fi" id="finProfAddr" value="Brgy. San Nicolas, Angeles City, Pampanga"/></div>
             <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
             <div class="fg-row">
@@ -1255,7 +1258,7 @@
         <div style="background:linear-gradient(135deg,#6B1A1A,#4A0E0E);border-radius:16px;padding:28px 32px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
           <div>
             <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.12);border-radius:20px;padding:4px 14px;font-size:12px;color:rgba(255,255,255,0.9);font-weight:600;margin-bottom:12px">System Admin</div>
-            <div style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#fff;margin-bottom:6px">Good Morning, Nash! 👋</div>
+            <div id="admHeroName" style="font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#fff;margin-bottom:6px">Good Morning, Nash! 👋</div>
             <div style="font-size:13px;color:rgba(255,255,255,0.65)">System is running normally. All services are active.</div>
           </div>
           <div style="display:flex;gap:32px">
@@ -1293,7 +1296,7 @@
             <div style="width:48px;height:48px;background:#FCE4EC;border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:12px">
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="10" rx="2" stroke="#C62828" stroke-width="2"/><path d="M7 11V7a5 5 0 0110 0v4" stroke="#C62828" stroke-width="2" stroke-linecap="round"/></svg>
             </div>
-            <div class="stat-val">2</div>
+            <div class="stat-val" id="admNew">2</div>
             <div class="stat-lbl">New This Month</div>
             <div class="stat-note">Recently added</div>
           </div>
@@ -1473,7 +1476,10 @@
               <div class="fg"><label class="fl">Last Name</label><input class="fi" id="admProfLast" value="Valencia"/></div>
             </div>
             <div class="fg"><label class="fl">Email</label><input class="fi" id="admProfEmail" value="admin@rcc.edu.ph"/></div>
-            <div class="fg"><label class="fl">Phone</label><input class="fi" id="admProfPhone" value="(+63) 918-555-3076"/></div>
+            <div class="fg-row">
+              <div class="fg"><label class="fl">Phone</label><input class="fi" id="admProfPhone" value="(+63) 918-555-3076"/></div>
+              <div class="fg"><label class="fl">Department</label><input class="fi" id="admProfDept" value="IT Office" readonly style="background:var(--bg);color:var(--text-muted)"/></div>
+            </div>
             <div class="fg"><label class="fl">Address</label><input class="fi" id="admProfAddr" value="Brgy. Sto. Rosario, Angeles City, Pampanga"/></div>
             <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
             <div class="fg-row">

@@ -584,6 +584,14 @@ function updateAdminStats() {
   ['admAct','admActStat'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=act; });
   ['admInact','admInactStat'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=inact; });
   const bd = document.getElementById('admBreakdown'); if(bd) bd.textContent=`${adm} Admin · ${fin} Finance · ${emp} Emp`;
+  const now = new Date();
+  const nw = document.getElementById('admNew');
+  if (nw) nw.textContent = users.filter(u => {
+    const t = Date.parse(u.date);
+    if (!t) return false;
+    const d = new Date(t);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
   ['u-admin','u-finance','u-employee','u-inactive'].forEach((id,i)=>{
     const el=document.getElementById(id); if(el) el.textContent=[adm,fin,emp,inact][i];
   });
@@ -742,7 +750,7 @@ function saveUser() {
   }
   closeModal('userModal');
   saveDemo();
-  renderUserTable(); renderAdminRecentUsers();
+  renderUserTable(); renderAdminRecentUsers(); updateAdminStats();
 }
 function viewUser(id) {
   const u=users.find(x=>x.id===id); if(!u) return;
