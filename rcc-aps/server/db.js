@@ -56,7 +56,7 @@ async function status() {
 async function assembleState() {
   const [users, authRows, profRows, cashRows, bonusTypes, payoutRows,
           dedCat, payroll, sss, phil, pag, bir, cfg, leaveTypes,
-          leaveRecords, attendance] = await Promise.all([
+          leaveRecords, attendance, ranks] = await Promise.all([
     q('SELECT * FROM users ORDER BY id'),
     q('SELECT * FROM auth ORDER BY id'),
     q('SELECT * FROM profiles'),
@@ -72,7 +72,8 @@ async function assembleState() {
     q('SELECT * FROM app_config'),
     q('SELECT * FROM leave_types ORDER BY id'),
     q('SELECT * FROM leave_records ORDER BY id'),
-    q('SELECT * FROM attendance ORDER BY id')
+    q('SELECT * FROM attendance ORDER BY id'),
+    q('SELECT * FROM teacher_ranks ORDER BY id')
   ]);
 
   const num = v => { const n = parseFloat(v); return (isNaN(n) && v != null) ? v : (v == null ? null : n); };
@@ -83,7 +84,9 @@ async function assembleState() {
     classification: u.classification, department: u.department,
     hireDate: u.hireDate, hourlyRate: num(u.hourlyRate),
     absenceDays: num(u.absenceDays), hoursWorked: num(u.hoursWorked),
-    endDate: u.endDate || undefined
+    endDate: u.endDate || undefined,
+    rankId: num(u.rankId), rankName: u.rankName || '',
+    rateCustom: !!u.rateCustom, schoolLevel: u.schoolLevel || ''
   }));
 
   const auth = {};
@@ -156,6 +159,11 @@ async function assembleState() {
       endDate: l.endDate, days: l.days
     })),
     nextLeaveRecordId: parseInt(cfgObj.nextLeaveRecordId, 10) || 1,
+    teacherRanks: ranks.map(r => ({
+      id: r.id, department: r.department, rank: r.rank,
+      ratePerHour: num(r.ratePerHour)
+    })),
+    nextRankId: parseInt(cfgObj.nextRankId, 10) || 1,
     attendance: attendance.map(a => ({
       empId: a.empId, employeeId: a.employeeId, employeeEmail: a.employeeEmail,
       date: a.date, clockInAt: a.clockInAt, clockOutAt: a.clockOutAt,
@@ -179,7 +187,8 @@ async function persistState(s) {
       'DELETE FROM payroll_records', 'DELETE FROM sss_table',
       'DELETE FROM phil_data', 'DELETE FROM pag_data', 'DELETE FROM bir_table',
       'DELETE FROM app_config', 'DELETE FROM leave_types',
-      'DELETE FROM leave_records', 'DELETE FROM attendance'
+      'DELETE FROM leave_records', 'DELETE FROM attendance',
+      'DELETE FROM teacher_ranks'
     ];
     for (const sql of clearAll) await c.query(sql);
 
@@ -188,13 +197,15 @@ async function persistState(s) {
       await c.query(
         `INSERT INTO users
            (id, first, last, email, role, status, date, salary, classification,
-            department, hireDate, hourlyRate, absenceDays, hoursWorked, endDate)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            department, hireDate, hourlyRate, absenceDays, hoursWorked, endDate,
+            rankId, rankName, rateCustom, schoolLevel)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [u.id, u.first || '', u.last || '', (u.email || '').toLowerCase(),
          u.role || 'Employee', u.status || 'Active', u.date || '',
          u.salary || 0, u.classification || 'Non-Teaching', u.department || '',
          u.hireDate || '', u.hourlyRate || 0, u.absenceDays || 0,
-         u.hoursWorked || 0, u.endDate || '']
+         u.hoursWorked || 0, u.endDate || '',
+         u.rankId || 0, u.rankName || '', u.rateCustom ? 1 : 0, u.schoolLevel || '']
       );
     }
 
@@ -309,6 +320,14 @@ async function persistState(s) {
       );
     }
 
+    // teacher ranks
+    for (const r of s.teacherRanks || []) {
+      await c.query(
+        'INSERT INTO teacher_ranks (id, department, rank, ratePerHour) VALUES (?,?,?,?)',
+        [r.id, r.department || 'College', r.rank || '', r.ratePerHour || 0]
+      );
+    }
+
     // app config
     const cfg = {
       nextUserId: s.nextUserId || 1,
@@ -316,6 +335,7 @@ async function persistState(s) {
       nextDedCatId: s.nextDedCatId || 1,
       nextLeaveTypeId: s.nextLeaveTypeId || 1,
       nextLeaveRecordId: s.nextLeaveRecordId || 1,
+      nextRankId: s.nextRankId || 1,
       bonusExemptionLimit: s.bonusExemptionLimit || 90000,
       workDays: s.workDays || 22,
       dedMeta: JSON.stringify(s.dedMeta || {}),

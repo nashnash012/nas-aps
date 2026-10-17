@@ -46,7 +46,8 @@
       "hireDate": "2024-08-01",
       "hourlyRate": 190,
       "absenceDays": 0,
-      "hoursWorked": 150
+      "hoursWorked": 150,
+      "schoolLevel": "College"
     }
   ],
   "nextUserId": 13,
@@ -1211,6 +1212,48 @@
       "hours": 10
     }
   ],
+  "teacherRanks": [
+    { "id": 1, "department": "College", "rank": "Assistant Instructor 1", "ratePerHour": 150 },
+    { "id": 2, "department": "College", "rank": "Assistant Instructor 2", "ratePerHour": 170 },
+    { "id": 3, "department": "College", "rank": "Instructor 1", "ratePerHour": 190 },
+    { "id": 4, "department": "College", "rank": "Instructor 2", "ratePerHour": 210 },
+    { "id": 5, "department": "College", "rank": "Instructor 3", "ratePerHour": 230 },
+    { "id": 6, "department": "College", "rank": "Instructor 4", "ratePerHour": 250 },
+    { "id": 7, "department": "College", "rank": "Assistant Professor 1", "ratePerHour": 270 },
+    { "id": 8, "department": "College", "rank": "Assistant Professor 2", "ratePerHour": 290 },
+    { "id": 9, "department": "College", "rank": "Assistant Professor 3", "ratePerHour": 310 },
+    { "id": 10, "department": "College", "rank": "Associate Professor 1", "ratePerHour": 330 },
+    { "id": 11, "department": "College", "rank": "Associate Professor 2", "ratePerHour": 350 },
+    { "id": 12, "department": "College", "rank": "Associate Professor 3", "ratePerHour": 370 },
+    { "id": 13, "department": "College", "rank": "Professor 1", "ratePerHour": 390 },
+    { "id": 14, "department": "College", "rank": "Professor 2", "ratePerHour": 420 },
+    { "id": 15, "department": "College", "rank": "Professor 3", "ratePerHour": 450 },
+    { "id": 16, "department": "Elementary", "rank": "Provisional Teacher 1A (PT-1A)", "ratePerHour": 130 },
+    { "id": 17, "department": "Elementary", "rank": "Provisional Teacher 1B (PT-1B)", "ratePerHour": 150 },
+    { "id": 18, "department": "Elementary", "rank": "Teacher 1A (T-1A)", "ratePerHour": 170 },
+    { "id": 19, "department": "Elementary", "rank": "Teacher 1B (T-1B)", "ratePerHour": 190 },
+    { "id": 20, "department": "Elementary", "rank": "Teacher 2A (T-2A)", "ratePerHour": 210 },
+    { "id": 21, "department": "Elementary", "rank": "Teacher 2B (T-2B)", "ratePerHour": 230 },
+    { "id": 22, "department": "Elementary", "rank": "Teacher 3A (T-3A)", "ratePerHour": 250 },
+    { "id": 23, "department": "Elementary", "rank": "Teacher 3B (T-3B)", "ratePerHour": 270 },
+    { "id": 24, "department": "Elementary", "rank": "Master Teacher 1A (MT-1A)", "ratePerHour": 300 },
+    { "id": 25, "department": "Elementary", "rank": "Master Teacher 1B (MT-1B)", "ratePerHour": 325 },
+    { "id": 26, "department": "Elementary", "rank": "Master Teacher 2A (MT-2A)", "ratePerHour": 350 },
+    { "id": 27, "department": "Elementary", "rank": "Master Teacher 2B (MT-2B)", "ratePerHour": 380 },
+    { "id": 28, "department": "High School", "rank": "Provisional Teacher 1A (PT-1A)", "ratePerHour": 130 },
+    { "id": 29, "department": "High School", "rank": "Provisional Teacher 1B (PT-1B)", "ratePerHour": 150 },
+    { "id": 30, "department": "High School", "rank": "Teacher 1A (T-1A)", "ratePerHour": 170 },
+    { "id": 31, "department": "High School", "rank": "Teacher 1B (T-1B)", "ratePerHour": 190 },
+    { "id": 32, "department": "High School", "rank": "Teacher 2A (T-2A)", "ratePerHour": 210 },
+    { "id": 33, "department": "High School", "rank": "Teacher 2B (T-2B)", "ratePerHour": 230 },
+    { "id": 34, "department": "High School", "rank": "Teacher 3A (T-3A)", "ratePerHour": 250 },
+    { "id": 35, "department": "High School", "rank": "Teacher 3B (T-3B)", "ratePerHour": 270 },
+    { "id": 36, "department": "High School", "rank": "Master Teacher 1A (MT-1A)", "ratePerHour": 300 },
+    { "id": 37, "department": "High School", "rank": "Master Teacher 1B (MT-1B)", "ratePerHour": 325 },
+    { "id": 38, "department": "High School", "rank": "Master Teacher 2A (MT-2A)", "ratePerHour": 350 },
+    { "id": 39, "department": "High School", "rank": "Master Teacher 2B (MT-2B)", "ratePerHour": 380 }
+  ],
+  "nextRankId": 40,
   "profiles": {},
   "savedAt": "2026-09-19T06:01:43.064Z"
 }

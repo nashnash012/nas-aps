@@ -54,6 +54,18 @@ async function init() {
       await poolConn.query(stmt);
     }
     console.log(`[MySQL] Schema applied (${statements.length} statements).`);
+
+    // Step 3b: Migration — add new columns to existing users table (idempotent)
+    const migrations = [
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS rankId INT NOT NULL DEFAULT 0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS rankName VARCHAR(120) NOT NULL DEFAULT \'\'',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS rateCustom TINYINT(1) NOT NULL DEFAULT 0',
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS schoolLevel VARCHAR(20) NOT NULL DEFAULT \'\''
+    ];
+    for (const m of migrations) {
+      try { await poolConn.query(m); } catch (e) { /* ignore duplicate column errors */ }
+    }
+    console.log('[MySQL] Migration: users columns verified.');
   } finally {
     poolConn.release();
   }
@@ -62,6 +74,24 @@ async function init() {
   const [rows] = await pool.query('SELECT COUNT(*) AS cnt FROM users');
   if (rows[0].cnt > 0) {
     console.log(`[MySQL] Users table has ${rows[0].cnt} records — skipping seed.`);
+    // Seed teacher_ranks if empty (even when users exist — for existing DBs)
+    const [rankRows] = await pool.query('SELECT COUNT(*) AS cnt FROM teacher_ranks');
+    if (rankRows[0].cnt === 0) {
+      const seedPath = path.join(__dirname, 'seed.json');
+      if (fs.existsSync(seedPath)) {
+        const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
+        if (Array.isArray(seed.teacherRanks) && seed.teacherRanks.length) {
+          for (const r of seed.teacherRanks) {
+            await pool.query('INSERT INTO teacher_ranks (id, department, rank, ratePerHour) VALUES (?,?,?,?)', [r.id, r.department, r.rank, r.ratePerHour]);
+          }
+          console.log(`[MySQL] Seeded ${seed.teacherRanks.length} teacher ranks.`);
+          // Update nextRankId in app_config to avoid ID conflicts
+          const maxRankId = Math.max(...seed.teacherRanks.map(r => r.id));
+          await pool.query('INSERT INTO app_config (cfg_key, cfg_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE cfg_value = ?', ['nextRankId', String(maxRankId + 1), String(maxRankId + 1)]);
+          console.log(`[MySQL] nextRankId set to ${maxRankId + 1}.`);
+        }
+      }
+    }
     await pool.end();
     return { created: true, seeded: false };
   }

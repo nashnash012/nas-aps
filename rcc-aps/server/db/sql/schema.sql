@@ -150,6 +150,14 @@ CREATE TABLE IF NOT EXISTS bir_table (
   max   DECIMAL(12,2) NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ── TEACHER RANKS (faculty pay rate per hour) ────────────────
+CREATE TABLE IF NOT EXISTS teacher_ranks (
+  id          INT PRIMARY KEY,
+  department  VARCHAR(20)  NOT NULL DEFAULT 'College',
+  rank        VARCHAR(120) NOT NULL DEFAULT '',
+  ratePerHour DECIMAL(10,2) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ── KEY-VALUE CONFIG (next ids, workDays, limit, dedMeta, savedAt) ─
 CREATE TABLE IF NOT EXISTS app_config (
   cfg_key   VARCHAR(60) PRIMARY KEY,

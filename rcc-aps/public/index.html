@@ -302,6 +302,7 @@
       <button class="nav-item active" onclick="showFinPage('finDashboard',this)"><span class="nav-icon">🏠</span> Dashboard</button>
       <button class="nav-item" onclick="showFinPage('finAnalytics',this)"><span class="nav-icon">📊</span> Analytics</button>
       <button class="nav-item" onclick="showFinPage('finPayroll',this)"><span class="nav-icon">💰</span> Payroll Calculation</button>
+      <button class="nav-item" onclick="showFinPage('finRanks',this)"><span class="nav-icon">🎓</span> Faculty Rank Tables</button>
       <button class="nav-item" onclick="showFinPage('finBonus',this)"><span class="nav-icon">🎁</span> Bonus Management</button>
       <button class="nav-item" onclick="showFinPage('finReports',this)"><span class="nav-icon">📋</span> Reports</button>
       <button class="nav-item" onclick="showFinPage('finDeduction',this)"><span class="nav-icon">⚙️</span> Deduction Tables</button>
@@ -1214,6 +1215,33 @@
         </div>
       </div>
 
+      <!-- Faculty Rank Tables -->
+      <div id="finRanks" style="display:none">
+        <div class="pg-title">🎓 Faculty Rank Tables</div>
+        <div class="pg-sub">Hourly pay rates for teaching faculty, organized by department. Changes apply to the next payroll processing cycle.</div>
+
+        <div style="display:flex;gap:8px;margin:20px 0;flex-wrap:wrap">
+          <button class="btn btn-outline rank-tab active" data-dept="College" onclick="showRankTab('College')">College</button>
+          <button class="btn btn-outline rank-tab" data-dept="Elementary" onclick="showRankTab('Elementary')">Elementary</button>
+          <button class="btn btn-outline rank-tab" data-dept="High School" onclick="showRankTab('High School')">High School</button>
+          <button class="btn btn-primary" style="margin-left:auto" onclick="openRankEditModal()">✏️ Edit Ranks</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Faculty Ranks &amp; Hourly Rates</div>
+              <div style="font-size:12px;color:var(--text-muted)">Select a department tab to view its rank table</div>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>#</th><th>Rank</th><th>Rate per Hour</th><th>Department</th></tr></thead>
+            <tbody id="rankTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1231,6 +1259,7 @@
       <div class="nav-lbl">Main Menu</div>
       <button class="nav-item active" onclick="showAdmPage('admDashboard',this)"><span class="nav-icon">🏠</span> Dashboard</button>
       <button class="nav-item" onclick="showAdmPage('admUsers',this)"><span class="nav-icon">👥</span> User Management</button>
+      <button class="nav-item" onclick="showAdmPage('admRanks',this)"><span class="nav-icon">🎓</span> Faculty Rank Tables</button>
       <button class="nav-item" onclick="showAdmPage('admDeduction',this)"><span class="nav-icon">⚙️</span> Deduction Tables</button>
     </div>
     <div class="nav-sec">
@@ -1513,6 +1542,26 @@
         </div>
       </div>
 
+      <!-- Faculty Rank Tables (Admin Read-Only) -->
+      <div id="admRanks" style="display:none">
+        <div class="pg-title">🎓 Faculty Rank Tables</div>
+        <div class="pg-sub">View-only mirror of the faculty rank tables managed by the Finance Officer.</div>
+
+        <div class="card" style="margin-top:20px">
+          <div class="card-head">
+            <div>
+              <div class="card-title">All Faculty Ranks &amp; Hourly Rates</div>
+              <div style="font-size:12px;color:var(--text-muted)">Read-only — contact Finance Officer to make changes</div>
+            </div>
+          </div>
+          <table>
+            <thead><tr><th>#</th><th>Rank</th><th>Rate per Hour</th><th>Department</th></tr></thead>
+            <tbody id="admRankTableBody">
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -1540,6 +1589,16 @@
         <div class="fg"><label class="fl">Classification</label><select class="fi" id="uClass" onchange="toggleUserClassFields()"><option>Non-Teaching</option><option>Teaching</option></select></div>
         <div class="fg"><label class="fl">Department</label><input class="fi" id="uDept" placeholder="e.g. College of Computer Studies"/></div>
       </div>
+      <div class="fg" id="uSchoolLevelGroup" style="display:none">
+        <label class="fl">School Level</label>
+        <select class="fi" id="uSchoolLevel" onchange="onSchoolLevelChange()">
+          <option value="">— Select School Level —</option>
+          <option>College</option>
+          <option>Elementary</option>
+          <option>High School</option>
+        </select>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Determines which rank table applies to this teacher</div>
+      </div>
       <div id="uPaySectionTitle" style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--maroon-dark);margin:16px 0 10px">💰 PAY SETUP — MONTHLY-RATE</div>
       <div class="fg-row">
         <div class="fg">
@@ -1551,6 +1610,13 @@
           <label class="fl">Hourly Rate (₱) *</label>
           <input class="fi" id="uHourly" type="number" step="0.01" min="0" placeholder="e.g. 190.00"/>
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.45">Teaching pay = Hourly Rate × Hours Worked.</div>
+        </div>
+        <div class="fg" id="uRankGroup" style="display:none">
+          <label class="fl">Academic Rank</label>
+          <select class="fi" id="uRank" onchange="onRankChange()">
+            <option value="0">— Select Rank —</option>
+          </select>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.45">Selecting a rank auto-fills the hourly rate. Type a custom rate to override.</div>
         </div>
       </div>
       <div class="fg-row">
@@ -1621,6 +1687,18 @@
     <div class="modal-foot">
       <button class="btn btn-outline" onclick="closeModal('dedModal')">Cancel</button>
       <button class="btn btn-primary" onclick="saveDedModal()">💾 Save Rates</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rank Edit Modal -->
+<div class="modal-overlay" id="rankModal">
+  <div class="modal" style="max-width:750px;width:95%">
+    <div class="modal-head"><div class="modal-title" id="rankModalTitle">Edit Faculty Ranks</div><button class="modal-close" onclick="closeModal('rankModal')">✕</button></div>
+    <div class="modal-body" id="rankModalBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('rankModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRankModal()">💾 Save Ranks</button>
     </div>
   </div>
 </div>
@@ -1743,13 +1821,14 @@
 <!-- ════════════════════════════════════════════════════════════
      JAVASCRIPT
 ════════════════════════════════════════════════════════════ -->
-  <script src="js/core.js?v=20260910a"></script>
-  <script src="js/auth.js?v=20260910a"></script>
+  <script src="js/core.js?v=20261007a"></script>
+  <script src="js/auth.js?v=20261007a"></script>
   <script src="js/employees.js?v=20260822c"></script>
-  <script src="js/payroll.js?v=20260910c"></script>
+  <script src="js/payroll.js?v=20261007a"></script>
   <script src="js/reports.js?v=20260822g"></script>
   <script src="js/bonus.js?v=20260903a"></script>
-  <script src="js/deductions.js?v=20260822i"></script>
+  <script src="js/ranks.js?v=20261007a"></script>
+  <script src="js/deductions.js?v=20261007a"></script>
   <script src="js/ui.js?v=20260903a"></script>
 
 <!-- ═══ ACCESS DENIED SCREEN ═══════════════════════════════ -->

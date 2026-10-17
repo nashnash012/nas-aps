@@ -383,7 +383,7 @@ function viewPayslipDetail(period, empId) {
   const totalDed  = sss + phil + pag + bir + cash + thirteenTax + customTotal;
   const totalGross = grossTaxable + deMinimis + thirteenth;
   const earningLabel = emp.classification === 'Teaching'
-    ? `${emp.hoursWorked||0} hrs × ₱${(parseFloat(emp.hourlyRate)||0).toFixed(2)}`
+    ? `${emp.rankName ? emp.rankName + ' — ' : ''}${emp.hoursWorked||0} hrs × ₱${(parseFloat(emp.hourlyRate)||0).toFixed(2)}`
     : 'Monthly Base Salary';
   const isDec = monthNum === 12;
   const page = ROLE_PAGE[emp.role] || 'empPage';
@@ -401,6 +401,10 @@ function viewPayslipDetail(period, empId) {
         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
           <span style="color:var(--text-muted)">${l}</span><span style="font-weight:600">${v}</span>
         </div>`).join('')}
+      ${emp.classification === 'Teaching' && emp.rankName ? `
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
+          <span style="color:var(--text-muted)">Academic Rank</span><span style="font-weight:600">${esc(emp.rankName)}</span>
+        </div>` : ''}
     </div>
     <div style="margin-bottom:20px">
       <div style="font-weight:700;font-size:13px;color:var(--maroon-dark);margin-bottom:12px">Earnings</div>
@@ -492,7 +496,7 @@ function printPayslip() {
 function showFinPage(id, btn) {
   if (typeof closeSidebar==='function') closeSidebar();
   ['finDashboard','finAnalytics','finBonus','finPayroll','finReports','finGovReport','finPayrollReport','finDeduction','finMyPayslip','finPayslipDetail','finMyProfile','finChangePassword',
-   'finDedSSS','finDedPhilHealth','finDedPagIBIG','finDedBIR'].forEach(x=>{
+   'finDedSSS','finDedPhilHealth','finDedPagIBIG','finDedBIR','finRanks'].forEach(x=>{
     const el = document.getElementById(x);
     if (el) el.style.display = 'none';
   });
@@ -500,7 +504,7 @@ function showFinPage(id, btn) {
   if (target) target.style.display = 'block';
   document.querySelectorAll('#financePage .nav-item').forEach(b=>b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const labels = {finDashboard:'Dashboard',finAnalytics:'Analytics',finBonus:'Bonus Management',finPayroll:'Payroll Calculation',finReports:'Reports',finGovReport:'Reports',finPayrollReport:'Reports',finDeduction:'Deduction Tables',finMyPayslip:'My Payslip',finMyProfile:'My Profile',finChangePassword:'Change Password'};
+  const labels = {finDashboard:'Dashboard',finAnalytics:'Analytics',finBonus:'Bonus Management',finPayroll:'Payroll Calculation',finReports:'Reports',finGovReport:'Reports',finPayrollReport:'Reports',finDeduction:'Deduction Tables',finMyPayslip:'My Payslip',finMyProfile:'My Profile',finChangePassword:'Change Password',finRanks:'Faculty Rank Tables'};
   const bc = document.getElementById('finBreadcrumb');
   if (bc) bc.textContent = labels[id] || 'Dashboard';
   if (id === 'finDashboard') { renderIdentity(); updateFinStats(); renderFinRecentActivity(); }
@@ -508,6 +512,7 @@ function showFinPage(id, btn) {
   if (id === 'finBonus') renderBonusModule();
   if (id === 'finPayroll') { if (typeof checkBonusDates==='function') checkBonusDates(); populateCalcEmployees(); renderPayrollSummary(); }
   if (id === 'finDeduction') { renderDeductionCategories(); renderLeaveTypes(); renderLeaveRecords(); renderAttendance(); renderDedBanner(); renderWorkDaysSetting(); }
+  if (id === 'finRanks') { if (typeof renderRankTable === 'function') renderRankTable(); }
   if (id === 'finMyPayslip') renderFinPayslipList();
   if (id === 'finPayrollReport') {
     document.getElementById('reportOutput').style.display = 'none';
@@ -530,7 +535,7 @@ function showEmpPage(id, btn) {
 
 function showAdmPage(id, btn) {
   if (typeof closeSidebar==='function') closeSidebar();
-  ['admDashboard','admUsers','admDeduction','admMyPayslip','admPayslipDetail','admMyProfile','admChangePassword'].forEach(x=>{
+  ['admDashboard','admUsers','admDeduction','admMyPayslip','admPayslipDetail','admMyProfile','admChangePassword','admRanks'].forEach(x=>{
     const el = document.getElementById(x);
     if (el) el.style.display = 'none';
   });
@@ -538,12 +543,13 @@ function showAdmPage(id, btn) {
   if (target) target.style.display = 'block';
   document.querySelectorAll('#adminPage .nav-item').forEach(b=>b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const labels = {admDashboard:'Dashboard',admUsers:'User Management',admDeduction:'Deduction Tables',admMyPayslip:'My Payslip',admMyProfile:'My Profile',admChangePassword:'Change Password'};
+  const labels = {admDashboard:'Dashboard',admUsers:'User Management',admDeduction:'Deduction Tables',admMyPayslip:'My Payslip',admMyProfile:'My Profile',admChangePassword:'Change Password',admRanks:'Faculty Rank Tables'};
   const bc = document.getElementById('admBreadcrumb');
   if (bc) bc.textContent = labels[id] || 'Dashboard';
   if (id === 'admDashboard') { renderIdentity(); updateAdminStats(); renderAdminRecentUsers(); }
   if (id === 'admUsers') renderUserTable();
   if (id === 'admDeduction') renderAdmDedTables();
+  if (id === 'admRanks') { if (typeof renderAdmRankTable === 'function') renderAdmRankTable(); }
   if (id === 'admMyPayslip') renderAdmPayslipList();
 }
 

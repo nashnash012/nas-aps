@@ -129,6 +129,8 @@ function applyServerData(d) {
   if (typeof pagData  !== 'undefined' && d.pagData)  pagData  = Object.assign({}, pagData,  d.pagData);
   if (typeof birData  !== 'undefined' && Array.isArray(d.birData) && d.birData.length) birData = migrateBirTable(d.birData);
   if (typeof dedMeta  !== 'undefined' && d.dedMeta)  dedMeta  = Object.assign({}, dedMeta,  d.dedMeta);
+  if (typeof teacherRanks !== 'undefined' && Array.isArray(d.teacherRanks) && d.teacherRanks.length) teacherRanks = d.teacherRanks;
+  if (d.nextRankId) nextRankId = d.nextRankId;
 }
 
 // Default the shared pay-period dropdown to the most recent month that actually
@@ -224,7 +226,7 @@ const EMP_CLASS = { Teaching: {badge:'b-blue'}, 'Non-Teaching': {badge:'b-gold'}
 function empGrossPay(emp, hours, absences) {
   if (emp.classification === 'Teaching') {
     const h = Math.max(0, (hours != null && hours !== '') ? parseFloat(hours) : (emp.hoursWorked || 0));
-    const r = Math.max(0, parseFloat(emp.hourlyRate) || 0);
+    const r = teacherRate(emp);
     return parseFloat((h * r).toFixed(2));
   }
   const base = Math.max(0, parseFloat(emp.salary) || 0);
@@ -561,7 +563,7 @@ function loadEmployeeData() {
   }
   const isTeaching = emp.classification === 'Teaching';
   document.getElementById('calcMetaName').textContent = displayName(emp);
-  document.getElementById('calcMetaClass').textContent = emp.classification;
+  document.getElementById('calcMetaClass').textContent = emp.classification + (emp.rankName ? ' · ' + emp.rankName : '');
   document.getElementById('calcMetaDept').textContent = emp.department || '—';
   meta.style.display = 'block';
   document.getElementById('calcGrossFieldLabel').textContent = isTeaching ? 'Hourly Rate (₱)' : 'Monthly Base Salary (₱)';
@@ -583,7 +585,7 @@ function loadEmployeeData() {
     attEl.value = totalUnpaidDays;
   }
   
-  salEl.value = isTeaching ? (emp.hourlyRate||'') : (emp.salary||'');
+  salEl.value = isTeaching ? (teacherRate(emp)||'') : (emp.salary||'');
   cashEl.value = getEmpCashAdvance(emp.id) || '';
   empty.style.display = 'none';
   res.style.display = 'block';
@@ -622,7 +624,7 @@ function renderLeaveBreakdown(empId) {
   const isTeaching = emp && emp.classification === 'Teaching';
   // Per-day deduction value: Teaching = 8h × hourly rate; Non-Teaching = salary / WORK_DAYS.
   const dayValue = isTeaching
-    ? (HOURS_PER_DAY * (parseFloat(emp.hourlyRate) || 0))
+    ? (HOURS_PER_DAY * teacherRate(emp))
     : ((parseFloat(emp.salary) || 0) / WORK_DAYS);
   const totalDeduction = totalDly * dayValue;
 
@@ -763,7 +765,7 @@ function computePayroll() {
     // Deduct 8 hours per unpaid day (payroll policy for hours-work staff)
     teachingDeduct = teachingUnpaidDays * HOURS_PER_DAY * r;
     gross = parseFloat((h * r - teachingDeduct).toFixed(2));
-    meta = `${h} hrs × ₱${r.toLocaleString('en-PH',{minimumFractionDigits:2})}`;
+    meta = `${emp.rankName ? emp.rankName + ' — ' : ''}${h} hrs × ₱${r.toLocaleString('en-PH',{minimumFractionDigits:2})}`;
     if (teachingUnpaidDays > 0) meta += ` − ${teachingUnpaidDays} unpaid day(s) × 8h × ₱${r} = ${fmt(gross)}`;
     else meta += ` = ${fmt(gross)}`;
   } else {

@@ -627,6 +627,8 @@ function openAddUserModal() {
   document.getElementById('uDept').value   = '';
   document.getElementById('uSalary').value = '';
   document.getElementById('uHourly').value = '';
+  document.getElementById('uSchoolLevel').value = '';
+  document.getElementById('uRank').value = '0';
   document.getElementById('uHire').value   = '';
   document.getElementById('uHrsAbs').value = '';
   document.getElementById('uPassGroup').style.display = 'block';
@@ -649,6 +651,8 @@ function openEditUserModal(id) {
   document.getElementById('uDept').value   = u.department || '';
   document.getElementById('uSalary').value = u.salary || '';
   document.getElementById('uHourly').value = u.hourlyRate || '';
+  document.getElementById('uSchoolLevel').value = u.schoolLevel || '';
+  if (typeof fillRankSelect === 'function') fillRankSelect(u.schoolLevel || '', u.rankId || 0);
   document.getElementById('uHire').value   = u.hireDate || '';
   document.getElementById('uHrsAbs').value = (u.hoursWorked || u.absenceDays || '');
   document.getElementById('uPassGroup').style.display = 'none';
@@ -683,6 +687,14 @@ function toggleUserClassFields() {
   if (cap) cap.innerHTML = teaching
     ? 'Required for ALL personnel — benefits &amp; records basis. <strong>Auto-filled</strong> as Hourly Rate × Hours Worked; you may override it.'
     : 'Fixed monthly rate — used for benefits &amp; records eligibility and absence deductions.';
+  const slg = document.getElementById('uSchoolLevelGroup');
+  if (slg) slg.style.display = teaching ? 'block' : 'none';
+  const rg = document.getElementById('uRankGroup');
+  if (rg) rg.style.display = teaching ? 'block' : 'none';
+  if (teaching) {
+    const sl = document.getElementById('uSchoolLevel')?.value || 'College';
+    if (typeof fillRankSelect === 'function') fillRankSelect(sl, 0);
+  }
 }
 
 // ── Teaching auto-suggest: Basic Salary ≈ Hourly Rate × Hours ──
@@ -705,6 +717,21 @@ function recalcSuggestedSalary() {
   const sal = document.getElementById('uSalary');
   if (sal) sal.addEventListener('input', () => { salaryAuto = false; });
 })();
+
+function onSchoolLevelChange() {
+  const sl = document.getElementById('uSchoolLevel')?.value || '';
+  if (typeof fillRankSelect === 'function') fillRankSelect(sl, 0);
+}
+
+function onRankChange() {
+  const rankId = parseInt(document.getElementById('uRank')?.value) || 0;
+  const rankObj = rankId ? (typeof rankById === 'function' ? rankById(rankId) : null) : null;
+  if (rankObj) {
+    document.getElementById('uHourly').value = rankObj.ratePerHour;
+    salaryAuto = true;
+    recalcSuggestedSalary();
+  }
+}
 function saveUser() {
   const first=document.getElementById('uFirst').value.trim(), last=document.getElementById('uLast').value.trim();
   const email=document.getElementById('uEmail').value.trim(), role=document.getElementById('uRole').value;
@@ -713,6 +740,11 @@ function saveUser() {
   const department=document.getElementById('uDept').value.trim();
   const salary=Math.max(0,parseFloat(document.getElementById('uSalary').value)||0);
   const hourlyRate=Math.max(0,parseFloat(document.getElementById('uHourly').value)||0);
+  const schoolLevel=document.getElementById('uSchoolLevel')?.value || '';
+  const rankId=parseInt(document.getElementById('uRank')?.value)||0;
+  const rankObj = rankId ? (typeof rankById === 'function' ? rankById(rankId) : null) : null;
+  const rankName = rankObj ? rankObj.rank : '';
+  const rateCustom = !rankObj || (Math.abs(hourlyRate - parseFloat(rankObj.ratePerHour)) > 0.001);
   const hireDate=document.getElementById('uHire').value;
   const hrsAbs=Math.max(0,parseFloat(document.getElementById('uHrsAbs').value)||0);
   const err=document.getElementById('uErr');
@@ -737,6 +769,7 @@ function saveUser() {
     const u=users.find(x=>x.id===editingUserId);
     u.first=first; u.last=last; u.email=email; u.role=role; u.status=status; u.salary=salary;
     u.classification=classification; u.department=department; u.hourlyRate=hourlyRate; u.hireDate=hireDate;
+    u.schoolLevel=schoolLevel; u.rankId=rankId; u.rankName=rankName; u.rateCustom=rateCustom;
     if (classification==='Teaching') u.hoursWorked=hrsAbs; else u.absenceDays=hrsAbs;
     ensureAuth(u, pass);
     showToast('✅',`${first} ${last} updated successfully.`);
@@ -744,6 +777,7 @@ function saveUser() {
     const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const nu={id:nextUserId++,first,last,email,role,status,date:today,salary,classification,department,hireDate};
     if (classification==='Teaching') nu.hourlyRate=hourlyRate, nu.hoursWorked=hrsAbs; else nu.absenceDays=hrsAbs;
+    nu.schoolLevel=schoolLevel; nu.rankId=rankId; nu.rankName=rankName; nu.rateCustom=rateCustom;
     users.push(nu);
     ensureAuth(nu, pass);
     showToast('✅',`${first} ${last} added successfully.`);
@@ -763,6 +797,7 @@ function viewUser(id) {
       ${infoBox('✉️ Email',esc(u.email))}${infoBox('🏷️ Role',`<span class="badge ${roleBadge[u.role]}">${u.role}</span>`)}
       ${infoBox('⚡ Status',`<span class="badge ${u.status==='Active'?'b-green':'b-gray'}">${u.status==='Active'?'● Active':'● Inactive'}</span>`)}${infoBox('📅 Date Added',u.date)}
       ${infoBox('🎓 Classification',`<span class="badge ${EMP_CLASS[u.classification]?.badge||'b-gray'}">${u.classification||'Non-Teaching'}</span>`)}      ${infoBox('🏢 Department',esc(u.department||'—'))}
+      ${u.classification==='Teaching' && u.rankName ? infoBox('🎓 Academic Rank', esc(u.rankName)) : ''}
       ${infoBox('💰 Monthly Base',`<strong>₱${(u.salary||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`)}${infoBox('🆔 Employee ID',`#USR-00${u.id}`)}
       ${infoBox(u.classification==='Teaching'?'⏱ Hourly Rate':'📅 Date Hired', u.classification==='Teaching' ? '₱'+(u.hourlyRate||0).toFixed(2) : (u.hireDate||'—'))}${infoBox(u.classification==='Teaching'?'🕒 Hours Worked':'🚫 Absence Days', u.classification==='Teaching' ? (u.hoursWorked||0)+' hrs' : (u.absenceDays||0)+' days')}
     </div>`;
@@ -841,6 +876,7 @@ function syncFromHris() {
           u.first = h.first; u.last = h.last; u.role = h.role; u.status = h.status;
           u.department = h.department; u.classification = h.classification;
           u.salary = h.salary; u.hourlyRate = h.hourlyRate; u.hireDate = h.hireDate;
+          u.schoolLevel = h.schoolLevel || ''; u.rankId = h.rankId || 0; u.rankName = h.rankName || ''; u.rateCustom = !!h.rateCustom;
           if (h.classification === 'Teaching') u.hoursWorked = h.hoursWorked; else u.absenceDays = h.absenceDays;
           ensureAuth(u, h.password);
           updated++;
@@ -849,7 +885,7 @@ function syncFromHris() {
             role:h.role, status:h.status,
             date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
             salary:h.salary, classification:h.classification, department:h.department, hireDate:h.hireDate};
-          if (h.classification === 'Teaching') { nu.hourlyRate = h.hourlyRate; nu.hoursWorked = h.hoursWorked; }
+          if (h.classification === 'Teaching') { nu.hourlyRate = h.hourlyRate; nu.hoursWorked = h.hoursWorked; nu.schoolLevel = h.schoolLevel || ''; nu.rankId = h.rankId || 0; nu.rankName = h.rankName || ''; nu.rateCustom = !!h.rateCustom; }
           else nu.absenceDays = h.absenceDays;
           users.push(nu);
           ensureAuth(nu, h.password);
