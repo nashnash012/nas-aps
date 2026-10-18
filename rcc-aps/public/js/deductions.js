@@ -694,19 +694,47 @@ function toggleUserClassFields() {
   if (teaching) {
     const sl = document.getElementById('uSchoolLevel')?.value || 'College';
     if (typeof fillRankSelect === 'function') fillRankSelect(sl, 0);
+    updateHourlyRateLabel(sl);
   }
+}
+
+// ── Rate label helper per school level ──────────────────────────
+function updateHourlyRateLabel(sl) {
+  const lbl = document.getElementById('uHourlyLabel');
+  const hint = document.getElementById('uHourlyHint');
+  if (!lbl && !hint) return;
+  const isWorkload = sl === 'High School';
+  const isMonth = sl === 'Elementary';
+  if (lbl) lbl.textContent = isWorkload ? 'Rate per Workload (₱) *' : isMonth ? 'Rate per Month (₱) *' : 'Rate per Hour (₱) *';
+  if (hint) hint.textContent = isMonth
+    ? 'Teaching pay = Monthly Rate − Absence Deduction (÷ Working Days per Month).'
+    : isWorkload
+    ? 'Teaching pay = Rate per Workload × Workloads (1 workload = 3 hrs).'
+    : 'Teaching pay = Rate per Hour × Hours Worked.';
 }
 
 // ── Teaching auto-suggest: Basic Salary ≈ Hourly Rate × Hours ──
 let salaryAuto = true;
 function recalcSuggestedSalary() {
   if (!salaryAuto) return;
-  if ((document.getElementById('uClass')?.value) !== 'Teaching') return;
+  const cls = document.getElementById('uClass')?.value;
+  if (cls !== 'Teaching') return;
+  const sl = document.getElementById('uSchoolLevel')?.value || '';
   const r = parseFloat(document.getElementById('uHourly')?.value);
   const h = parseFloat(document.getElementById('uHrsAbs')?.value);
   if ((!isNaN(r) && r > 0) && (!isNaN(h) && h > 0)) {
     const sal = document.getElementById('uSalary');
-    if (sal) sal.value = Math.round(r * h * 100) / 100;
+    if (sal) {
+      let computed;
+      if (sl === 'Elementary') {
+        computed = r; // monthly rate from rank
+      } else if (sl === 'High School') {
+        computed = Math.round(r * h / 3 * 100) / 100; // rate × workloads (hrs ÷ 3)
+      } else {
+        computed = Math.round(r * h * 100) / 100; // College/Grad: rate × hours
+      }
+      sal.value = computed;
+    }
   }
 }
 (function wirePaySetupListeners() {
@@ -721,6 +749,7 @@ function recalcSuggestedSalary() {
 function onSchoolLevelChange() {
   const sl = document.getElementById('uSchoolLevel')?.value || '';
   if (typeof fillRankSelect === 'function') fillRankSelect(sl, 0);
+  updateHourlyRateLabel(sl);
 }
 
 function onRankChange() {
@@ -770,13 +799,13 @@ function saveUser() {
     u.first=first; u.last=last; u.email=email; u.role=role; u.status=status; u.salary=salary;
     u.classification=classification; u.department=department; u.hourlyRate=hourlyRate; u.hireDate=hireDate;
     u.schoolLevel=schoolLevel; u.rankId=rankId; u.rankName=rankName; u.rateCustom=rateCustom;
-    if (classification==='Teaching') u.hoursWorked=hrsAbs; else u.absenceDays=hrsAbs;
+    if (classification==='Teaching' && schoolLevel !== 'Elementary') u.hoursWorked=hrsAbs; else u.absenceDays=hrsAbs;
     ensureAuth(u, pass);
     showToast('✅',`${first} ${last} updated successfully.`);
   } else {
     const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const nu={id:nextUserId++,first,last,email,role,status,date:today,salary,classification,department,hireDate};
-    if (classification==='Teaching') nu.hourlyRate=hourlyRate, nu.hoursWorked=hrsAbs; else nu.absenceDays=hrsAbs;
+    if (classification==='Teaching' && schoolLevel !== 'Elementary') nu.hourlyRate=hourlyRate, nu.hoursWorked=hrsAbs; else nu.absenceDays=hrsAbs;
     nu.schoolLevel=schoolLevel; nu.rankId=rankId; nu.rankName=rankName; nu.rateCustom=rateCustom;
     users.push(nu);
     ensureAuth(nu, pass);

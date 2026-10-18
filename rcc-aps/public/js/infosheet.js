@@ -163,86 +163,120 @@ function saveInfoSheet() {
 
 // ── Render the full document-style form ──────────────────────
 function renderInfoSheet() {
-  const emp = users.find(u => u.id === curSheetEmpId);
-  const empSelect = document.getElementById('isEmployee');
-  if (empSelect && !empSelect.dataset.populated) {
-    empSelect.innerHTML = '<option value="">— Select Employee (Teaching) —</option>' +
-      users.filter(u => u.classification === 'Teaching').map(u =>
-        `<option value="${u.id}">${esc(u.first + ' ' + u.last)} — ${esc(u.schoolLevel || 'No Level')}</option>`).join('');
-    empSelect.dataset.populated = '1';
+  try {
+    if (!users || !Array.isArray(users)) {
+      console.error('[InfoSheet] users global not ready');
+      return;
+    }
+
+    if (!curSheetEmpId) {
+      const empSelect = document.getElementById('isEmployee');
+      if (empSelect && !empSelect.dataset.populated) {
+        empSelect.innerHTML = '<option value="">— Select Employee (Teaching) —</option>' +
+          users.filter(u => u.classification === 'Teaching').map(u =>
+            `<option value="${u.id}">${esc(u.first + ' ' + u.last)} — ${esc(u.schoolLevel || 'No Level')}</option>`).join('');
+        empSelect.dataset.populated = '1';
+      }
+      const semSel = document.getElementById('isSemester');
+      if (semSel && !semSel.dataset.populated) {
+        semSel.innerHTML = SEMESTER_OPTIONS.map(s => `<option>${s}</option>`).join('');
+        semSel.dataset.populated = '1';
+      }
+      const loadTbody = document.getElementById('isLoadBody');
+      if (loadTbody) {
+        loadTbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:16px;color:var(--text-muted)">Please select an employee above to view their Information Sheet.</td></tr>`;
+      }
+      const eduTbody = document.getElementById('isEduBody');
+      if (eduTbody) {
+        eduTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-muted)">No education rows yet.</td></tr>`;
+      }
+      return;
+    }
+
+    const emp = users.find(u => u.id === curSheetEmpId);
+    const empSelect = document.getElementById('isEmployee');
+    if (empSelect && !empSelect.dataset.populated) {
+      empSelect.innerHTML = '<option value="">— Select Employee (Teaching) —</option>' +
+        users.filter(u => u.classification === 'Teaching').map(u =>
+          `<option value="${u.id}">${esc(u.first + ' ' + u.last)} — ${esc(u.schoolLevel || 'No Level')}</option>`).join('');
+      empSelect.dataset.populated = '1';
+    }
+    if (empSelect && curSheetEmpId) empSelect.value = String(curSheetEmpId);
+
+    const semSel = document.getElementById('isSemester');
+    if (semSel && !semSel.dataset.populated) {
+      semSel.innerHTML = SEMESTER_OPTIONS.map(s => `<option>${s}</option>`).join('');
+      semSel.dataset.populated = '1';
+    }
+    if (semSel) semSel.value = curSheetSemester;
+
+    const existing = infoSheets.find(s => s.empId === curSheetEmpId && s.semester === curSheetSemester && s.schoolYear === curSheetSchoolYear);
+    const sheet = existing || { empId: curSheetEmpId, semester: curSheetSemester, schoolYear: curSheetSchoolYear, fullName: emp ? emp.first + ' ' + emp.last : '', dateOfBirth: '', placeOfBirth: '', presentAddress: '', telNo: '', yearsTotal: '', yearsRcc: '', yearsOther: '', employmentType: 'Full Time', governmentEmployee: 0, natureOfWork: '', timeSchedule: '', certified: 0, signedName: '', signedAt: '' };
+
+    const set = (id, v) => { const el = document.getElementById(id); if (el && el.value !== undefined) el.value = v ?? ''; };
+    set('isSchoolYear', sheet.schoolYear);
+    set('isFullName', sheet.fullName);
+    set('isDob', sheet.dateOfBirth);
+    set('isPob', sheet.placeOfBirth);
+    set('isAddress', sheet.presentAddress);
+    set('isTel', sheet.telNo);
+    set('isYearsTotal', sheet.yearsTotal);
+    set('isYearsRcc', sheet.yearsRcc);
+    set('isYearsOther', sheet.yearsOther);
+    set('isEmpType', sheet.employmentType);
+    const govEl = document.getElementById('isGovEmp'); if (govEl) govEl.checked = !!sheet.governmentEmployee;
+    set('isNatureWork', sheet.natureOfWork);
+    set('isTimeSched', sheet.timeSchedule);
+    const certEl = document.getElementById('isCertified'); if (certEl) certEl.checked = !!sheet.certified;
+
+    const eduTbody = document.getElementById('isEduBody');
+    if (eduTbody) {
+      const rows = eduFor(sheet.id || -1);
+      eduTbody.innerHTML = rows.length ? rows.map(e => `
+        <tr data-edu-id="${e.id}">
+          <td><input class="fi" style="padding:6px 8px" data-f="degree" value="${esc(e.degree)}" placeholder="Degree"/></td>
+          <td><input class="fi" style="padding:6px 8px" data-f="dateEarned" value="${esc(e.dateEarned)}" placeholder="Date Earned"/></td>
+          <td><input class="fi" style="padding:6px 8px" data-f="school" value="${esc(e.school)}" placeholder="School"/></td>
+          <td><input class="fi" style="padding:6px 8px" data-f="major" value="${esc(e.major)}" placeholder="Major"/></td>
+          <td><input class="fi" style="padding:6px 8px" data-f="minor" value="${esc(e.minor)}" placeholder="Minor"/></td>
+          <td>${curSheetEditable ? `<button class="btn btn-outline btn-sm" onclick="removeEduRow(this)">🗑</button>` : ''}</td>
+        </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-muted)">No education rows yet.</td></tr>`;
+    }
+
+    const loadTbody = document.getElementById('isLoadBody');
+    if (loadTbody) {
+      const rows = loadsForSheet(sheet.id || -1);
+      loadTbody.innerHTML = rows.length ? rows.map(l => `
+        <tr data-load-id="${l.id}">
+          <td><input class="fi" style="padding:6px 8px" data-f="subject" value="${esc(l.subject)}" placeholder="Subject"/></td>
+          <td><input class="fi" style="padding:6px 8px;width:70px" data-f="deptCode" value="${esc(l.deptCode)}" placeholder="CBA"/></td>
+          <td><input class="fi" style="padding:6px 8px;width:65px" data-f="timeStart" value="${esc(l.timeStart)}" placeholder="2:30p"/></td>
+          <td><input class="fi" style="padding:6px 8px;width:65px" data-f="timeEnd" value="${esc(l.timeEnd)}" placeholder="4:00p"/></td>
+          <td><input class="fi" style="padding:6px 8px;width:60px" data-f="days" value="${esc(l.days)}" placeholder="M,W"/></td>
+          <td><input class="fi" style="padding:6px 8px;width:45px" type="number" data-f="studentsM" value="${l.studentsMale}"/></td>
+          <td><input class="fi" style="padding:6px 8px;width:45px" type="number" data-f="studentsF" value="${l.studentsFemale}"/></td>
+          <td><input class="fi" style="padding:6px 8px;width:55px" data-f="room" value="${esc(l.roomNo)}" placeholder="410"/></td>
+          <td><input class="fi" style="padding:6px 8px;width:80px" data-f="gcode" value="${esc(l.googleCode)}" placeholder="Class Code"/></td>
+          <td style="font-weight:600;color:var(--maroon-dark)">${loadHours(l)}</td>
+          <td>${curSheetEditable ? `<button class="btn btn-outline btn-sm" onclick="removeLoadRow(this)">🗑</button>` : ''}</td>
+        </tr>`).join('') : `<tr><td colspan="11" style="text-align:center;padding:16px;color:var(--text-muted)">No class rows yet.</td></tr>`;
+      const totEl = document.getElementById('isLoadTotal');
+      if (totEl) totEl.textContent = (sheet.id ? totalHours(sheet.id) : 0).toFixed(1);
+    }
+
+    const certSection = document.getElementById('isCertStatus');
+    if (certSection) {
+      certSection.textContent = sheet.certified
+        ? '✓ Certified by ' + (sheet.signedName || '—') + ' on ' + (sheet.signedAt || '—')
+        : 'Not yet certified';
+    }
+
+    const empLabel = document.getElementById('isEmpLabel');
+    if (empLabel) empLabel.textContent = emp ? (emp.first + ' ' + emp.last) : '—';
+  } catch (e) {
+    console.error('[InfoSheet] renderInfoSheet error:', e);
+    showToast('⚠️', 'Error rendering Information Sheet. Please refresh and try again.');
   }
-  if (empSelect && curSheetEmpId) empSelect.value = String(curSheetEmpId);
-
-  const semSel = document.getElementById('isSemester');
-  if (semSel && !semSel.dataset.populated) {
-    semSel.innerHTML = SEMESTER_OPTIONS.map(s => `<option>${s}</option>`).join('');
-    semSel.dataset.populated = '1';
-  }
-  if (semSel) semSel.value = curSheetSemester;
-
-  const existing = infoSheets.find(s => s.empId === curSheetEmpId && s.semester === curSheetSemester && s.schoolYear === curSheetSchoolYear);
-  const sheet = existing || { empId: curSheetEmpId, semester: curSheetSemester, schoolYear: curSheetSchoolYear, fullName: emp ? emp.first + ' ' + emp.last : '', dateOfBirth: '', placeOfBirth: '', presentAddress: '', telNo: '', yearsTotal: '', yearsRcc: '', yearsOther: '', employmentType: 'Full Time', governmentEmployee: 0, natureOfWork: '', timeSchedule: '', certified: 0, signedName: '', signedAt: '' };
-
-  const set = (id, v) => { const el = document.getElementById(id); if (el && el.value !== undefined) el.value = v ?? ''; };
-  set('isSchoolYear', sheet.schoolYear);
-  set('isFullName', sheet.fullName);
-  set('isDob', sheet.dateOfBirth);
-  set('isPob', sheet.placeOfBirth);
-  set('isAddress', sheet.presentAddress);
-  set('isTel', sheet.telNo);
-  set('isYearsTotal', sheet.yearsTotal);
-  set('isYearsRcc', sheet.yearsRcc);
-  set('isYearsOther', sheet.yearsOther);
-  set('isEmpType', sheet.employmentType);
-  const govEl = document.getElementById('isGovEmp'); if (govEl) govEl.checked = !!sheet.governmentEmployee;
-  set('isNatureWork', sheet.natureOfWork);
-  set('isTimeSched', sheet.timeSchedule);
-  const certEl = document.getElementById('isCertified'); if (certEl) certEl.checked = !!sheet.certified;
-
-  const eduTbody = document.getElementById('isEduBody');
-  if (eduTbody) {
-    const rows = eduFor(sheet.id || -1);
-    eduTbody.innerHTML = rows.length ? rows.map(e => `
-      <tr data-edu-id="${e.id}">
-        <td><input class="fi" style="padding:6px 8px" data-f="degree" value="${esc(e.degree)}" placeholder="Degree"/></td>
-        <td><input class="fi" style="padding:6px 8px" data-f="dateEarned" value="${esc(e.dateEarned)}" placeholder="Date Earned"/></td>
-        <td><input class="fi" style="padding:6px 8px" data-f="school" value="${esc(e.school)}" placeholder="School"/></td>
-        <td><input class="fi" style="padding:6px 8px" data-f="major" value="${esc(e.major)}" placeholder="Major"/></td>
-        <td><input class="fi" style="padding:6px 8px" data-f="minor" value="${esc(e.minor)}" placeholder="Minor"/></td>
-        <td>${curSheetEditable ? `<button class="btn btn-outline btn-sm" onclick="removeEduRow(this)">🗑</button>` : ''}</td>
-      </tr>`).join('') : `<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text-muted)">No education rows yet.</td></tr>`;
-  }
-
-  const loadTbody = document.getElementById('isLoadBody');
-  if (loadTbody) {
-    const rows = loadsForSheet(sheet.id || -1);
-    loadTbody.innerHTML = rows.length ? rows.map(l => `
-      <tr data-load-id="${l.id}">
-        <td><input class="fi" style="padding:6px 8px" data-f="subject" value="${esc(l.subject)}" placeholder="Subject"/></td>
-        <td><input class="fi" style="padding:6px 8px;width:70px" data-f="deptCode" value="${esc(l.deptCode)}" placeholder="CBA"/></td>
-        <td><input class="fi" style="padding:6px 8px;width:65px" data-f="timeStart" value="${esc(l.timeStart)}" placeholder="2:30p"/></td>
-        <td><input class="fi" style="padding:6px 8px;width:65px" data-f="timeEnd" value="${esc(l.timeEnd)}" placeholder="4:00p"/></td>
-        <td><input class="fi" style="padding:6px 8px;width:60px" data-f="days" value="${esc(l.days)}" placeholder="M,W"/></td>
-        <td><input class="fi" style="padding:6px 8px;width:45px" type="number" data-f="studentsM" value="${l.studentsMale}"/></td>
-        <td><input class="fi" style="padding:6px 8px;width:45px" type="number" data-f="studentsF" value="${l.studentsFemale}"/></td>
-        <td><input class="fi" style="padding:6px 8px;width:55px" data-f="room" value="${esc(l.roomNo)}" placeholder="410"/></td>
-        <td><input class="fi" style="padding:6px 8px;width:80px" data-f="gcode" value="${esc(l.googleCode)}" placeholder="Class Code"/></td>
-        <td style="font-weight:600;color:var(--maroon-dark)">${loadHours(l)}</td>
-        <td>${curSheetEditable ? `<button class="btn btn-outline btn-sm" onclick="removeLoadRow(this)">🗑</button>` : ''}</td>
-      </tr>`).join('') : `<tr><td colspan="11" style="text-align:center;padding:16px;color:var(--text-muted)">No class rows yet.</td></tr>`;
-    const totEl = document.getElementById('isLoadTotal');
-    if (totEl) totEl.textContent = (sheet.id ? totalHours(sheet.id) : 0).toFixed(1);
-  }
-
-  const certSection = document.getElementById('isCertStatus');
-  if (certSection) {
-    certSection.textContent = sheet.certified
-      ? '✓ Certified by ' + (sheet.signedName || '—') + ' on ' + (sheet.signedAt || '—')
-      : 'Not yet certified';
-  }
-
-  const empLabel = document.getElementById('isEmpLabel');
-  if (empLabel) empLabel.textContent = emp ? (emp.first + ' ' + emp.last) : '—';
 }
 
 // ── Row CRUD ─────────────────────────────────────────────────
@@ -304,13 +338,18 @@ function updateLoadHoursPreview() {
 
 // ── Page / role dispatch ─────────────────────────────────────
 function openInfoSheetPage(empId, editable) {
-  curSheetEmpId = empId || (loggedInUser ? loggedInUser.id : null);
-  curSheetEditable = editable !== false;
-  if (!curSheetSchoolYear) {
-    const y = new Date().getFullYear();
-    curSheetSchoolYear = y + '-' + (y + 1);
+  try {
+    curSheetEmpId = empId || (loggedInUser && loggedInUser.id) || null;
+    curSheetEditable = editable !== false;
+    if (!curSheetSchoolYear) {
+      const y = new Date().getFullYear();
+      curSheetSchoolYear = y + '-' + (y + 1);
+    }
+    renderInfoSheet();
+  } catch (e) {
+    console.error('[InfoSheet] openInfoSheetPage error:', e);
+    showToast('⚠️', 'Unable to load Information Sheet. Please refresh and try again.');
   }
-  renderInfoSheet();
 }
 
 function switchSheet() {
