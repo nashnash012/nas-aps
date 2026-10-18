@@ -1,0 +1,89 @@
+// Smoke test: tlCompute (5 levels), tlParseTimeRange, tlDefaultSY
+const fs = require('fs'), vm = require('vm');
+
+global._savedDemo = {};
+global.WORK_DAYS = 22;
+global.HOURS_PER_WORKLOAD = 3;
+global.fmt = n => 'P' + Number(n).toFixed(2);
+global.teacherRate = emp => emp.__rate;
+global.rateUnit = lvl => 'per Hour';
+
+vm.runInThisContext(
+  fs.readFileSync(__dirname + '/../public/js/teachingload.js', 'utf8'),
+  { filename: 'teachingload.js' }
+);
+
+let pass = 0, fail = 0;
+const eq = (name, got, want, tol) => {
+  const ok = (tol != null) ? Math.abs(got - want) <= tol : got === want;
+  ok ? pass++ : fail++;
+  console.log((ok ? 'PASS' : 'FAIL') + '  ' + name + '  got=' + got + (ok ? '' : '  want=' + want));
+};
+
+const NT   = { classification: 'Non-Teaching', salary: 18000 };
+const ELEM = { classification: 'Teaching', schoolLevel: 'Elementary', __rate: 14000 };
+const HS   = { classification: 'Teaching', schoolLevel: 'High School', __rate: 500 };
+const COL  = { classification: 'Teaching', schoolLevel: 'College',     __rate: 190 };
+const GRAD = { classification: 'Teaching', schoolLevel: 'Graduate School', __rate: 230 };
+
+// 1) Non-Teaching: 18000 - (3/22)*18000 = 15545.45
+let c = tlCompute(NT, 0, 3);
+eq('NT pay', c.pay, 15545.45, 0.01);
+eq('NT workloadType', c.workloadType, 'absences');
+eq('NT absences kept', c.absences, 3);
+
+// 2) Elementary: 14000 - (2/22)*14000 = 12727.27
+c = tlCompute(ELEM, 0, 2);
+eq('ELEM pay', c.pay, 12727.27, 0.01);
+eq('ELEM workloadType', c.workloadType, 'absences');
+
+// 3) High School: 10h/wk * 4.4wk = 44h ÷ 3 = 14.6667wl * 500 = 7333.33
+c = tlCompute(HS, 10, 0);
+eq('HS pay', c.pay, 7333.33, 0.01);
+eq('HS workloadType', c.workloadType, 'hours');
+eq('HS workloadValue', c.workloadValue, 10);
+
+// 4) College: 44h * 190 = 8360
+c = tlCompute(COL, 10, 0);
+eq('COL pay', c.pay, 8360, 0.01);
+
+// 5) Grad: 44h * 230 = 10120
+c = tlCompute(GRAD, 10, 0);
+eq('GRAD pay', c.pay, 10120, 0.01);
+
+// 6) Negative/zero guards
+eq('NT floor at 0', tlCompute(NT, 0, 999).pay, 0);
+eq('empty emp -> NT-like', tlCompute(null, 0, 0).workloadType, 'absences');
+
+// 7) Configurable HPW: 1 workload = 4 hrs
+global.HOURS_PER_WORKLOAD = 4;
+c = tlCompute(HS, 10, 0);
+eq('HS pay with HPW=4', c.pay, 44 / 4 * 500, 0.01);
+global.HOURS_PER_WORKLOAD = 3;
+
+// 8) Configurable workDays
+global.WORK_DAYS = 20;
+eq('NT pay WD=20', tlCompute(NT, 0, 4).pay, 18000 - (4 / 20) * 18000, 0.01);
+eq('weeks uses WD/5', tlCompute(COL, 10, 0).formulaText.includes('4.0 weeks'), true);
+global.WORK_DAYS = 22;
+
+// 9) Time parser
+eq('parse 2:30p-4:00p', tlParseTimeRange('2:30p-4:00p').hours, 1.5);
+eq('parse 2:30PM-4:00PM', tlParseTimeRange('2:30PM-4:00PM').hours, 1.5);
+eq('parse 14:00-16:00', tlParseTimeRange('14:00-16:00').hours, 2);
+eq('parse 8:00a-12:00p', tlParseTimeRange('8:00a-12:00p').hours, 4);
+eq('parse overnight 10:00p-2:00a', tlParseTimeRange('10:00p-2:00a').hours, 4);
+eq('parse garbage -> null', tlParseTimeRange('abc'), null);
+
+// 10) Default SY: today Oct 2026 (month>=6) -> 2026-2027
+eq('tlDefaultSY', tlDefaultSY(), '2026-2027');
+
+// 11) Level helpers
+eq('tlLevelOf NT', tlLevelOf(NT), 'Non-Teaching');
+eq('tlLevelOf unset -> College', tlLevelOf({ classification: 'Teaching' }), 'College');
+eq('tlUnitOf NT -> per Month', tlUnitOf(NT), 'per Month');
+eq('tlUnitOf Teaching -> per Hour', tlUnitOf(HS), 'per Hour');
+eq('tlRateOf NT salary', tlRateOf(NT), 18000);
+
+console.log('\nRESULT: ' + pass + ' passed, ' + fail + ' failed  ' + (fail ? '❌' : '✅'));
+process.exit(fail ? 1 : 0);

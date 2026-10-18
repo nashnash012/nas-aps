@@ -709,7 +709,7 @@ function updateHourlyRateLabel(sl) {
   if (hint) hint.textContent = isMonth
     ? 'Teaching pay = Monthly Rate − Absence Deduction (÷ Working Days per Month).'
     : isWorkload
-    ? 'Teaching pay = Rate per Workload × Workloads (1 workload = 3 hrs).'
+    ? 'Teaching pay = Rate per Workload × Workloads (1 workload = ' + ((typeof HOURS_PER_WORKLOAD !== 'undefined' && HOURS_PER_WORKLOAD) ? HOURS_PER_WORKLOAD : 3) + ' hrs).'
     : 'Teaching pay = Rate per Hour × Hours Worked.';
 }
 
@@ -729,7 +729,7 @@ function recalcSuggestedSalary() {
       if (sl === 'Elementary') {
         computed = r; // monthly rate from rank
       } else if (sl === 'High School') {
-        computed = Math.round(r * h / 3 * 100) / 100; // rate × workloads (hrs ÷ 3)
+        computed = Math.round(r * h / ((typeof HOURS_PER_WORKLOAD !== 'undefined' && HOURS_PER_WORKLOAD) ? HOURS_PER_WORKLOAD : 3) * 100) / 100; // rate × workloads (hrs ÷ hours-per-workload)
       } else {
         computed = Math.round(r * h * 100) / 100; // College/Grad: rate × hours
       }

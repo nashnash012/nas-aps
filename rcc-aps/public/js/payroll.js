@@ -120,6 +120,7 @@ function applyServerData(d) {
   if (d.nextLeaveRecordId) nextLeaveRecordId = d.nextLeaveRecordId;
   if (d.bonusExemptionLimit != null && !isNaN(parseFloat(d.bonusExemptionLimit))) BONUS_EXEMPTION_LIMIT = parseFloat(d.bonusExemptionLimit);
   if (d.workDays != null && !isNaN(parseFloat(d.workDays))) WORK_DAYS = parseFloat(d.workDays);
+  if (d.hoursPerWorkload != null && !isNaN(parseFloat(d.hoursPerWorkload))) HOURS_PER_WORKLOAD = parseFloat(d.hoursPerWorkload);
   if (typeof deductionCategories !== 'undefined' && Array.isArray(d.deductionCategories)) deductionCategories = d.deductionCategories;
   if (d.nextDedCatId) nextDedCatId = d.nextDedCatId;
   if (typeof bonusTypes !== 'undefined' && Array.isArray(d.bonusTypes)) bonusTypes = d.bonusTypes;
@@ -131,12 +132,10 @@ function applyServerData(d) {
   if (typeof dedMeta  !== 'undefined' && d.dedMeta)  dedMeta  = Object.assign({}, dedMeta,  d.dedMeta);
   if (typeof teacherRanks !== 'undefined' && Array.isArray(d.teacherRanks) && d.teacherRanks.length) teacherRanks = d.teacherRanks;
   if (d.nextRankId) nextRankId = d.nextRankId;
-  if (typeof infoSheets !== 'undefined' && Array.isArray(d.infoSheets)) infoSheets = d.infoSheets;
-  if (typeof infoSheetEducation !== 'undefined' && Array.isArray(d.infoSheetEducation)) infoSheetEducation = d.infoSheetEducation;
-  if (typeof teachingLoads !== 'undefined' && Array.isArray(d.teachingLoads)) teachingLoads = d.teachingLoads;
-  if (d.nextSheetId) nextSheetId = d.nextSheetId;
-  if (d.nextEduId) nextEduId = d.nextEduId;
-  if (d.nextLoadId) nextLoadId = d.nextLoadId;
+  if (typeof teachingLoadRecords !== 'undefined' && Array.isArray(d.teachingLoadRecords)) teachingLoadRecords = d.teachingLoadRecords;
+  if (typeof teachingLoadClasses !== 'undefined' && Array.isArray(d.teachingLoadClasses)) teachingLoadClasses = d.teachingLoadClasses;
+  if (d.nextTeachingLoadId) nextTeachingLoadId = d.nextTeachingLoadId;
+  if (d.nextTeachingLoadClassId) nextTeachingLoadClassId = d.nextTeachingLoadClassId;
 }
 
 // Default the shared pay-period dropdown to the most recent month that actually
@@ -235,8 +234,8 @@ function empGrossPay(emp, hours, absences) {
     const lvl = emp.schoolLevel;
     if (lvl === 'Elementary') return parseFloat(r.toFixed(2));
     const h = Math.max(0, (hours != null && hours !== '') ? parseFloat(hours) : (emp.hoursWorked || 0));
-    // High School pays per workload (3 hrs = 1 workload); College/Grad per hour.
-    if (lvl === 'High School') return parseFloat((r * h / 3).toFixed(2));
+    // High School pays per workload (HOURS_PER_WORKLOAD hrs = 1 workload); College/Grad per hour.
+    if (lvl === 'High School') return parseFloat((r * h / HOURS_PER_WORKLOAD).toFixed(2));
     return parseFloat((h * r).toFixed(2));
   }
   const base = Math.max(0, parseFloat(emp.salary) || 0);
@@ -258,6 +257,9 @@ let BONUS_EXEMPTION_LIMIT = (_savedDemo && _savedDemo.bonusExemptionLimit) || 90
 // monthly-paid (Non-Teaching) staff. Configurable in Deduction Tables —
 // standard convention is 22; holidays stay paid so they are not deducted.
 let WORK_DAYS = (_savedDemo && _savedDemo.workDays) || 22;
+// High School workload size: 1 workload = this many teaching hours.
+// Configurable in Formula Management; feeds payroll + teaching load estimates.
+let HOURS_PER_WORKLOAD = (_savedDemo && _savedDemo.hoursPerWorkload) || 3;
 // Splits bonuses (13th month + other bonuses) into exempt and taxable parts.
 // Returns the taxable excess and how much of it comes from the 13th month.
 function splitBonusTaxable(thirteenth, otherBonuses) {
@@ -919,8 +921,8 @@ function computePayroll() {
       const days = isIncr ? '' : (daysEl ? daysEl.value : '');
       let amount;
       if (!isIncr && group === 'High School') {
-        // Per-hour rate = per-workload rate ÷ 3
-        const wlRate = parseFloat((rate / 3).toFixed(2));
+        // Per-hour rate = per-workload rate ÷ hours-per-workload
+        const wlRate = parseFloat((rate / HOURS_PER_WORKLOAD).toFixed(2));
         amount = parseFloat((qty * wlRate).toFixed(2));
         subjectBreakdown.push({ type:'subject', subject, days, qty, rate: wlRate, amount });
       } else {
@@ -933,7 +935,7 @@ function computePayroll() {
     gross = parseFloat(subjGross.toFixed(2));
     const Rfmt = R.toLocaleString('en-PH',{minimumFractionDigits:2});
     meta = group === 'High School'
-      ? `${totalQty} hrs ÷ 3 = ${totalQty/3} workload(s) × ₱${Rfmt} = ${fmt(gross)}`
+      ? `${totalQty} hrs ÷ ${HOURS_PER_WORKLOAD} = ${totalQty/HOURS_PER_WORKLOAD} workload(s) × ₱${Rfmt} = ${fmt(gross)}`
       : `${totalQty} hrs × ₱${Rfmt} = ${fmt(gross)}`;
   } else if (isTeaching) {
     // Elementary: monthly rate with absences deducted (÷ WORK_DAYS).
@@ -996,7 +998,7 @@ function computePayroll() {
       const isIncr = b.type === 'increment';
       const label = isIncr ? '📈 Increment - S.Y' : '📚 ' + esc(b.subject || '');
       const qtyLabel = (group === 'High School' && !isIncr)
-        ? (b.qty / 3) + ' workload(s)' + (b.days ? ' · ' + esc(b.days) : '')
+        ? (b.qty / HOURS_PER_WORKLOAD) + ' workload(s)' + (b.days ? ' · ' + esc(b.days) : '')
         : b.qty + ' hrs';
       earningsHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">' + label + ' — ' + qtyLabel + ' × ₱' + fmt(b.rate) + '</span><span style="font-weight:600">+' + fmt(b.amount) + '</span></div>';
     });
@@ -1088,7 +1090,7 @@ function renderPayrollSummary() {
     let loadValue;
     if (emp.classification !== 'Teaching') loadValue = '₱' + fmt(base);
     else if (emp.schoolLevel === 'Elementary') loadValue = '₱' + fmt(base) + '/mo';
-    else if (emp.schoolLevel === 'High School') loadValue = fmt((emp.hoursWorked || 0) / 3) + ' wl';
+    else if (emp.schoolLevel === 'High School') loadValue = fmt((emp.hoursWorked || 0) / HOURS_PER_WORKLOAD) + ' wl';
     else loadValue = (emp.hoursWorked || 0) + ' hrs';
     const typeLabel = emp.classification === 'Teaching' ? (emp.schoolLevel || 'Teaching') : 'Non-Teaching';
     const bonuses = activeBonusTypes(emp, base, periodEndDate(period));

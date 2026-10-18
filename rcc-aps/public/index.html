@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>RCC-APS | Automated Payroll System</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="css/style.css?v=20260910"/>
+  <link rel="stylesheet" href="css/style.css?v=20261018a"/>
   <link rel="stylesheet" href="css/responsive.css?v=3"/>
 </head>
 <body>
@@ -139,7 +139,7 @@
       <button class="nav-item active" onclick="showEmpPage('empDashboard',this)"><span class="nav-icon">🏠</span> Dashboard</button>
       <button class="nav-item" onclick="showEmpPage('empPayslip',this)"><span class="nav-icon">📄</span> My Payslip</button>
       <button class="nav-item" onclick="showEmpPage('empProfile',this)"><span class="nav-icon">👤</span> My Profile</button>
-      <button class="nav-item" onclick="showEmpPage('empInfoSheet',this)"><span class="nav-icon">📋</span> Information Sheet</button>
+      <button class="nav-item" onclick="showEmpPage('empTeachingLoad',this)"><span class="nav-icon">📚</span> Teaching Load</button>
       <button class="nav-item" onclick="showEmpPage('empPassword',this)"><span class="nav-icon">🔑</span> Change Password</button>
     </div>
     <div class="sb-footer"><button class="logout-btn" onclick="logout()"><span>🚪</span> Log Out</button></div>
@@ -267,126 +267,11 @@
         </div>
       </div>
 
-      <!-- Emp Information Sheet (RCC official form replica) -->
-      <div id="empInfoSheet" style="display:none">
-        <div class="pg-title">📋 Information Sheet</div>
-        <div class="pg-sub">Official teaching load record, submitted every semester. Basis for payroll computation.</div>
-
-        <div class="card" style="max-width:1100px;margin:0 auto">
-          <div class="card-body" style="padding:28px 32px">
-
-            <div style="text-align:center;margin-bottom:20px">
-              <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--maroon-dark)">Republic Central Colleges</div>
-              <div style="font-size:13px;color:var(--text-muted)">Angeles City</div>
-              <div style="font-size:16px;font-weight:700;letter-spacing:2px;margin:10px 0 4px">INFORMATION SHEET</div>
-              <div style="display:flex;gap:16px;justify-content:center;align-items:center;flex-wrap:wrap;margin:12px 0">
-                <label style="font-size:13px;font-weight:600">Semester:</label>
-                <select class="fi" style="width:auto;min-width:90px" id="isSemester" onchange="switchSheet()"></select>
-                <label style="font-size:13px;font-weight:600">School Year:</label>
-                <input class="fi" style="width:auto;min-width:130px" id="isSchoolYear" placeholder="2024-2025"/>
-                <span id="isEmpLabel" style="font-size:12px;color:var(--text-muted)"></span>
-              </div>
-            </div>
-
-            <div id="isEmployeeRow" style="margin-bottom:16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-              <label style="font-size:13px;font-weight:600">Employee:</label>
-              <select class="fi" style="min-width:220px" id="isEmployee" onchange="switchSheet()"></select>
-            </div>
-
-            <div style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--maroon-dark)">Personal Information</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 16px">
-              <div class="fg"><label class="fl">Name</label><input class="fi" id="isFullName" placeholder="Full name"/></div>
-              <div class="fg"><label class="fl">Date of Birth</label><input class="fi" id="isDob" placeholder="April 27, 1981"/></div>
-              <div class="fg"><label class="fl">Place of Birth</label><input class="fi" id="isPob" placeholder="City, Province"/></div>
-              <div class="fg"><label class="fl">Present Address</label><input class="fi" id="isAddress" placeholder="Complete address"/></div>
-              <div class="fg"><label class="fl">Tel. No.</label><input class="fi" id="isTel" placeholder="09xx-xxx-xxxx"/></div>
-            </div>
-
-            <div style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--maroon-dark)">Educational Attainment</div>
-            <div style="overflow-x:auto">
-              <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-                <thead><tr style="background:var(--maroon-dark);color:#fff">
-                  <th style="padding:8px 10px;text-align:left">Degree</th>
-                  <th style="padding:8px 10px;text-align:left">Date Earned</th>
-                  <th style="padding:8px 10px;text-align:left">School</th>
-                  <th style="padding:8px 10px;text-align:left">Major</th>
-                  <th style="padding:8px 10px;text-align:left">Minor</th>
-                  <th style="padding:8px 10px;width:40px"></th>
-                </tr></thead>
-                <tbody id="isEduBody"></tbody>
-              </table>
-            </div>
-            <button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="addEduRow()">+ Add Education</button>
-
-            <div style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--maroon-dark)">Teaching Experience & Status</div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px 16px">
-              <div class="fg"><label class="fl">Total Years in Teaching</label><input class="fi" id="isYearsTotal" placeholder="22"/></div>
-              <div class="fg"><label class="fl">Years in RCC</label><input class="fi" id="isYearsRcc" placeholder="21"/></div>
-              <div class="fg"><label class="fl">Years in other school/s</label><input class="fi" id="isYearsOther" placeholder="1"/></div>
-              <div class="fg"><label class="fl">Employment Type</label>
-                <select class="fi" id="isEmpType"><option>Full Time</option><option>Part Time</option><option>Substitute</option></select></div>
-              <div class="fg"><label class="fl">Government Employee</label>
-                <select class="fi" id="isGovEmp"><option value="0">No</option><option value="1">Yes</option></select></div>
-            </div>
-
-            <div style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--maroon-dark)">Schedule of Classes</div>
-            <div style="overflow-x:auto">
-              <table style="width:100%;border-collapse:collapse;font-size:12px">
-                <thead><tr style="background:var(--maroon-dark);color:#fff">
-                  <th style="padding:8px 6px;text-align:left">Subject</th>
-                  <th style="padding:8px 6px;text-align:left">Dept</th>
-                  <th style="padding:8px 6px;text-align:left">Time Start</th>
-                  <th style="padding:8px 6px;text-align:left">Time End</th>
-                  <th style="padding:8px 6px;text-align:left">Day</th>
-                  <th style="padding:8px 6px;text-align:left">Students M</th>
-                  <th style="padding:8px 6px;text-align:left">Students F</th>
-                  <th style="padding:8px 6px;text-align:left">Rm#</th>
-                  <th style="padding:8px 6px;text-align:left">Google Class Code</th>
-                  <th style="padding:8px 6px;text-align:left">Hrs/Week</th>
-                  <th style="padding:8px 6px;width:40px"></th>
-                </tr></thead>
-                <tbody id="isLoadBody"></tbody>
-              </table>
-            </div>
-            <div style="display:flex;gap:12px;align-items:center;margin-top:8px;flex-wrap:wrap">
-              <button class="btn btn-outline btn-sm" onclick="addLoadRow()">+ Add Class</button>
-              <span style="font-size:13px;font-weight:600;color:var(--maroon-dark)">Total Hours/Week: <span id="isLoadTotal">0.0</span></span>
-            </div>
-
-            <div style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--maroon-dark)">Assignment in Other School, College, Department, or Office</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 16px">
-              <div class="fg"><label class="fl">Nature of Work</label><input class="fi" id="isNatureWork" placeholder="e.g. Dean / Director"/></div>
-              <div class="fg"><label class="fl">Time Schedule</label><input class="fi" id="isTimeSched" placeholder="See attached sheet"/></div>
-            </div>
-
-            <div style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--maroon-dark)">Certification</div>
-            <div style="display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap">
-              <label style="display:flex;gap:8px;align-items:center;font-size:13px;cursor:pointer">
-                <input type="checkbox" id="isCertified" style="width:16px;height:16px;accent-color:var(--maroon)"/>
-                I hereby certify that the information given above is true and correct.
-              </label>
-              <span id="isCertStatus" style="font-size:12px;color:var(--text-muted)"></span>
-            </div>
-
-            <div style="display:flex;justify-content:space-between;margin-top:32px;flex-wrap:wrap;gap:12px;align-items:center">
-              <div style="font-size:13px;color:var(--text-muted)">
-                <div>Approved</div>
-                <div style="font-weight:600;color:var(--text);margin-top:4px">GLORIA B. ABRAZADO, Ph. D.</div>
-                <div style="font-size:12px">Vice President for Academic Affairs</div>
-              </div>
-              <div style="text-align:right">
-                <div style="font-size:12px;color:var(--text-muted)">Signature of Instructor</div>
-                <div style="border-top:1px solid var(--text);width:220px;margin-top:24px"></div>
-              </div>
-            </div>
-
-            <div style="margin-top:20px;display:flex;gap:12px">
-              <button class="btn btn-primary" onclick="saveInfoSheet()">💾 Save Information Sheet</button>
-              <button class="btn btn-outline" onclick="switchSheet()">↻ Reset</button>
-            </div>
-
-          </div>
-        </div>
+      <!-- Emp Teaching Load (employee-submitted, tabs per semester) -->
+      <div id="empTeachingLoad" style="display:none">
+        <div class="pg-title">📚 Teaching Load</div>
+        <div class="pg-sub">Encode your schedule of classes and workload for each semester. This is the basis for payroll computation.</div>
+        <div id="tlFormHost" style="max-width:1100px;margin:16px auto 0"></div>
       </div>
 
       <!-- Emp Change Password -->
@@ -426,7 +311,8 @@
       <button class="nav-item" onclick="showFinPage('finAnalytics',this)"><span class="nav-icon">📊</span> Analytics</button>
       <button class="nav-item" onclick="showFinPage('finPayroll',this)"><span class="nav-icon">💰</span> Payroll Calculation</button>
       <button class="nav-item" onclick="showFinPage('finRanks',this)"><span class="nav-icon">🎓</span> Faculty Rank Tables</button>
-      <button class="nav-item" onclick="showFinPage('finInfoSheet',this)"><span class="nav-icon">📋</span> Information Sheets</button>
+      <button class="nav-item" onclick="showFinPage('finTeachingLoad',this)"><span class="nav-icon">📚</span> Teaching Loads</button>
+      <button class="nav-item" onclick="showFinPage('finFormula',this)"><span class="nav-icon">🧮</span> Formula Management</button>
       <button class="nav-item" onclick="showFinPage('finBonus',this)"><span class="nav-icon">🎁</span> Bonus Management</button>
       <button class="nav-item" onclick="showFinPage('finReports',this)"><span class="nav-icon">📋</span> Reports</button>
       <button class="nav-item" onclick="showFinPage('finDeduction',this)"><span class="nav-icon">⚙️</span> Deduction Tables</button>
@@ -1403,11 +1289,19 @@
         </div>
       </div>
 
-      <!-- Finance: Information Sheets (view/edit all faculty) -->
-      <div id="finInfoSheet" style="display:none">
-        <div class="pg-title">📋 Information Sheets</div>
-        <div class="pg-sub">Review and edit faculty teaching load records. These are the basis for payroll computation.</div>
-        <div id="finInfoSheetContent"></div>
+      <!-- Finance: Teaching Loads (view/edit all faculty) -->
+      <div id="finTeachingLoad" style="display:none">
+        <div class="pg-title">📚 Teaching Loads</div>
+        <div class="pg-sub">Review and edit teaching load records submitted by employees. Basis for payroll computation.</div>
+        <div id="finTeachingLoadContent"></div>
+        <div id="finTlFormHost" style="max-width:1100px;margin:16px auto 0"></div>
+      </div>
+
+      <!-- Finance: Formula Management (payroll computation formulas) -->
+      <div id="finFormula" style="display:none">
+        <div class="pg-title">🧮 Formula Management</div>
+        <div class="pg-sub">Payroll computation formulas per school level and their global parameters.</div>
+        <div id="finFormulaContent"></div>
       </div>
 
     </div>
@@ -1428,7 +1322,6 @@
       <button class="nav-item active" onclick="showAdmPage('admDashboard',this)"><span class="nav-icon">🏠</span> Dashboard</button>
       <button class="nav-item" onclick="showAdmPage('admUsers',this)"><span class="nav-icon">👥</span> User Management</button>
       <button class="nav-item" onclick="showAdmPage('admRanks',this)"><span class="nav-icon">🎓</span> Faculty Rank Tables</button>
-      <button class="nav-item" onclick="showAdmPage('admInfoSheet',this)"><span class="nav-icon">📋</span> Information Sheets</button>
       <button class="nav-item" onclick="showAdmPage('admDeduction',this)"><span class="nav-icon">⚙️</span> Deduction Tables</button>
     </div>
     <div class="nav-sec">
@@ -1731,13 +1624,6 @@
         </div>
       </div>
 
-      <!-- Admin: Information Sheets (read-only view of all faculty) -->
-      <div id="admInfoSheet" style="display:none">
-        <div class="pg-title">📋 Information Sheets</div>
-        <div class="pg-sub">Read-only view of faculty teaching load records submitted every semester.</div>
-        <div id="admInfoSheetContent"></div>
-      </div>
-
     </div>
   </div>
 </div>
@@ -1998,15 +1884,16 @@
 <!-- ════════════════════════════════════════════════════════════
      JAVASCRIPT
 ════════════════════════════════════════════════════════════ -->
-  <script src="js/core.js?v=20261017a"></script>
-  <script src="js/auth.js?v=20261017a"></script>
+  <script src="js/core.js?v=20261018a"></script>
+  <script src="js/auth.js?v=20261018a"></script>
   <script src="js/employees.js?v=20260822c"></script>
-  <script src="js/payroll.js?v=20261017a"></script>
+  <script src="js/payroll.js?v=20261018a"></script>
   <script src="js/reports.js?v=20260822g"></script>
   <script src="js/bonus.js?v=20260903a"></script>
   <script src="js/ranks.js?v=20261017a"></script>
-  <script src="js/infosheet.js?v=20261017a"></script>
-  <script src="js/deductions.js?v=20261017a"></script>
+  <script src="js/teachingload.js?v=20261018a"></script>
+  <script src="js/formula.js?v=20261018a"></script>
+  <script src="js/deductions.js?v=20261018a"></script>
   <script src="js/ui.js?v=20260903a"></script>
 
 <!-- ═══ ACCESS DENIED SCREEN ═══════════════════════════════ -->

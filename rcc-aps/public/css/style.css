@@ -241,6 +241,32 @@ tr:hover td{background:#FEFCF8}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes slideUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 
+/* ── TEACHING LOAD — semester tabs ── */
+.tl-tabs{display:flex;gap:6px;border-bottom:2px solid var(--border);margin-bottom:18px}
+.tl-tab{
+  padding:9px 22px;
+  border:1px solid var(--border);
+  border-bottom:none;
+  border-radius:9px 9px 0 0;
+  background:var(--bg);
+  color:var(--text-muted);
+  font-size:13px;
+  font-weight:600;
+  font-family:inherit;
+  cursor:pointer;
+  margin-bottom:-2px;
+  transition:background .15s,color .15s;
+}
+.tl-tab:hover{color:var(--maroon);background:var(--maroon-light)}
+.tl-tab.active{
+  background:var(--white);
+  border-color:var(--maroon);
+  border-bottom:2px solid var(--white);
+  color:var(--maroon-dark);
+  box-shadow:0 -3px 8px rgba(0,0,0,.06);
+}
+.tl-hours-cell{font-family:'Courier New',monospace;font-weight:700;text-align:right;white-space:nowrap}
+
 /* ── PRINT ── */
 #printOverlay{display:none}
 @media print{

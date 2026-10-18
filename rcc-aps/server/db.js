@@ -56,7 +56,7 @@ async function status() {
 async function assembleState() {
   const [users, authRows, profRows, cashRows, bonusTypes, payoutRows,
           dedCat, payroll, sss, phil, pag, bir, cfg, leaveTypes,
-          leaveRecords, attendance, ranks, sheets, sheetEdu, loads] = await Promise.all([
+          leaveRecords, attendance, ranks, tlRecords, tlClasses] = await Promise.all([
     q('SELECT * FROM users ORDER BY id'),
     q('SELECT * FROM auth ORDER BY id'),
     q('SELECT * FROM profiles'),
@@ -74,9 +74,8 @@ async function assembleState() {
     q('SELECT * FROM leave_records ORDER BY id'),
     q('SELECT * FROM attendance ORDER BY id'),
     q('SELECT * FROM teacher_ranks ORDER BY id'),
-    q('SELECT * FROM info_sheets ORDER BY id'),
-    q('SELECT * FROM info_sheet_education ORDER BY id'),
-    q('SELECT * FROM teaching_loads ORDER BY id')
+    q('SELECT * FROM teaching_load_records ORDER BY id'),
+    q('SELECT * FROM teaching_load_classes ORDER BY id')
   ]);
 
   const num = v => { const n = parseFloat(v); return (isNaN(n) && v != null) ? v : (v == null ? null : n); };
@@ -169,34 +168,26 @@ async function assembleState() {
       rate: num(r.rate != null ? r.rate : r.ratePerHour)
     })),
     nextRankId: parseInt(cfgObj.nextRankId, 10) || 1,
-    infoSheets: sheets.map(s => ({
-      id: s.id, empId: s.empId, semester: s.semester, schoolYear: s.schoolYear,
-      fullName: s.fullName || '', dateOfBirth: s.dateOfBirth || '',
-      placeOfBirth: s.placeOfBirth || '', presentAddress: s.presentAddress || '',
-      telNo: s.telNo || '', yearsTotal: s.yearsTotal || '',
-      yearsRcc: s.yearsRcc || '', yearsOther: s.yearsOther || '',
-      employmentType: s.employmentType || '', governmentEmployee: !!s.governmentEmployee,
-      natureOfWork: s.natureOfWork || '', timeSchedule: s.timeSchedule || '',
-      certified: !!s.certified, signedName: s.signedName || '',
-      signedAt: s.signedAt || '', approvedBy: s.approvedBy || '',
-      approvedTitle: s.approvedTitle || ''
+    teachingLoadRecords: tlRecords.map(r => ({
+      id: r.id, empId: r.empId, semester: r.semester, schoolYear: r.schoolYear,
+      classification: r.classification || 'Teaching', level: r.level || '',
+      rankId: r.rankId || 0, rankName: r.rankName || '',
+      rate: num(r.rate), rateUnit: r.rateUnit || '',
+      salary: num(r.salary), workloadType: r.workloadType || 'hours',
+      workloadValue: num(r.workloadValue), absences: num(r.absences),
+      computedPay: num(r.computedPay), savedAt: r.savedAt || ''
     })),
-    nextSheetId: parseInt(cfgObj.nextSheetId, 10) || 1,
-    infoSheetEducation: sheetEdu.map(e => ({
-      id: e.id, sheetId: e.sheetId, degree: e.degree || '',
-      dateEarned: e.dateEarned || '', school: e.school || '',
-      major: e.major || '', minor: e.minor || '', sortOrder: e.sortOrder || 0
-    })),
-    nextEduId: parseInt(cfgObj.nextEduId, 10) || 1,
-    teachingLoads: loads.map(l => ({
-      id: l.id, sheetId: l.sheetId, subject: l.subject || '',
+    nextTeachingLoadId: parseInt(cfgObj.nextTeachingLoadId, 10) || 1,
+    nextTeachingLoadClassId: parseInt(cfgObj.nextTeachingLoadClassId, 10) || 1,
+    hoursPerWorkload: num(cfgObj.hoursPerWorkload) != null && !isNaN(parseFloat(cfgObj.hoursPerWorkload)) ? parseFloat(cfgObj.hoursPerWorkload) : 3,
+    teachingLoadClasses: tlClasses.map(l => ({
+      id: l.id, recordId: l.recordId, subject: l.subject || '',
       deptCode: l.deptCode || '', timeStart: l.timeStart || '',
       timeEnd: l.timeEnd || '', days: l.days || '',
       studentsMale: l.studentsMale || 0, studentsFemale: l.studentsFemale || 0,
       roomNo: l.roomNo || '', googleCode: l.googleCode || '',
       hoursPerWeek: num(l.hoursPerWeek), sortOrder: l.sortOrder || 0
     })),
-    nextLoadId: parseInt(cfgObj.nextLoadId, 10) || 1,
     attendance: attendance.map(a => ({
       empId: a.empId, employeeId: a.employeeId, employeeEmail: a.employeeEmail,
       date: a.date, clockInAt: a.clockInAt, clockOutAt: a.clockOutAt,
@@ -222,8 +213,8 @@ async function persistState(s) {
       'DELETE FROM app_config', 'DELETE FROM leave_types',
       'DELETE FROM leave_records', 'DELETE FROM attendance',
       'DELETE FROM teacher_ranks',
-      'DELETE FROM info_sheets', 'DELETE FROM info_sheet_education',
-      'DELETE FROM teaching_loads'
+      'DELETE FROM teaching_load_classes',
+      'DELETE FROM teaching_load_records'
     ];
     for (const sql of clearAll) await c.query(sql);
 
@@ -365,43 +356,31 @@ async function persistState(s) {
       );
     }
 
-    // info sheets (RCC Information Sheet per teacher per semester)
-    for (const s2 of s.infoSheets || []) {
+    // teaching load records (employee-submitted, per semester+SY)
+    for (const r of s.teachingLoadRecords || []) {
       await c.query(
-        `INSERT INTO info_sheets
-           (id, empId, semester, schoolYear, fullName, dateOfBirth, placeOfBirth,
-            presentAddress, telNo, yearsTotal, yearsRcc, yearsOther,
-            employmentType, governmentEmployee, natureOfWork, timeSchedule,
-            certified, signedName, signedAt, approvedBy, approvedTitle)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [s2.id, s2.empId || 0, s2.semester || '', s2.schoolYear || '',
-         s2.fullName || '', s2.dateOfBirth || '', s2.placeOfBirth || '',
-         s2.presentAddress || '', s2.telNo || '', s2.yearsTotal || '',
-         s2.yearsRcc || '', s2.yearsOther || '', s2.employmentType || '',
-         s2.governmentEmployee ? 1 : 0, s2.natureOfWork || '',
-         s2.timeSchedule || '', s2.certified ? 1 : 0, s2.signedName || '',
-         s2.signedAt || '', s2.approvedBy || '', s2.approvedTitle || '']
+        `INSERT INTO teaching_load_records
+           (id, empId, semester, schoolYear, classification, level,
+            rankId, rankName, rate, rateUnit, salary,
+            workloadType, workloadValue, absences, computedPay, savedAt)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [r.id, r.empId || 0, r.semester || '', r.schoolYear || '',
+         r.classification || 'Teaching', r.level || '',
+         r.rankId || 0, r.rankName || '', r.rate || 0, r.rateUnit || '',
+         r.salary || 0, r.workloadType || 'hours',
+         r.workloadValue || 0, r.absences || 0, r.computedPay || 0,
+         r.savedAt || '']
       );
     }
 
-    // info sheet educational attainment rows
-    for (const e of s.infoSheetEducation || []) {
+    // schedule of classes rows (per teaching load record)
+    for (const l of s.teachingLoadClasses || []) {
       await c.query(
-        `INSERT INTO info_sheet_education (id, sheetId, degree, dateEarned, school, major, minor, sortOrder)
-         VALUES (?,?,?,?,?,?,?,?)`,
-        [e.id, e.sheetId || 0, e.degree || '', e.dateEarned || '',
-         e.school || '', e.major || '', e.minor || '', e.sortOrder || 0]
-      );
-    }
-
-    // teaching loads (schedule of classes rows)
-    for (const l of s.teachingLoads || []) {
-      await c.query(
-        `INSERT INTO teaching_loads
-           (id, sheetId, subject, deptCode, timeStart, timeEnd, days,
+        `INSERT INTO teaching_load_classes
+           (id, recordId, subject, deptCode, timeStart, timeEnd, days,
             studentsMale, studentsFemale, roomNo, googleCode, hoursPerWeek, sortOrder)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [l.id, l.sheetId || 0, l.subject || '', l.deptCode || '',
+        [l.id, l.recordId || 0, l.subject || '', l.deptCode || '',
          l.timeStart || '', l.timeEnd || '', l.days || '',
          l.studentsMale || 0, l.studentsFemale || 0, l.roomNo || '',
          l.googleCode || '', l.hoursPerWeek || 0, l.sortOrder || 0]
@@ -416,9 +395,9 @@ async function persistState(s) {
       nextLeaveTypeId: s.nextLeaveTypeId || 1,
       nextLeaveRecordId: s.nextLeaveRecordId || 1,
       nextRankId: s.nextRankId || 1,
-      nextSheetId: s.nextSheetId || 1,
-      nextEduId: s.nextEduId || 1,
-      nextLoadId: s.nextLoadId || 1,
+      nextTeachingLoadId: s.nextTeachingLoadId || 1,
+      nextTeachingLoadClassId: s.nextTeachingLoadClassId || 1,
+      hoursPerWorkload: s.hoursPerWorkload || 3,
       bonusExemptionLimit: s.bonusExemptionLimit || 90000,
       workDays: s.workDays || 22,
       dedMeta: JSON.stringify(s.dedMeta || {}),

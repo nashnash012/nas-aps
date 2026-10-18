@@ -41,12 +41,11 @@ function saveDemo() {
         attendance: (typeof ATTENDANCE !== 'undefined') ? ATTENDANCE : [],
         teacherRanks: (typeof teacherRanks !== 'undefined') ? teacherRanks : [],
         nextRankId: (typeof nextRankId !== 'undefined') ? nextRankId : 1,
-        infoSheets: (typeof infoSheets !== 'undefined') ? infoSheets : [],
-        infoSheetEducation: (typeof infoSheetEducation !== 'undefined') ? infoSheetEducation : [],
-        teachingLoads: (typeof teachingLoads !== 'undefined') ? teachingLoads : [],
-        nextSheetId: (typeof nextSheetId !== 'undefined') ? nextSheetId : 1,
-        nextEduId: (typeof nextEduId !== 'undefined') ? nextEduId : 1,
-        nextLoadId: (typeof nextLoadId !== 'undefined') ? nextLoadId : 1,
+        teachingLoadRecords: (typeof teachingLoadRecords !== 'undefined') ? teachingLoadRecords : [],
+        teachingLoadClasses: (typeof teachingLoadClasses !== 'undefined') ? teachingLoadClasses : [],
+        nextTeachingLoadId: (typeof nextTeachingLoadId !== 'undefined') ? nextTeachingLoadId : 1,
+        nextTeachingLoadClassId: (typeof nextTeachingLoadClassId !== 'undefined') ? nextTeachingLoadClassId : 1,
+        hoursPerWorkload: (typeof HOURS_PER_WORKLOAD !== 'undefined') ? HOURS_PER_WORKLOAD : 3,
         profiles: PROFILES,
         savedAt: new Date().toISOString()
       };
