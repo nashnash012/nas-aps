@@ -1213,47 +1213,338 @@
     }
   ],
   "teacherRanks": [
-    { "id": 1, "department": "College", "rank": "Assistant Instructor 1", "ratePerHour": 150 },
-    { "id": 2, "department": "College", "rank": "Assistant Instructor 2", "ratePerHour": 170 },
-    { "id": 3, "department": "College", "rank": "Instructor 1", "ratePerHour": 190 },
-    { "id": 4, "department": "College", "rank": "Instructor 2", "ratePerHour": 210 },
-    { "id": 5, "department": "College", "rank": "Instructor 3", "ratePerHour": 230 },
-    { "id": 6, "department": "College", "rank": "Instructor 4", "ratePerHour": 250 },
-    { "id": 7, "department": "College", "rank": "Assistant Professor 1", "ratePerHour": 270 },
-    { "id": 8, "department": "College", "rank": "Assistant Professor 2", "ratePerHour": 290 },
-    { "id": 9, "department": "College", "rank": "Assistant Professor 3", "ratePerHour": 310 },
-    { "id": 10, "department": "College", "rank": "Associate Professor 1", "ratePerHour": 330 },
-    { "id": 11, "department": "College", "rank": "Associate Professor 2", "ratePerHour": 350 },
-    { "id": 12, "department": "College", "rank": "Associate Professor 3", "ratePerHour": 370 },
-    { "id": 13, "department": "College", "rank": "Professor 1", "ratePerHour": 390 },
-    { "id": 14, "department": "College", "rank": "Professor 2", "ratePerHour": 420 },
-    { "id": 15, "department": "College", "rank": "Professor 3", "ratePerHour": 450 },
-    { "id": 16, "department": "Elementary", "rank": "Provisional Teacher 1A (PT-1A)", "ratePerHour": 130 },
-    { "id": 17, "department": "Elementary", "rank": "Provisional Teacher 1B (PT-1B)", "ratePerHour": 150 },
-    { "id": 18, "department": "Elementary", "rank": "Teacher 1A (T-1A)", "ratePerHour": 170 },
-    { "id": 19, "department": "Elementary", "rank": "Teacher 1B (T-1B)", "ratePerHour": 190 },
-    { "id": 20, "department": "Elementary", "rank": "Teacher 2A (T-2A)", "ratePerHour": 210 },
-    { "id": 21, "department": "Elementary", "rank": "Teacher 2B (T-2B)", "ratePerHour": 230 },
-    { "id": 22, "department": "Elementary", "rank": "Teacher 3A (T-3A)", "ratePerHour": 250 },
-    { "id": 23, "department": "Elementary", "rank": "Teacher 3B (T-3B)", "ratePerHour": 270 },
-    { "id": 24, "department": "Elementary", "rank": "Master Teacher 1A (MT-1A)", "ratePerHour": 300 },
-    { "id": 25, "department": "Elementary", "rank": "Master Teacher 1B (MT-1B)", "ratePerHour": 325 },
-    { "id": 26, "department": "Elementary", "rank": "Master Teacher 2A (MT-2A)", "ratePerHour": 350 },
-    { "id": 27, "department": "Elementary", "rank": "Master Teacher 2B (MT-2B)", "ratePerHour": 380 },
-    { "id": 28, "department": "High School", "rank": "Provisional Teacher 1A (PT-1A)", "ratePerHour": 130 },
-    { "id": 29, "department": "High School", "rank": "Provisional Teacher 1B (PT-1B)", "ratePerHour": 150 },
-    { "id": 30, "department": "High School", "rank": "Teacher 1A (T-1A)", "ratePerHour": 170 },
-    { "id": 31, "department": "High School", "rank": "Teacher 1B (T-1B)", "ratePerHour": 190 },
-    { "id": 32, "department": "High School", "rank": "Teacher 2A (T-2A)", "ratePerHour": 210 },
-    { "id": 33, "department": "High School", "rank": "Teacher 2B (T-2B)", "ratePerHour": 230 },
-    { "id": 34, "department": "High School", "rank": "Teacher 3A (T-3A)", "ratePerHour": 250 },
-    { "id": 35, "department": "High School", "rank": "Teacher 3B (T-3B)", "ratePerHour": 270 },
-    { "id": 36, "department": "High School", "rank": "Master Teacher 1A (MT-1A)", "ratePerHour": 300 },
-    { "id": 37, "department": "High School", "rank": "Master Teacher 1B (MT-1B)", "ratePerHour": 325 },
-    { "id": 38, "department": "High School", "rank": "Master Teacher 2A (MT-2A)", "ratePerHour": 350 },
-    { "id": 39, "department": "High School", "rank": "Master Teacher 2B (MT-2B)", "ratePerHour": 380 }
+    {
+      "id": 1,
+      "department": "College",
+      "rank": "Assistant Instructor 1",
+      "rate": 150
+    },
+    {
+      "id": 2,
+      "department": "College",
+      "rank": "Assistant Instructor 2",
+      "rate": 170
+    },
+    {
+      "id": 3,
+      "department": "College",
+      "rank": "Instructor 1",
+      "rate": 190
+    },
+    {
+      "id": 4,
+      "department": "College",
+      "rank": "Instructor 2",
+      "rate": 210
+    },
+    {
+      "id": 5,
+      "department": "College",
+      "rank": "Instructor 3",
+      "rate": 230
+    },
+    {
+      "id": 6,
+      "department": "College",
+      "rank": "Instructor 4",
+      "rate": 250
+    },
+    {
+      "id": 7,
+      "department": "College",
+      "rank": "Assistant Professor 1",
+      "rate": 270
+    },
+    {
+      "id": 8,
+      "department": "College",
+      "rank": "Assistant Professor 2",
+      "rate": 290
+    },
+    {
+      "id": 9,
+      "department": "College",
+      "rank": "Assistant Professor 3",
+      "rate": 310
+    },
+    {
+      "id": 10,
+      "department": "College",
+      "rank": "Associate Professor 1",
+      "rate": 330
+    },
+    {
+      "id": 11,
+      "department": "College",
+      "rank": "Associate Professor 2",
+      "rate": 350
+    },
+    {
+      "id": 12,
+      "department": "College",
+      "rank": "Associate Professor 3",
+      "rate": 370
+    },
+    {
+      "id": 13,
+      "department": "College",
+      "rank": "Professor 1",
+      "rate": 390
+    },
+    {
+      "id": 14,
+      "department": "College",
+      "rank": "Professor 2",
+      "rate": 420
+    },
+    {
+      "id": 15,
+      "department": "College",
+      "rank": "Professor 3",
+      "rate": 450
+    },
+    {
+      "id": 16,
+      "department": "Elementary",
+      "rank": "Provisional Teacher 1A (PT-1A)",
+      "rate": 8000
+    },
+    {
+      "id": 17,
+      "department": "Elementary",
+      "rank": "Provisional Teacher 1B (PT-1B)",
+      "rate": 9000
+    },
+    {
+      "id": 18,
+      "department": "Elementary",
+      "rank": "Teacher 1A (T-1A)",
+      "rate": 10000
+    },
+    {
+      "id": 19,
+      "department": "Elementary",
+      "rank": "Teacher 1B (T-1B)",
+      "rate": 11000
+    },
+    {
+      "id": 20,
+      "department": "Elementary",
+      "rank": "Teacher 2A (T-2A)",
+      "rate": 12000
+    },
+    {
+      "id": 21,
+      "department": "Elementary",
+      "rank": "Teacher 2B (T-2B)",
+      "rate": 13000
+    },
+    {
+      "id": 22,
+      "department": "Elementary",
+      "rank": "Teacher 3A (T-3A)",
+      "rate": 14000
+    },
+    {
+      "id": 23,
+      "department": "Elementary",
+      "rank": "Teacher 3B (T-3B)",
+      "rate": 15000
+    },
+    {
+      "id": 24,
+      "department": "Elementary",
+      "rank": "Master Teacher 1A (MT-1A)",
+      "rate": 16000
+    },
+    {
+      "id": 25,
+      "department": "Elementary",
+      "rank": "Master Teacher 1B (MT-1B)",
+      "rate": 17000
+    },
+    {
+      "id": 26,
+      "department": "Elementary",
+      "rank": "Master Teacher 2A (MT-2A)",
+      "rate": 20000
+    },
+    {
+      "id": 27,
+      "department": "Elementary",
+      "rank": "Master Teacher 2B (MT-2B)",
+      "rate": 22000
+    },
+    {
+      "id": 28,
+      "department": "High School",
+      "rank": "Provisional Teacher 1A (PT-1A)",
+      "rate": 500
+    },
+    {
+      "id": 29,
+      "department": "High School",
+      "rank": "Provisional Teacher 1B (PT-1B)",
+      "rate": 600
+    },
+    {
+      "id": 30,
+      "department": "High School",
+      "rank": "Teacher 1A (T-1A)",
+      "rate": 700
+    },
+    {
+      "id": 31,
+      "department": "High School",
+      "rank": "Teacher 1B (T-1B)",
+      "rate": 800
+    },
+    {
+      "id": 32,
+      "department": "High School",
+      "rank": "Teacher 2A (T-2A)",
+      "rate": 900
+    },
+    {
+      "id": 33,
+      "department": "High School",
+      "rank": "Teacher 2B (T-2B)",
+      "rate": 1000
+    },
+    {
+      "id": 34,
+      "department": "High School",
+      "rank": "Teacher 3A (T-3A)",
+      "rate": 1100
+    },
+    {
+      "id": 35,
+      "department": "High School",
+      "rank": "Teacher 3B (T-3B)",
+      "rate": 1200
+    },
+    {
+      "id": 36,
+      "department": "High School",
+      "rank": "Master Teacher 1A (MT-1A)",
+      "rate": 1300
+    },
+    {
+      "id": 37,
+      "department": "High School",
+      "rank": "Master Teacher 1B (MT-1B)",
+      "rate": 1400
+    },
+    {
+      "id": 38,
+      "department": "High School",
+      "rank": "Master Teacher 2A (MT-2A)",
+      "rate": 1500
+    },
+    {
+      "id": 39,
+      "department": "High School",
+      "rank": "Master Teacher 2B (MT-2B)",
+      "rate": 1600
+    },
+    {
+      "id": 40,
+      "department": "Graduate School",
+      "rank": "Assistant Instructor 1",
+      "rate": 150
+    },
+    {
+      "id": 41,
+      "department": "Graduate School",
+      "rank": "Assistant Instructor 2",
+      "rate": 170
+    },
+    {
+      "id": 42,
+      "department": "Graduate School",
+      "rank": "Instructor 1",
+      "rate": 190
+    },
+    {
+      "id": 43,
+      "department": "Graduate School",
+      "rank": "Instructor 2",
+      "rate": 210
+    },
+    {
+      "id": 44,
+      "department": "Graduate School",
+      "rank": "Instructor 3",
+      "rate": 230
+    },
+    {
+      "id": 45,
+      "department": "Graduate School",
+      "rank": "Instructor 4",
+      "rate": 250
+    },
+    {
+      "id": 46,
+      "department": "Graduate School",
+      "rank": "Assistant Professor 1",
+      "rate": 270
+    },
+    {
+      "id": 47,
+      "department": "Graduate School",
+      "rank": "Assistant Professor 2",
+      "rate": 290
+    },
+    {
+      "id": 48,
+      "department": "Graduate School",
+      "rank": "Assistant Professor 3",
+      "rate": 310
+    },
+    {
+      "id": 49,
+      "department": "Graduate School",
+      "rank": "Associate Professor 1",
+      "rate": 330
+    },
+    {
+      "id": 50,
+      "department": "Graduate School",
+      "rank": "Associate Professor 2",
+      "rate": 350
+    },
+    {
+      "id": 51,
+      "department": "Graduate School",
+      "rank": "Associate Professor 3",
+      "rate": 370
+    },
+    {
+      "id": 52,
+      "department": "Graduate School",
+      "rank": "Professor 1",
+      "rate": 390
+    },
+    {
+      "id": 53,
+      "department": "Graduate School",
+      "rank": "Professor 2",
+      "rate": 410
+    },
+    {
+      "id": 54,
+      "department": "Graduate School",
+      "rank": "Professor 3",
+      "rate": 430
+    }
   ],
-  "nextRankId": 40,
+  "nextRankId": 55,
   "profiles": {},
-  "savedAt": "2026-09-19T06:01:43.064Z"
+  "savedAt": "2026-09-19T06:01:43.064Z",
+  "infoSheets": [],
+  "infoSheetEducation": [],
+  "teachingLoads": [],
+  "nextSheetId": 1,
+  "nextEduId": 1,
+  "nextLoadId": 1
 }

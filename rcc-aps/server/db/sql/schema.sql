@@ -106,6 +106,8 @@ CREATE TABLE IF NOT EXISTS payroll_records (
   bir           DECIMAL(12,2) NOT NULL DEFAULT 0,
   cash          DECIMAL(12,2) NOT NULL DEFAULT 0,
   bonuses       VARCHAR(255) NOT NULL DEFAULT '[]',
+  subjectBreakdown TEXT,
+  payNote       VARCHAR(500) DEFAULT '',
   date          VARCHAR(40)  NOT NULL DEFAULT '',
   KEY idx_payroll_emp (empId),
   KEY idx_payroll_period (year, month)
@@ -150,12 +152,68 @@ CREATE TABLE IF NOT EXISTS bir_table (
   max   DECIMAL(12,2) NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ── TEACHER RANKS (faculty pay rate per hour) ────────────────
+-- ── TEACHER RANKS (faculty pay rate: per hour / workload / month) ─
 CREATE TABLE IF NOT EXISTS teacher_ranks (
   id          INT PRIMARY KEY,
   department  VARCHAR(20)  NOT NULL DEFAULT 'College',
   rank        VARCHAR(120) NOT NULL DEFAULT '',
-  ratePerHour DECIMAL(10,2) NOT NULL DEFAULT 0
+  rate        DECIMAL(10,2) NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── TEACHING LOADS / INFORMATION SHEETS (RCC official form) ────
+-- One row per teacher per semester; mirrors the paper Information Sheet
+CREATE TABLE IF NOT EXISTS info_sheets (
+  id                INT PRIMARY KEY,
+  empId             INT NOT NULL,
+  semester          VARCHAR(20)  NOT NULL DEFAULT '',
+  schoolYear        VARCHAR(30)  NOT NULL DEFAULT '',
+  fullName          VARCHAR(150) NOT NULL DEFAULT '',
+  dateOfBirth       VARCHAR(40)  NOT NULL DEFAULT '',
+  placeOfBirth      VARCHAR(120) NOT NULL DEFAULT '',
+  presentAddress    VARCHAR(255) NOT NULL DEFAULT '',
+  telNo             VARCHAR(40)  NOT NULL DEFAULT '',
+  yearsTotal        VARCHAR(10)  NOT NULL DEFAULT '',
+  yearsRcc          VARCHAR(10)  NOT NULL DEFAULT '',
+  yearsOther        VARCHAR(10)  NOT NULL DEFAULT '',
+  employmentType    VARCHAR(20)  NOT NULL DEFAULT '',
+  governmentEmployee TINYINT(1)   NOT NULL DEFAULT 0,
+  natureOfWork      VARCHAR(200) NOT NULL DEFAULT '',
+  timeSchedule      VARCHAR(200) NOT NULL DEFAULT '',
+  certified         TINYINT(1)   NOT NULL DEFAULT 0,
+  signedName        VARCHAR(150) NOT NULL DEFAULT '',
+  signedAt          VARCHAR(40)  NOT NULL DEFAULT '',
+  approvedBy        VARCHAR(150) NOT NULL DEFAULT 'GLORIA B. ABRAZADO, Ph. D.',
+  approvedTitle     VARCHAR(150) NOT NULL DEFAULT 'Vice President for Academic Affairs',
+  UNIQUE KEY uk_sheet_emp_sem (empId, semester, schoolYear)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── EDUCATIONAL ATTAINMENT rows (per information sheet) ─────────
+CREATE TABLE IF NOT EXISTS info_sheet_education (
+  id          INT PRIMARY KEY,
+  sheetId     INT NOT NULL,
+  degree      VARCHAR(120) NOT NULL DEFAULT '',
+  dateEarned  VARCHAR(60)  NOT NULL DEFAULT '',
+  school      VARCHAR(120) NOT NULL DEFAULT '',
+  major       VARCHAR(120) NOT NULL DEFAULT '',
+  minor       VARCHAR(120) NOT NULL DEFAULT '',
+  sortOrder   INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── SCHEDULE OF CLASSES rows (the teaching loads themselves) ───
+CREATE TABLE IF NOT EXISTS teaching_loads (
+  id             INT PRIMARY KEY,
+  sheetId        INT NOT NULL,
+  subject        VARCHAR(150) NOT NULL DEFAULT '',
+  deptCode       VARCHAR(30)  NOT NULL DEFAULT '',
+  timeStart      VARCHAR(20)  NOT NULL DEFAULT '',
+  timeEnd        VARCHAR(20)  NOT NULL DEFAULT '',
+  days           VARCHAR(30)  NOT NULL DEFAULT '',
+  studentsMale   INT NOT NULL DEFAULT 0,
+  studentsFemale INT NOT NULL DEFAULT 0,
+  roomNo         VARCHAR(20)  NOT NULL DEFAULT '',
+  googleCode     VARCHAR(60)  NOT NULL DEFAULT '',
+  hoursPerWeek   DECIMAL(6,2) NOT NULL DEFAULT 0,
+  sortOrder      INT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── KEY-VALUE CONFIG (next ids, workDays, limit, dedMeta, savedAt) ─

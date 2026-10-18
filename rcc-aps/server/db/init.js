@@ -55,17 +55,28 @@ async function init() {
     }
     console.log(`[MySQL] Schema applied (${statements.length} statements).`);
 
-    // Step 3b: Migration — add new columns to existing users table (idempotent)
+    // Step 3b: Migration — add new columns to existing tables (idempotent)
     const migrations = [
       'ALTER TABLE users ADD COLUMN IF NOT EXISTS rankId INT NOT NULL DEFAULT 0',
       'ALTER TABLE users ADD COLUMN IF NOT EXISTS rankName VARCHAR(120) NOT NULL DEFAULT \'\'',
       'ALTER TABLE users ADD COLUMN IF NOT EXISTS rateCustom TINYINT(1) NOT NULL DEFAULT 0',
-      'ALTER TABLE users ADD COLUMN IF NOT EXISTS schoolLevel VARCHAR(20) NOT NULL DEFAULT \'\''
+      'ALTER TABLE users ADD COLUMN IF NOT EXISTS schoolLevel VARCHAR(20) NOT NULL DEFAULT \'\'',
+      'ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS subjectBreakdown TEXT',
+      'ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS payNote VARCHAR(500) DEFAULT \'\''
     ];
     for (const m of migrations) {
       try { await poolConn.query(m); } catch (e) { /* ignore duplicate column errors */ }
     }
-    console.log('[MySQL] Migration: users columns verified.');
+    console.log('[MySQL] Migration: users + payroll_records columns verified.');
+
+    // Step 3c: Migration — rename teacher_ranks.ratePerHour → rate (idempotent)
+    const [rateCols] = await poolConn.query(
+      'SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = \'teacher_ranks\' AND COLUMN_NAME = \'ratePerHour\''
+    );
+    if (rateCols.length) {
+      await poolConn.query('ALTER TABLE teacher_ranks CHANGE COLUMN ratePerHour rate DECIMAL(10,2) NOT NULL DEFAULT 0');
+      console.log('[MySQL] Migration: teacher_ranks.ratePerHour renamed to rate.');
+    }
   } finally {
     poolConn.release();
   }
@@ -76,20 +87,29 @@ async function init() {
     console.log(`[MySQL] Users table has ${rows[0].cnt} records — skipping seed.`);
     // Seed teacher_ranks if empty (even when users exist — for existing DBs)
     const [rankRows] = await pool.query('SELECT COUNT(*) AS cnt FROM teacher_ranks');
-    if (rankRows[0].cnt === 0) {
-      const seedPath = path.join(__dirname, 'seed.json');
-      if (fs.existsSync(seedPath)) {
-        const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
-        if (Array.isArray(seed.teacherRanks) && seed.teacherRanks.length) {
-          for (const r of seed.teacherRanks) {
-            await pool.query('INSERT INTO teacher_ranks (id, department, rank, ratePerHour) VALUES (?,?,?,?)', [r.id, r.department, r.rank, r.ratePerHour]);
-          }
-          console.log(`[MySQL] Seeded ${seed.teacherRanks.length} teacher ranks.`);
-          // Update nextRankId in app_config to avoid ID conflicts
-          const maxRankId = Math.max(...seed.teacherRanks.map(r => r.id));
-          await pool.query('INSERT INTO app_config (cfg_key, cfg_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE cfg_value = ?', ['nextRankId', String(maxRankId + 1), String(maxRankId + 1)]);
-          console.log(`[MySQL] nextRankId set to ${maxRankId + 1}.`);
+    const seedPath0 = path.join(__dirname, 'seed.json');
+    const seedData0 = fs.existsSync(seedPath0) ? JSON.parse(fs.readFileSync(seedPath0, 'utf8')) : {};
+    if (rankRows[0].cnt === 0 && Array.isArray(seedData0.teacherRanks) && seedData0.teacherRanks.length) {
+      for (const r of seedData0.teacherRanks) {
+        await pool.query('INSERT INTO teacher_ranks (id, department, rank, rate) VALUES (?,?,?,?)', [r.id, r.department, r.rank, r.rate]);
+      }
+      console.log(`[MySQL] Seeded ${seedData0.teacherRanks.length} teacher ranks.`);
+      const maxRankId0 = Math.max(...seedData0.teacherRanks.map(r => r.id));
+      await pool.query('INSERT INTO app_config (cfg_key, cfg_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE cfg_value = ?', ['nextRankId', String(maxRankId0 + 1), String(maxRankId0 + 1)]);
+      console.log(`[MySQL] nextRankId set to ${maxRankId0 + 1}.`);
+    }
+    // Seed Graduate School ranks if missing (existing DBs that predate the 4th dept)
+    const [gradRows] = await pool.query('SELECT COUNT(*) AS cnt FROM teacher_ranks WHERE department = \'Graduate School\'');
+    if (gradRows[0].cnt === 0 && Array.isArray(seedData0.teacherRanks)) {
+      const gradRanks = seedData0.teacherRanks.filter(r => r.department === 'Graduate School');
+      if (gradRanks.length) {
+        for (const r of gradRanks) {
+          await pool.query('INSERT INTO teacher_ranks (id, department, rank, rate) VALUES (?,?,?,?)', [r.id, r.department, r.rank, r.rate]);
         }
+        console.log(`[MySQL] Seeded ${gradRanks.length} Graduate School teacher ranks.`);
+        const maxRankId = Math.max(...gradRanks.map(r => r.id));
+        await pool.query('INSERT INTO app_config (cfg_key, cfg_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE cfg_value = ?', ['nextRankId', String(maxRankId + 1), String(maxRankId + 1)]);
+        console.log(`[MySQL] nextRankId set to ${maxRankId + 1}.`);
       }
     }
     await pool.end();

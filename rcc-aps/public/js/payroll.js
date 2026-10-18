@@ -225,8 +225,12 @@ function getTotalUnpaidDaysAll(empId, monthNum, year) {
 const EMP_CLASS = { Teaching: {badge:'b-blue'}, 'Non-Teaching': {badge:'b-gold'} };
 function empGrossPay(emp, hours, absences) {
   if (emp.classification === 'Teaching') {
-    const h = Math.max(0, (hours != null && hours !== '') ? parseFloat(hours) : (emp.hoursWorked || 0));
     const r = teacherRate(emp);
+    const lvl = emp.schoolLevel;
+    if (lvl === 'Elementary') return parseFloat(r.toFixed(2));
+    const h = Math.max(0, (hours != null && hours !== '') ? parseFloat(hours) : (emp.hoursWorked || 0));
+    // High School pays per workload (3 hrs = 1 workload); College/Grad per hour.
+    if (lvl === 'High School') return parseFloat((r * h / 3).toFixed(2));
     return parseFloat((h * r).toFixed(2));
   }
   const base = Math.max(0, parseFloat(emp.salary) || 0);
@@ -382,10 +386,20 @@ function getPhil(s) {
 }
 
 // ── PAYROLL CALCULATOR ────────────────────────────────────────
+// Active calculator tab (department group): 'Non-Teaching', 'Elementary',
+// 'High School', 'College', or 'Graduate School'.
+let currentCalcTab = 'Non-Teaching';
+
+// Whether an employee belongs to the given calculator tab group.
+function calcTabMatches(u, group) {
+  if (group === 'Non-Teaching') return u.classification === 'Non-Teaching';
+  if (group === 'Elementary') return u.classification === 'Teaching' && u.schoolLevel === 'Elementary';
+  return u.classification === 'Teaching' && u.schoolLevel === group;
+}
+
 function calcEmpOptions() {
-  const type = (document.getElementById('calcType')||{}).value || '';
   return users.filter(u=>u.status==='Active' && (u.role==='Employee'||u.role==='Finance Officer'||u.role==='System Admin'))
-    .filter(u=>!type || u.classification===type);
+    .filter(u=>calcTabMatches(u, currentCalcTab));
 }
 
 function getCalcEmpQuery() {
@@ -476,6 +490,7 @@ function populateCalcEmployees() {
   renderCalcEmpList(calcEmpOptions(), false);
   renderCalcCustomInputs();
   updateCalc13thState();
+  syncCalcTabUI();
 }
 
 // Per-run override inputs for active custom deduction categories. Fixed
@@ -543,6 +558,115 @@ function filterCalcEmployees() {
   openCalcEmpList();
 }
 
+// Switch the calculator to a department tab: toggles the active tab button,
+// shows/hides the absences row vs. the EXPLANATION editor, updates labels,
+// re-filters the employee list and clears the calculator output.
+function showCalcTab(group) {
+  currentCalcTab = group;
+  syncCalcTabUI();
+  const hidden = document.getElementById('calcEmp');
+  if (hidden) hidden.value = '';
+  const inp = document.getElementById('calcEmpSearch');
+  if (inp) inp.value = '';
+  const note = document.getElementById('calcPayNote');
+  if (note) note.value = '';
+  resetCalcOutput();
+  recomputeCalcTotals();
+  populateCalcEmployees();
+}
+
+// Sync row visibility/labels with the current tab without touching the
+// selected employee (also initializes the calculator on page load).
+function syncCalcTabUI() {
+  const group = currentCalcTab;
+  document.querySelectorAll('#calcTabs .calc-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.group === group);
+  });
+  const isNT = group === 'Non-Teaching';
+  const isElem = group === 'Elementary';
+  const isExpl = group === 'High School' || group === 'College' || group === 'Graduate School';
+  const attRow = document.getElementById('calcAttRow');
+  const attLabel = document.getElementById('calcAttLabel');
+  const explRow = document.getElementById('calcExplanationRow');
+  const rateHdr = document.getElementById('calcRateHdr');
+  const grossWrap = document.getElementById('calcGrossLabel');
+  if (attRow) attRow.style.display = (isNT || isElem) ? '' : 'none';
+  if (attLabel) attLabel.textContent = (isNT || isElem) ? 'Absences (days, ÷' + WORK_DAYS + ')' : 'N/A';
+  if (explRow) explRow.style.display = isExpl ? 'block' : 'none';
+  if (rateHdr) rateHdr.textContent = group === 'High School' ? 'Rate per Workload (₱)' : 'Rate per Hour (₱)';
+  if (grossWrap) {
+    grossWrap.style.display = (isNT || isElem) ? '' : 'none';
+    const grossLbl = document.getElementById('calcGrossFieldLabel');
+    if (grossLbl) grossLbl.textContent = 'Monthly Base Salary (₱)';
+  }
+}
+
+// Add a subject row to the EXPLANATION editor. Rate is auto-filled from
+// teacherRate(emp) when known; qty is left at 0 for Finance to encode.
+function addCalcSubject(prefill) {
+  const tbody = document.getElementById('calcSubjectBody');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  tr.dataset.type = 'subject';
+  tr.innerHTML =
+    '<td style="padding:4px 4px"><input class="fi" style="width:100%;padding:4px 6px" placeholder="Subject" value="' + esc((prefill && prefill.subject) || '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
+    '<td style="padding:4px 4px"><input class="fi" style="width:70px;padding:4px 6px" placeholder="Days" value="' + esc((prefill && prefill.days) || '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
+    '<td style="padding:4px 4px"><input class="fi calc-qty" style="width:70px;padding:4px 6px" type="number" step="0.5" min="0" placeholder="0" value="' + ((prefill && prefill.qty != null) ? prefill.qty : 0) + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
+    '<td style="padding:4px 4px"><input class="fi calc-rate" style="width:90px;padding:4px 6px" type="number" step="0.01" min="0" placeholder="0" value="' + ((prefill && prefill.rate != null) ? prefill.rate : '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
+    '<td style="padding:4px 4px;font-weight:600" class="calc-amt">0.00</td>' +
+    '<td style="padding:4px 4px"><button type="button" class="btn btn-outline btn-sm" title="Remove subject" onclick="this.closest(\'tr\').remove();recomputeCalcTotals();computePayroll()">✕</button></td>';
+  tbody.appendChild(tr);
+  recomputeCalcTotals();
+}
+
+// Add an "Increment - S.Y" row to the EXPLANATION editor.
+function addCalcIncrement() {
+  const tbody = document.getElementById('calcSubjectBody');
+  if (!tbody) return;
+  const tr = document.createElement('tr');
+  tr.dataset.type = 'increment';
+  tr.innerHTML =
+    '<td style="padding:4px 4px;font-weight:600">Increment - S.Y</td>' +
+    '<td style="padding:4px 4px"></td>' +
+    '<td style="padding:4px 4px"><input class="fi calc-qty" style="width:70px;padding:4px 6px" type="number" step="0.5" min="0" placeholder="0" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
+    '<td style="padding:4px 4px"><input class="fi calc-rate" style="width:90px;padding:4px 6px" type="number" step="0.01" min="0" placeholder="0" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
+    '<td style="padding:4px 4px;font-weight:600" class="calc-amt">0.00</td>' +
+    '<td style="padding:4px 4px"><button type="button" class="btn btn-outline btn-sm" title="Remove increment" onclick="this.closest(\'tr\').remove();recomputeCalcTotals();computePayroll()">✕</button></td>';
+  tbody.appendChild(tr);
+  recomputeCalcTotals();
+}
+
+// Recompute per-row amounts and the Total Qty / Gross from Subjects totals.
+function recomputeCalcTotals() {
+  const tbody = document.getElementById('calcSubjectBody');
+  if (!tbody) return;
+  let totalQty = 0, gross = 0;
+  tbody.querySelectorAll('tr').forEach(tr => {
+    const qtyEl = tr.querySelector('.calc-qty');
+    const rateEl = tr.querySelector('.calc-rate');
+    const qty = Math.max(0, parseFloat(qtyEl ? qtyEl.value : '') || 0);
+    const rate = Math.max(0, parseFloat(rateEl ? rateEl.value : '') || 0);
+    const amt = parseFloat((qty * rate).toFixed(2));
+    totalQty += qty;
+    gross += amt;
+    const amtCell = tr.querySelector('.calc-amt');
+    if (amtCell) amtCell.textContent = amt.toFixed(2);
+  });
+  const tq = document.getElementById('calcTotalQty');
+  const sg = document.getElementById('calcSubjGross');
+  if (tq) tq.textContent = totalQty;
+  if (sg) sg.textContent = gross.toFixed(2);
+}
+
+// Teaching loads from the employee's most recent information sheet
+// (latest school year / semester on file), used to pre-fill the EXPLANATION
+// editor for High School / College / Graduate School tabs.
+function latestTeachingLoads(empId) {
+  const sheets = sheetsFor(empId);
+  if (!sheets.length) return [];
+  return loadsForSheet(sheets[sheets.length - 1].id);
+}
+
 document.addEventListener('click', function(e){
   const wrap = document.getElementById('calcEmpWrap');
   if (wrap && !wrap.contains(e.target)) closeCalcEmpList();
@@ -562,30 +686,41 @@ function loadEmployeeData() {
     return;
   }
   const isTeaching = emp.classification === 'Teaching';
+  const group = currentCalcTab;
+  const isExplTab = group === 'High School' || group === 'College' || group === 'Graduate School';
   document.getElementById('calcMetaName').textContent = displayName(emp);
   document.getElementById('calcMetaClass').textContent = emp.classification + (emp.rankName ? ' · ' + emp.rankName : '');
   document.getElementById('calcMetaDept').textContent = emp.department || '—';
   meta.style.display = 'block';
-  document.getElementById('calcGrossFieldLabel').textContent = isTeaching ? 'Hourly Rate (₱)' : 'Monthly Base Salary (₱)';
-  
+
   const period = document.getElementById('payPeriod').value || 'December 2026';
   const [monthName, yearStr] = period.split(' ');
   const year = parseInt(yearStr) || 2026;
   const monthNum = MONTHS.indexOf(monthName) + 1;
 
   const hasData = periodHasData(emp.id, monthNum, year);
-  if (isTeaching) {
-    document.getElementById('calcAttLabel').textContent = 'Hours Worked';
-    const attHours = hasData ? getAttendanceHours(emp.id, monthNum, year) : 0;
-    attEl.value = (attHours > 0) ? attHours : (hasData ? (emp.hoursWorked || '') : '');
-  } else {
-    // For Non-Teaching, auto-populate absences = unpaid leave + detected absences
+  if (isExplTab) {
+    // High School / College / Graduate School: pre-fill the EXPLANATION
+    // editor from the employee's most recent information sheet. Subject
+    // names and days come from the sheet; rate is auto-filled from the
+    // rank table; qty is left at 0 for Finance to encode.
+    const tbody = document.getElementById('calcSubjectBody');
+    if (tbody) tbody.innerHTML = '';
+    const rate = teacherRate(emp);
+    latestTeachingLoads(emp.id).forEach(l => addCalcSubject({ subject: l.subject || '', days: l.days || '', rate: rate || 0 }));
+    salEl.value = rate || '';
+    attEl.value = '';
+  } else if (isTeaching) {
+    // Elementary: monthly rate with absences deducted (÷ WORK_DAYS).
     const totalUnpaidDays = hasData ? getTotalUnpaidDaysAll(emp.id, monthNum, year) : '';
-    document.getElementById('calcAttLabel').textContent = 'Absences (days, ÷' + WORK_DAYS + ')';
     attEl.value = totalUnpaidDays;
+    salEl.value = teacherRate(emp) || '';
+  } else {
+    // Non-Teaching: auto-populate absences = unpaid leave + detected absences
+    const totalUnpaidDays = hasData ? getTotalUnpaidDaysAll(emp.id, monthNum, year) : '';
+    attEl.value = totalUnpaidDays;
+    salEl.value = emp.salary || '';
   }
-  
-  salEl.value = isTeaching ? (teacherRate(emp)||'') : (emp.salary||'');
   cashEl.value = getEmpCashAdvance(emp.id) || '';
   empty.style.display = 'none';
   res.style.display = 'block';
@@ -755,25 +890,59 @@ function computePayroll() {
   const isDec = /^december/i.test(monthName);
 
   let gross = 0, meta = '';
-  let teachingUnpaidDays = 0, teachingDeduct = 0;
-  if (isTeaching) {
-    const h = Math.max(0, parseFloat(attEl.value) || 0);
-    const r = Math.max(0, parseFloat(rateEl.value) || 0);
-    const monthNum = MONTHS.indexOf(monthName) + 1;
-    // Unpaid = unpaid leaves + detected absences (no clock-in, no leave)
-    teachingUnpaidDays = getTotalUnpaidDaysAll(emp.id, monthNum, year);
-    // Deduct 8 hours per unpaid day (payroll policy for hours-work staff)
-    teachingDeduct = teachingUnpaidDays * HOURS_PER_DAY * r;
-    gross = parseFloat((h * r - teachingDeduct).toFixed(2));
-    meta = `${emp.rankName ? emp.rankName + ' — ' : ''}${h} hrs × ₱${r.toLocaleString('en-PH',{minimumFractionDigits:2})}`;
-    if (teachingUnpaidDays > 0) meta += ` − ${teachingUnpaidDays} unpaid day(s) × 8h × ₱${r} = ${fmt(gross)}`;
-    else meta += ` = ${fmt(gross)}`;
+  let subjectBreakdown = null;
+  const group = currentCalcTab;
+  const isExplTab = group === 'High School' || group === 'College' || group === 'Graduate School';
+  if (isExplTab) {
+    // Gross comes from the EXPLANATION editor rows.
+    // High School: 3 hours = 1 workload, paid at teacherRate per workload.
+    // College / Graduate School: paid at teacherRate per hour.
+    const R = teacherRate(emp);
+    subjectBreakdown = [];
+    let totalQty = 0, subjGross = 0;
+    document.querySelectorAll('#calcSubjectBody tr').forEach(tr => {
+      const qtyEl = tr.querySelector('.calc-qty');
+      const rateEl = tr.querySelector('.calc-rate');
+      const qty = Math.max(0, parseFloat(qtyEl ? qtyEl.value : '') || 0);
+      const typedRate = parseFloat(rateEl ? rateEl.value : '');
+      const rate = isNaN(typedRate) ? 0 : typedRate;
+      const isIncr = tr.dataset.type === 'increment';
+      const nameEl = tr.querySelector('input');
+      const daysEl = tr.querySelectorAll('input')[1];
+      const subject = isIncr ? 'Increment - S.Y' : (nameEl ? nameEl.value : '');
+      const days = isIncr ? '' : (daysEl ? daysEl.value : '');
+      let amount;
+      if (!isIncr && group === 'High School') {
+        // Per-hour rate = per-workload rate ÷ 3
+        const wlRate = parseFloat((rate / 3).toFixed(2));
+        amount = parseFloat((qty * wlRate).toFixed(2));
+        subjectBreakdown.push({ type:'subject', subject, days, qty, rate: wlRate, amount });
+      } else {
+        amount = parseFloat((qty * rate).toFixed(2));
+        subjectBreakdown.push({ type: isIncr ? 'increment' : 'subject', subject, days, qty, rate, amount });
+      }
+      subjGross += amount;
+      totalQty += qty;
+    });
+    gross = parseFloat(subjGross.toFixed(2));
+    const Rfmt = R.toLocaleString('en-PH',{minimumFractionDigits:2});
+    meta = group === 'High School'
+      ? `${totalQty} hrs ÷ 3 = ${totalQty/3} workload(s) × ₱${Rfmt} = ${fmt(gross)}`
+      : `${totalQty} hrs × ₱${Rfmt} = ${fmt(gross)}`;
+  } else if (isTeaching) {
+    // Elementary: monthly rate with absences deducted (÷ WORK_DAYS).
+    const base = Math.max(0, parseFloat(rateEl.value) || 0);
+    const a = Math.max(0, parseFloat(attEl.value) || 0);
+    gross = parseFloat((base - (a/WORK_DAYS)*base).toFixed(2));
+    meta = `₱${base.toLocaleString('en-PH',{minimumFractionDigits:2})} − (${a}/${WORK_DAYS}) = ${fmt(gross)}`;
   } else {
     const base = Math.max(0, parseFloat(rateEl.value) || 0);
     const a = Math.max(0, parseFloat(attEl.value) || 0);
     gross = parseFloat((base - (a/WORK_DAYS)*base).toFixed(2));
     meta = `₱${base.toLocaleString('en-PH',{minimumFractionDigits:2})} − (${a}/${WORK_DAYS}) = ${fmt(gross)}`;
   }
+  const noteEl = document.getElementById('calcPayNote');
+  const payNote = noteEl ? noteEl.value.trim() : '';
 
   // Active bonus types (excl. the statutory 13th month, id=1) are added to gross.
   // De minimis benefits (BIR RR 11-2018) are tax-exempt & excluded from the ₱90k pool and contributions.
@@ -811,13 +980,32 @@ function computePayroll() {
   lastCalc = {
     empId: emp.id, name:`${emp.first} ${emp.last}`, month:MONTHS.indexOf(monthName)+1, monthName, year, period,
     gross: grossTaxable, deMinimisSum, thirteenth, thirteenTaxable: thirteenSplit.taxable13, thirteenExempt: thirteenSplit.exempt13, thirteenTax: tTax.annualTax, net, sss:d.sss, phil:d.phil, pag:d.pag, bir:d.bir, cash, bonuses,
-    customDeds: d.custom, customTotal: d.customTotal
+    customDeds: d.custom, customTotal: d.customTotal,
+    subjectBreakdown, payNote
   };
 
+  let earningsHtml = '';
+  if (isExplTab && subjectBreakdown && subjectBreakdown.length) {
+    subjectBreakdown.forEach(b => {
+      const isIncr = b.type === 'increment';
+      const label = isIncr ? '📈 Increment - S.Y' : '📚 ' + esc(b.subject || '');
+      const qtyLabel = (group === 'High School' && !isIncr)
+        ? (b.qty / 3) + ' workload(s)' + (b.days ? ' · ' + esc(b.days) : '')
+        : b.qty + ' hrs';
+      earningsHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">' + label + ' — ' + qtyLabel + ' × ₱' + fmt(b.rate) + '</span><span style="font-weight:600">+' + fmt(b.amount) + '</span></div>';
+    });
+    earningsHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">Gross from Subjects</span><span style="font-weight:600">' + fmt(gross) + '</span></div>';
+  } else {
+    const isElem = group === 'Elementary';
+    const label1 = isElem ? 'Monthly Rate − Absences' : (emp.classification==='Teaching' ? 'Hours Worked × Rate' : 'Monthly Base Salary');
+    const label2 = isElem ? 'Monthly Earnings' : (emp.classification==='Teaching' ? 'Hourly Earnings' : 'Base Salary');
+    earningsHtml =
+      '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">' + label1 + '</span><span style="font-weight:600">' + meta + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">' + label2 + '</span><span style="font-weight:600">' + fmt(gross) + '</span></div>';
+  }
+
   document.getElementById('calcEarnings').innerHTML = `
-    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">${emp.classification==='Teaching'?'Hours Worked × Rate':'Monthly Base Salary'}</span><span style="font-weight:600">${meta}</span></div>
-    <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">${emp.classification==='Teaching'?'Hourly Earnings':'Base Salary'}</span><span style="font-weight:600">${fmt(gross)}</span></div>
-    ${isTeaching && teachingUnpaidDays > 0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px;color:#C62828"><span style="color:var(--text-muted)">🚫 Absent / Unpaid (no clock-in or unpaid leave) — '+teachingUnpaidDays+' day(s) × 8h × ₱'+fmt(rateEl.value)+'</span><span style="font-weight:600">−'+fmt(teachingDeduct)+'</span></div>' : ''}
+    ${earningsHtml}
     ${bonuses.map(b=>'<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">🎁 '+esc(b.name)+' <span style="font-size:11px;color:'+(b.deMinimis?'#2E7D32':'var(--text-muted)')+'">— '+(b.deMinimis?'de minimis (tax-exempt)':'taxable bonus')+'</span></span><span style="font-weight:600">+'+fmt(b.amount)+'</span></div>').join('')}
     ${thirteenth>0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">🎁 13th Month Pay (RA 8515) <span style="font-size:11px;color:#2E7D32">— exempt up to '+fmt(BONUS_EXEMPTION_LIMIT)+'/yr</span></span><span style="font-weight:700;color:var(--maroon-dark)">+'+fmt(thirteenSplit.exempt13)+'</span></div>' : ''}
     ${thirteenth>0 && thirteenSplit.taxable13>0 ? '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">⚠️ 13th Month excess <span style="font-size:11px;color:#C62828">— taxable (over '+fmt(BONUS_EXEMPTION_LIMIT)+')</span></span><span style="font-weight:600;color:#C62828">+'+fmt(thirteenSplit.taxable13)+'</span></div>' : ''}
@@ -885,9 +1073,18 @@ function renderPayrollSummary() {
   const titleEl = document.getElementById('payrollSummaryTitle');
   if (titleEl) titleEl.textContent = `📋 Payroll Summary — ${period}`;
   const emps = users.filter(u=>u.status==='Active' && (u.role==='Employee'||u.role==='Finance Officer'||u.role==='System Admin'));
+  const summaryTable = tbody.closest('table');
+  const loadTh = summaryTable ? summaryTable.querySelector('thead th:nth-child(3)') : null;
+  if (loadTh) loadTh.textContent = 'Load / Salary';
   tbody.innerHTML = emps.map(emp => {
-    const h = empHrsOrAbs(emp);
     const base = empGrossPay(emp);
+    // Per-level load column: Workloads (HS), Hours (College/Grad), Monthly (Elementary), Salary (NT)
+    let loadValue;
+    if (emp.classification !== 'Teaching') loadValue = '₱' + fmt(base);
+    else if (emp.schoolLevel === 'Elementary') loadValue = '₱' + fmt(base) + '/mo';
+    else if (emp.schoolLevel === 'High School') loadValue = fmt((emp.hoursWorked || 0) / 3) + ' wl';
+    else loadValue = (emp.hoursWorked || 0) + ' hrs';
+    const typeLabel = emp.classification === 'Teaching' ? (emp.schoolLevel || 'Teaching') : 'Non-Teaching';
     const bonuses = activeBonusTypes(emp, base, periodEndDate(period));
     const { deMinimisSum, taxableSum } = splitBonuses(bonuses);
     const gross = base + taxableSum;
@@ -909,8 +1106,8 @@ function renderPayrollSummary() {
       : '<span style="color:#BBB">—</span>';
     return `<tr>
       <td><strong>${esc(displayName(emp))}</strong></td>
-      <td><span class="badge ${EMP_CLASS[emp.classification].badge}">${emp.classification}</span></td>
-      <td>${emp.classification==='Teaching' ? h.value+' hrs' : h.value+' days'}</td>
+      <td><span class="badge ${EMP_CLASS[emp.classification].badge}">${typeLabel}</span></td>
+      <td>${loadValue}</td>
       <td>${fmt(grossTotal)}${thirteenth>0?' <span class="badge b-gold" style="font-size:9px">🎁 13th</span>':''}${taxableSum>0?` <span class="badge b-gold" style="font-size:9px">+bonus</span>`:''}${deMinimisSum>0?` <span class="badge b-green" style="font-size:9px">+de minimis</span>`:''}</td>
       <td>${bonusCell}</td>
       <td>${fmt(d.sss)}</td>

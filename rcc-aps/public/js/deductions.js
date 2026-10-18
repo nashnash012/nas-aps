@@ -727,7 +727,7 @@ function onRankChange() {
   const rankId = parseInt(document.getElementById('uRank')?.value) || 0;
   const rankObj = rankId ? (typeof rankById === 'function' ? rankById(rankId) : null) : null;
   if (rankObj) {
-    document.getElementById('uHourly').value = rankObj.ratePerHour;
+    document.getElementById('uHourly').value = rankObj.rate;
     salaryAuto = true;
     recalcSuggestedSalary();
   }
@@ -744,7 +744,7 @@ function saveUser() {
   const rankId=parseInt(document.getElementById('uRank')?.value)||0;
   const rankObj = rankId ? (typeof rankById === 'function' ? rankById(rankId) : null) : null;
   const rankName = rankObj ? rankObj.rank : '';
-  const rateCustom = !rankObj || (Math.abs(hourlyRate - parseFloat(rankObj.ratePerHour)) > 0.001);
+  const rateCustom = !rankObj || (Math.abs(hourlyRate - parseFloat(rankObj.rate)) > 0.001);
   const hireDate=document.getElementById('uHire').value;
   const hrsAbs=Math.max(0,parseFloat(document.getElementById('uHrsAbs').value)||0);
   const err=document.getElementById('uErr');
@@ -798,6 +798,7 @@ function viewUser(id) {
       ${infoBox('⚡ Status',`<span class="badge ${u.status==='Active'?'b-green':'b-gray'}">${u.status==='Active'?'● Active':'● Inactive'}</span>`)}${infoBox('📅 Date Added',u.date)}
       ${infoBox('🎓 Classification',`<span class="badge ${EMP_CLASS[u.classification]?.badge||'b-gray'}">${u.classification||'Non-Teaching'}</span>`)}      ${infoBox('🏢 Department',esc(u.department||'—'))}
       ${u.classification==='Teaching' && u.rankName ? infoBox('🎓 Academic Rank', esc(u.rankName)) : ''}
+      ${u.classification==='Teaching' ? infoBox('🏫 School Level', esc(u.schoolLevel || '—')) : ''}
       ${infoBox('💰 Monthly Base',`<strong>₱${(u.salary||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`)}${infoBox('🆔 Employee ID',`#USR-00${u.id}`)}
       ${infoBox(u.classification==='Teaching'?'⏱ Hourly Rate':'📅 Date Hired', u.classification==='Teaching' ? '₱'+(u.hourlyRate||0).toFixed(2) : (u.hireDate||'—'))}${infoBox(u.classification==='Teaching'?'🕒 Hours Worked':'🚫 Absence Days', u.classification==='Teaching' ? (u.hoursWorked||0)+' hrs' : (u.absenceDays||0)+' days')}
     </div>`;
@@ -876,7 +877,7 @@ function syncFromHris() {
           u.first = h.first; u.last = h.last; u.role = h.role; u.status = h.status;
           u.department = h.department; u.classification = h.classification;
           u.salary = h.salary; u.hourlyRate = h.hourlyRate; u.hireDate = h.hireDate;
-          u.schoolLevel = h.schoolLevel || ''; u.rankId = h.rankId || 0; u.rankName = h.rankName || ''; u.rateCustom = !!h.rateCustom;
+          u.schoolLevel = h.schoolLevel || u.schoolLevel || ''; u.rankId = h.rankId || u.rankId || 0; u.rankName = h.rankName || u.rankName || ''; u.rateCustom = h.rateCustom != null ? !!h.rateCustom : u.rateCustom;
           if (h.classification === 'Teaching') u.hoursWorked = h.hoursWorked; else u.absenceDays = h.absenceDays;
           ensureAuth(u, h.password);
           updated++;

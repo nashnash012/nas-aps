@@ -382,74 +382,154 @@ function viewPayslipDetail(period, empId) {
   const customTotal = customDeds.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
   const totalDed  = sss + phil + pag + bir + cash + thirteenTax + customTotal;
   const totalGross = grossTaxable + deMinimis + thirteenth;
-  const earningLabel = emp.classification === 'Teaching'
-    ? `${emp.rankName ? emp.rankName + ' — ' : ''}${emp.hoursWorked||0} hrs × ₱${(parseFloat(emp.hourlyRate)||0).toFixed(2)}`
-    : 'Monthly Base Salary';
   const isDec = monthNum === 12;
   const page = ROLE_PAGE[emp.role] || 'empPage';
 
+  const breakdown = Array.isArray(rec.subjectBreakdown) ? rec.subjectBreakdown : [];
+  const subjLines = breakdown.filter(b => b.type !== 'increment');
+  const incrLine = breakdown.find(b => b.type === 'increment');
+  const isTeaching = emp.classification === 'Teaching';
+  const isMonthly = isTeaching && emp.schoolLevel === 'Elementary';
+  const isNonTeach = emp.classification === 'Non-Teaching';
+  const rateUnit = rateUnit ? rateUnit(emp.schoolLevel || '') : '';
+
   const docId = page === 'empPage' ? 'psDoc' : page === 'financePage' ? 'finPsDoc' : 'admPsDoc';
+  const netPay = parseFloat(rec.net) || 0;
+  const dateStr = (rec.date || '').slice(0, 11);
+
+  function buildSubjRow(b) {
+    return '<tr>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:left">📚 ' + esc(b.subject || '') + '</td>' +
+      '<td colspan="2" style="border:1px solid #999;padding:3px 6px"></td>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:right">' + (b.qty || 0) + ' ×</td>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:right">' + fmt(parseFloat(b.rate) || 0) + '</td>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:right;font-weight:600">' + fmt(b.amount || 0) + '</td>' +
+      '<td colspan="5" style="border:1px solid #999;padding:3px 6px"></td>' +
+    '</tr>';
+  }
+
+  function buildIncrRow() {
+    return '<tr>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:left">Increment - S.Y</td>' +
+      '<td colspan="2" style="border:1px solid #999;padding:3px 6px"></td>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:right">' + (incrLine.qty || 0) + ' ×</td>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:right">' + fmt(parseFloat(incrLine.rate) || 0) + '</td>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:right;font-weight:600">' + fmt(incrLine.amount || 0) + '</td>' +
+      '<td colspan="5" style="border:1px solid #999;padding:3px 6px"></td>' +
+    '</tr>';
+  }
+
+  function buildDeMinimisRow() {
+    return '<tr>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:left">De Minimis Benefits</td>' +
+      '<td colspan="4" style="border:1px solid #999;padding:3px 6px"></td>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:right;font-weight:600">' + fmt(deMinimis) + '</td>' +
+      '<td colspan="5" style="border:1px solid #999;padding:3px 6px"></td>' +
+    '</tr>';
+  }
+
+  function buildThirteenthRow() {
+    return '<tr>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:left">🎁 13th Month Pay</td>' +
+      '<td colspan="4" style="border:1px solid #999;padding:3px 6px"></td>' +
+      '<td style="border:1px solid #999;padding:3px 6px;text-align:right;font-weight:600">' + fmt(thirteen) + '</td>' +
+      '<td colspan="5" style="border:1px solid #999;padding:3px 6px"></td>' +
+    '</tr>';
+  }
+
+  const explanationHtml = (isTeaching || isNonTeach || isMonthly) ? `
+    <div style="flex:2.2">
+      <table style="width:100%;border-collapse:collapse;font-size:10.5px;height:100%">
+        <thead>
+          <tr>
+            <th style="border:1px solid #999;padding:4px 6px;text-align:left" colspan="5">EXPLANATION</th>
+            <th style="border:1px solid #999;padding:4px 6px;text-align:center">Earnings</th>
+            <th style="border:1px solid #999;padding:4px 6px;text-align:center" colspan="4">DEDUCTIONS</th>
+            <th style="border:1px solid #999;padding:4px 6px;text-align:center">NET PAY</th>
+          </tr>
+          <tr style="font-size:9px">
+            <td style="border:1px solid #999;padding:3px 6px;text-align:left" colspan="5"></td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:center">Gross Pay</td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:center">SSS/Med.</td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:center">Pag-Ibig</td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:center">PERAA</td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:center">W/Tax</td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:center">Cash Adv</td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:left;font-weight:700" colspan="5">${isTeaching ? (emp.schoolLevel === 'College' ? 'CS/IT' : emp.schoolLevel === 'High School' ? 'HS' : emp.schoolLevel === 'Graduate School' ? 'Grad. School' : 'Elem') : 'Non-Teaching'}</td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:right;font-weight:700">${fmt(grossTaxable)}</td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:right">${fmt(sss)}</td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:right">${fmt(pag)}</td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:right">—</td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:right">${fmt(bir)}</td>
+            <td style="border:1px solid #999;padding:3px 6px;text-align:right">${fmt(cash)}</td>
+          </tr>
+           ${subjLines.map(b => buildSubjRow(b)).join('')}
+          ${incrLine ? buildIncrRow() : ''}
+          ${isMonthly && deMinimis > 0 ? buildDeMinimisRow() : ''}
+          ${thirteen > 0 ? buildThirteenthRow() : ''}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td style="border:1px solid #999;padding:4px 6px;text-align:left;font-weight:700;border-top:2px double #333" colspan="5">TOTAL</td>
+            <td style="border:1px solid #999;padding:4px 6px;text-align:right;font-weight:700;border-top:2px double #333">${fmt(totalGross)}</td>
+            <td style="border:1px solid #999;padding:4px 6px;text-align:right;font-weight:700;border-top:2px double #333">${fmt(sss)}</td>
+            <td style="border:1px solid #999;padding:4px 6px;text-align:right;font-weight:700;border-top:2px double #333">${fmt(pag)}</td>
+            <td style="border:1px solid #999;padding:4px 6px;text-align:right;font-weight:700;border-top:2px double #333">—</td>
+            <td style="border:1px solid #999;padding:4px 6px;text-align:right;font-weight:700;border-top:2px double #333">${fmt(bir)}</td>
+            <td style="border:1px solid #999;padding:4px 6px;text-align:right;font-weight:700;border-top:2px double #333">${fmt(cash)}</td>
+            <td style="border:1px solid #999;padding:4px 6px;text-align:right;border-top:2px double #333" colspan="2"></td>
+          </tr>
+          <tr>
+            <td colspan="6" style="border:none;padding:8px 6px 0;font-size:9px;color:#555">
+              ${emp.rankName ? 'A/Rank - ' + esc(emp.rankName) : ''}${rec.payNote ? ' · ' + esc(rec.payNote) : ''}
+            </td>
+            <td colspan="4" style="border:none;padding:8px 6px 0;font-size:9px;color:#555;text-align:right">
+              Incrs., WOs, EO 178, RA 6640, 6727, 6728
+            </td>
+            <td style="border:none;padding:8px 6px 0;text-align:right;font-size:18px;font-weight:700;font-family:'Playfair Display',serif" colspan="2">${fmt(netPay)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>` : '';
+
+  const officeCopyHtml = `
+    <div style="flex:1;border-right:1px dashed #999;padding-right:16px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:1px;margin-bottom:12px">OFFICE COPY</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px">
+        <tr><td style="border:1px solid #999;padding:6px;font-weight:700;width:40%">NAME OF EMPLOYEE</td><td style="border:1px solid #999;padding:6px">${esc(displayName(emp))}</td></tr>
+        <tr><td style="border:1px solid #999;padding:6px;font-weight:700">DATE</td><td style="border:1px solid #999;padding:6px">${esc(dateStr)}</td></tr>
+        <tr><td style="border:1px solid #999;padding:6px;font-weight:700">AMOUNT</td><td style="border:1px solid #999;padding:6px;font-weight:700">${fmt(netPay)}</td></tr>
+      </table>
+      <div style="margin-top:20px;font-size:11px;font-weight:700">PAY RECEIPT</div>
+      <div style="font-size:9.5px;color:#444;margin-top:6px;line-height:1.5">
+        Received from Republic Central Colleges the sum indicated in full payment of remuneration for services rendered during the period ending specified above. This releases any and all claims of the undersigned for the period.
+      </div>
+      <div style="margin-top:36px;display:flex;justify-content:space-between">
+        <div style="text-align:center"><div style="border-top:1px solid #333;width:120px"></div><div style="font-size:9px;margin-top:4px">Signature</div></div>
+        <div style="text-align:center"><div style="border-top:1px solid #333;width:120px"></div><div style="font-size:9px;margin-top:4px">Signature</div></div>
+      </div>
+    </div>`;
+
   document.getElementById(docId).innerHTML = `
-    <div style="text-align:center;margin-bottom:24px;padding-bottom:24px;border-bottom:2px solid var(--maroon-dark)">
-      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--maroon-dark)">Republic Central Colleges</div>
-      <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Automated Payroll System — Official Payslip</div>
-      <div style="font-size:13px;color:var(--text-muted)">Period: ${period}${isDec?' <span class="badge b-gold" style="margin-left:4px">🎁 incl. 13th Month</span>':''}</div>
-    </div>
-    <div style="margin-bottom:20px">
-      <div style="font-weight:700;font-size:13px;color:var(--maroon-dark);margin-bottom:12px">Employee Information</div>
-      ${[['Name', esc(displayName(emp))],['Employee ID', '#USR-00' + emp.id],['Position', esc(emp.role)],['Classification', emp.classification || 'Non-Teaching'],['Department', esc(emp.department || '—')]].map(([l,v])=>`
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-          <span style="color:var(--text-muted)">${l}</span><span style="font-weight:600">${v}</span>
-        </div>`).join('')}
-      ${emp.classification === 'Teaching' && emp.rankName ? `
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-          <span style="color:var(--text-muted)">Academic Rank</span><span style="font-weight:600">${esc(emp.rankName)}</span>
-        </div>` : ''}
-    </div>
-    <div style="margin-bottom:20px">
-      <div style="font-weight:700;font-size:13px;color:var(--maroon-dark);margin-bottom:12px">Earnings</div>
-      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-        <span style="color:var(--text-muted)">${earningLabel}</span><span style="font-weight:600">${fmt(grossTaxable)}</span>
+    <div style="max-width:1000px;margin:0 auto;font-family:'Source Sans 3',sans-serif">
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:8px">
+        <div style="width:52px;height:52px;border-radius:50%;border:3px solid var(--maroon);display:flex;align-items:center;justify-content:center;font-size:20px">🏛</div>
+        <div>
+          <div style="font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--maroon-dark)">REPUBLIC CENTRAL COLLEGES</div>
+          <div style="font-size:12px;color:var(--text-muted)">Angeles City</div>
+        </div>
       </div>
-      ${recBonuses.length ? recBonuses.map(b=>`
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-          <span style="color:var(--text-muted)">🎁 ${esc(b.name)} <span style="font-size:10px;color:${b.deMinimis?'#2E7D32':'var(--text-muted)'}">— ${b.deMinimis?'de minimis (tax-exempt)':'taxable bonus'}</span></span><span style="font-weight:600">+${fmt(b.amount)}</span>
-        </div>`).join('')
-       : (deMinimis>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-        <span style="color:var(--text-muted)">De Minimis Benefits</span><span style="font-weight:600">${fmt(deMinimis)}</span>
-      </div>`:'')}
-      ${exempt13>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-        <span style="color:var(--text-muted)">🎁 13th Month Pay (RA 8515) <span style="font-size:10px;color:#2E7D32">— exempt (≤${fmt(BONUS_EXEMPTION_LIMIT)}/yr)</span></span><span style="font-weight:700;color:var(--maroon-dark)">${fmt(exempt13)}</span>
-      </div>`:''}
-      ${taxable13>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-        <span style="color:var(--text-muted)">⚠️ 13th Month excess <span style="font-size:10px;color:#C62828">— taxable (over ${fmt(BONUS_EXEMPTION_LIMIT)})</span></span><span style="font-weight:700;color:#C62828">${fmt(taxable13)}</span>
-      </div>`:''}
-      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700;color:var(--maroon-dark)">
-        <span>Total Earnings</span><span>${fmt(totalGross)}</span>
+      <div style="text-align:center;margin-bottom:4px">
+        <div style="font-size:13px;font-weight:700">PAY SLIP FOR THE PAYROLL PERIOD ENDING ${period.toUpperCase()}${isDec?' <span class="badge b-gold" style="margin-left:4px">🎁 incl. 13th Month</span>':''}</div>
+        <div style="font-size:10.5px;font-style:italic;color:#555">Keep this Statement as your personal Record of Earnings and Deductions</div>
       </div>
+      ${explanationHtml}
+      ${officeCopyHtml}
     </div>
-    <div style="margin-bottom:20px">
-      <div style="font-weight:700;font-size:13px;color:var(--maroon-dark);margin-bottom:12px">Deductions</div>
-      ${[['SSS Contribution',sss],['PhilHealth Premium',phil],['Pag-IBIG Contribution',pag],['BIR Withholding Tax',bir],['Cash Advance',cash]].map(([l,v])=>`
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-          <span style="color:var(--text-muted)">${l}</span><span>${fmt(v)}</span>
-        </div>`).join('')}
-      ${customDeds.map(x=>`
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-          <span style="color:var(--text-muted)">📌 ${esc(x.name)}</span><span>${fmt(x.amount)}</span>
-        </div>`).join('')}
-      ${thirteenTax>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px;background:#FFF8E1">
-        <span style="color:#8D6E63">🧾 13th Month Excess Tax <span style="font-size:10px;color:#8D6E63">(over ${fmt(BONUS_EXEMPTION_LIMIT)} exemption — withheld from 13th Month Pay)</span></span><span style="font-weight:700;color:#C62828">${fmt(thirteenTax)}</span>
-      </div>`:''}
-      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700;color:#C62828">
-        <span>Total Deductions</span><span>${fmt(totalDed)}</span>
-      </div>
-    </div>
-    <div style="background:linear-gradient(135deg,var(--maroon-dark),var(--maroon));border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <span style="font-weight:700;color:#fff;letter-spacing:1px">NET PAY</span>
-      <span style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#fff">${fmt(rec.net)}</span>
-    </div>
-    <div style="text-align:center;font-size:11px;color:#AAA">This is a computer-generated payslip. No signature required.</div>
   `;
 
   // Show detail page based on role
@@ -496,7 +576,7 @@ function printPayslip() {
 function showFinPage(id, btn) {
   if (typeof closeSidebar==='function') closeSidebar();
   ['finDashboard','finAnalytics','finBonus','finPayroll','finReports','finGovReport','finPayrollReport','finDeduction','finMyPayslip','finPayslipDetail','finMyProfile','finChangePassword',
-   'finDedSSS','finDedPhilHealth','finDedPagIBIG','finDedBIR','finRanks'].forEach(x=>{
+   'finDedSSS','finDedPhilHealth','finDedPagIBIG','finDedBIR','finRanks','finInfoSheet'].forEach(x=>{
     const el = document.getElementById(x);
     if (el) el.style.display = 'none';
   });
@@ -504,7 +584,7 @@ function showFinPage(id, btn) {
   if (target) target.style.display = 'block';
   document.querySelectorAll('#financePage .nav-item').forEach(b=>b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const labels = {finDashboard:'Dashboard',finAnalytics:'Analytics',finBonus:'Bonus Management',finPayroll:'Payroll Calculation',finReports:'Reports',finGovReport:'Reports',finPayrollReport:'Reports',finDeduction:'Deduction Tables',finMyPayslip:'My Payslip',finMyProfile:'My Profile',finChangePassword:'Change Password',finRanks:'Faculty Rank Tables'};
+  const labels = {finDashboard:'Dashboard',finAnalytics:'Analytics',finBonus:'Bonus Management',finPayroll:'Payroll Calculation',finReports:'Reports',finGovReport:'Reports',finPayrollReport:'Reports',finDeduction:'Deduction Tables',finMyPayslip:'My Payslip',finMyProfile:'My Profile',finChangePassword:'Change Password',finRanks:'Faculty Rank Tables',finInfoSheet:'Information Sheets'};
   const bc = document.getElementById('finBreadcrumb');
   if (bc) bc.textContent = labels[id] || 'Dashboard';
   if (id === 'finDashboard') { renderIdentity(); updateFinStats(); renderFinRecentActivity(); }
@@ -513,6 +593,9 @@ function showFinPage(id, btn) {
   if (id === 'finPayroll') { if (typeof checkBonusDates==='function') checkBonusDates(); populateCalcEmployees(); renderPayrollSummary(); }
   if (id === 'finDeduction') { renderDeductionCategories(); renderLeaveTypes(); renderLeaveRecords(); renderAttendance(); renderDedBanner(); renderWorkDaysSetting(); }
   if (id === 'finRanks') { if (typeof renderRankTable === 'function') renderRankTable(); }
+  if (id === 'finInfoSheet') {
+    if (typeof renderFinInfoSheets === 'function') renderFinInfoSheets();
+  }
   if (id === 'finMyPayslip') renderFinPayslipList();
   if (id === 'finPayrollReport') {
     document.getElementById('reportOutput').style.display = 'none';
@@ -521,7 +604,7 @@ function showFinPage(id, btn) {
 
 function showEmpPage(id, btn) {
   if (typeof closeSidebar==='function') closeSidebar();
-  ['empDashboard','empPayslip','empProfile','empPassword','payslipDetailPage'].forEach(x=>{
+  ['empDashboard','empPayslip','empProfile','empPassword','payslipDetailPage','empInfoSheet'].forEach(x=>{
     const el = document.getElementById(x);
     if (el) el.style.display = 'none';
   });
@@ -531,11 +614,14 @@ function showEmpPage(id, btn) {
   if (btn) btn.classList.add('active');
   if (id === 'empPayslip') renderPayslipList();
   if (id === 'empDashboard') { renderIdentity(); renderEmpDashboard(); }
+  if (id === 'empInfoSheet') {
+    if (typeof openInfoSheetPage === 'function') openInfoSheetPage(loggedInUser ? loggedInUser.id : null, true);
+  }
 }
 
 function showAdmPage(id, btn) {
   if (typeof closeSidebar==='function') closeSidebar();
-  ['admDashboard','admUsers','admDeduction','admMyPayslip','admPayslipDetail','admMyProfile','admChangePassword','admRanks'].forEach(x=>{
+  ['admDashboard','admUsers','admDeduction','admMyPayslip','admPayslipDetail','admMyProfile','admChangePassword','admRanks','admInfoSheet'].forEach(x=>{
     const el = document.getElementById(x);
     if (el) el.style.display = 'none';
   });
@@ -543,13 +629,16 @@ function showAdmPage(id, btn) {
   if (target) target.style.display = 'block';
   document.querySelectorAll('#adminPage .nav-item').forEach(b=>b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const labels = {admDashboard:'Dashboard',admUsers:'User Management',admDeduction:'Deduction Tables',admMyPayslip:'My Payslip',admMyProfile:'My Profile',admChangePassword:'Change Password',admRanks:'Faculty Rank Tables'};
+  const labels = {admDashboard:'Dashboard',admUsers:'User Management',admDeduction:'Deduction Tables',admMyPayslip:'My Payslip',admMyProfile:'My Profile',admChangePassword:'Change Password',admRanks:'Faculty Rank Tables',admInfoSheet:'Information Sheets'};
   const bc = document.getElementById('admBreadcrumb');
   if (bc) bc.textContent = labels[id] || 'Dashboard';
   if (id === 'admDashboard') { renderIdentity(); updateAdminStats(); renderAdminRecentUsers(); }
   if (id === 'admUsers') renderUserTable();
   if (id === 'admDeduction') renderAdmDedTables();
   if (id === 'admRanks') { if (typeof renderAdmRankTable === 'function') renderAdmRankTable(); }
+  if (id === 'admInfoSheet') {
+    if (typeof renderAdmInfoSheets === 'function') renderAdmInfoSheets();
+  }
   if (id === 'admMyPayslip') renderAdmPayslipList();
 }
 
