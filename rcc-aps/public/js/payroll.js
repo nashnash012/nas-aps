@@ -131,6 +131,12 @@ function applyServerData(d) {
   if (typeof dedMeta  !== 'undefined' && d.dedMeta)  dedMeta  = Object.assign({}, dedMeta,  d.dedMeta);
   if (typeof teacherRanks !== 'undefined' && Array.isArray(d.teacherRanks) && d.teacherRanks.length) teacherRanks = d.teacherRanks;
   if (d.nextRankId) nextRankId = d.nextRankId;
+  if (typeof infoSheets !== 'undefined' && Array.isArray(d.infoSheets)) infoSheets = d.infoSheets;
+  if (typeof infoSheetEducation !== 'undefined' && Array.isArray(d.infoSheetEducation)) infoSheetEducation = d.infoSheetEducation;
+  if (typeof teachingLoads !== 'undefined' && Array.isArray(d.teachingLoads)) teachingLoads = d.teachingLoads;
+  if (d.nextSheetId) nextSheetId = d.nextSheetId;
+  if (d.nextEduId) nextEduId = d.nextEduId;
+  if (d.nextLoadId) nextLoadId = d.nextLoadId;
 }
 
 // Default the shared pay-period dropdown to the most recent month that actually

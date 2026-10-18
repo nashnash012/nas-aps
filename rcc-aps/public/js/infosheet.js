@@ -99,7 +99,7 @@ function saveInfoSheet() {
     yearsRcc: document.getElementById('isYearsRcc')?.value || '',
     yearsOther: document.getElementById('isYearsOther')?.value || '',
     employmentType: document.getElementById('isEmpType')?.value || 'Full Time',
-    governmentEmployee: document.getElementById('isGovEmp')?.checked ? 1 : 0,
+    governmentEmployee: parseInt(document.getElementById('isGovEmp')?.value, 10) || 0,
     natureOfWork: document.getElementById('isNatureWork')?.value || '',
     timeSchedule: document.getElementById('isTimeSched')?.value || '',
     certified: document.getElementById('isCertified')?.checked ? 1 : 0,
@@ -224,7 +224,7 @@ function renderInfoSheet() {
     set('isYearsRcc', sheet.yearsRcc);
     set('isYearsOther', sheet.yearsOther);
     set('isEmpType', sheet.employmentType);
-    const govEl = document.getElementById('isGovEmp'); if (govEl) govEl.checked = !!sheet.governmentEmployee;
+    const govEl = document.getElementById('isGovEmp'); if (govEl) govEl.value = sheet.governmentEmployee ? '1' : '0';
     set('isNatureWork', sheet.natureOfWork);
     set('isTimeSched', sheet.timeSchedule);
     const certEl = document.getElementById('isCertified'); if (certEl) certEl.checked = !!sheet.certified;
