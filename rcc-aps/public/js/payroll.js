@@ -593,12 +593,14 @@ function syncCalcTabUI() {
   const isNT = group === 'Non-Teaching';
   const isElem = group === 'Elementary';
   const isExpl = group === 'High School' || group === 'College' || group === 'Graduate School';
-  const attRow = document.getElementById('calcAttRow');
+  const attField = document.getElementById('calcAttField');
   const attLabel = document.getElementById('calcAttLabel');
   const explRow = document.getElementById('calcExplanationRow');
   const rateHdr = document.getElementById('calcRateHdr');
   const grossWrap = document.getElementById('calcGrossLabel');
-  if (attRow) attRow.style.display = (isNT || isElem) ? '' : 'none';
+  // Only the Absences field is NT/Elem-only — the row stays visible so
+  // Cash Advance works for every Payroll Group (incl. HS/College/Grad).
+  if (attField) attField.style.display = (isNT || isElem) ? '' : 'none';
   if (attLabel) attLabel.textContent = (isNT || isElem) ? 'Absences (days, ÷' + WORK_DAYS + ')' : 'N/A';
   if (explRow) explRow.style.display = isExpl ? 'block' : 'none';
   if (rateHdr) rateHdr.textContent = group === 'High School' ? 'Rate per Workload (₱)' : 'Rate per Hour (₱)';
