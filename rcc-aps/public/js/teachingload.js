@@ -292,25 +292,6 @@ function tlFormMarkup(pfx) {
           '</div>' +
         '</div>' +
 
-        '<div style="font-size:14px;font-weight:700;margin:20px 0 8px;color:var(--maroon-dark)">Pay Basis</div>' +
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px 16px;align-items:end">' +
-          '<div class="fg" id="' + pfx + 'HoursWrap" style="display:none">' +
-            '<label class="fl" id="' + pfx + 'HoursLabel">Total Hours / Week</label>' +
-            '<input class="fi" id="' + pfx + 'Hours" readonly value="0.0"/>' +
-          '</div>' +
-          '<div class="fg" id="' + pfx + 'AbsencesWrap" style="display:none">' +
-            '<label class="fl">Absences (days)</label>' +
-            '<input class="fi" id="' + pfx + 'Absences" type="number" min="0" step="0.5" placeholder="0" oninput="tlPreview(\'' + pfx + '\')"/>' +
-          '</div>' +
-        '</div>' +
-        '<div id="' + pfx + 'FormulaHint" style="font-size:12px;color:var(--text-muted);margin-top:6px"></div>' +
-
-        '<div style="margin-top:16px;padding:14px 18px;background:var(--gold-pale);border:1px solid rgba(107,26,26,0.18);border-radius:10px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center">' +
-          '<span style="font-size:13px;font-weight:600;color:var(--maroon-dark)">💰 Estimated Monthly Pay</span>' +
-          '<span id="' + pfx + 'EstimatedPay" style="font-size:20px;font-weight:700;color:var(--maroon-dark)">₱0.00</span>' +
-        '</div>' +
-        '<div id="' + pfx + 'FormulaText" style="font-size:12px;color:var(--text-muted);margin-top:6px;font-family:monospace"></div>' +
-
         '<div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap">' +
           '<button class="btn btn-primary" onclick="tlSave(\'' + pfx + '\')">💾 Save Teaching Load</button>' +
           '<button class="btn btn-outline" onclick="tlRenderForm(\'' + pfx + '\', tlCtx[\'' + pfx + '\'].empId, tlCtx[\'' + pfx + '\'].sem)">↻ Reload</button>' +
@@ -397,17 +378,6 @@ function tlRenderForm(pfx, empId, sem) {
     const body = document.getElementById(pfx + 'ClassBody');
     if (body) body.innerHTML = cls.map(c => tlClassRowHtml(c, pfx)).join('');
 
-    // pay inputs visibility
-    const hoursWrap = document.getElementById(pfx + 'HoursWrap');
-    const absWrap = document.getElementById(pfx + 'AbsencesWrap');
-    const absEl = document.getElementById(pfx + 'Absences');
-    const hoursLabel = document.getElementById(pfx + 'HoursLabel');
-    const absType = isNT || level === 'Elementary';
-    if (hoursWrap) hoursWrap.style.display = absType ? 'none' : 'block';
-    if (absWrap) absWrap.style.display = absType ? 'block' : 'none';
-    if (hoursLabel && !absType) hoursLabel.textContent = level === 'High School' ? 'Total Hours / Week (→ workloads)' : 'Total Hours / Week';
-    if (absEl) absEl.value = rec ? (rec.absences || 0) : '';
-
     // saved status
     const st = document.getElementById(pfx + 'SaveStatus');
     if (st) {
@@ -455,19 +425,6 @@ function tlPreview(pfx) {
     total = Math.round(total * 10) / 10;
     const totEl = document.getElementById(pfx + 'TotalHours');
     if (totEl) totEl.textContent = total.toFixed(1);
-    const hrsEl = document.getElementById(pfx + 'Hours');
-    if (hrsEl) hrsEl.value = total.toFixed(1);
-
-    const absEl = document.getElementById(pfx + 'Absences');
-    const a = absEl ? (parseFloat(absEl.value) || 0) : 0;
-    const out = tlCompute(emp, total, a);
-
-    const payEl = document.getElementById(pfx + 'EstimatedPay');
-    if (payEl) payEl.textContent = fmt(out.pay);
-    const hintEl = document.getElementById(pfx + 'FormulaHint');
-    if (hintEl) hintEl.textContent = out.hint;
-    const fEl = document.getElementById(pfx + 'FormulaText');
-    if (fEl) fEl.textContent = out.formulaText;
   } catch (e) {
     console.error('[TeachingLoad] preview error:', e);
   }
@@ -651,7 +608,6 @@ function renderFinTeachingLoads() {
       '<td>' + esc(rank) + '</td>' +
       '<td>' + fmt(r) + ' <span style="font-size:11px;color:var(--text-muted)">' + esc(unit) + '</span></td>' +
       '<td style="font-weight:600">' + esc(workload) + '</td>' +
-      '<td style="font-weight:600;color:var(--maroon-dark)">' + (latest ? fmt(latest.computedPay) : '—') + '</td>' +
       '<td>' + (latest ? esc(tlSemLabel(latest.semester) + ' · ' + latest.schoolYear) : '—') + '</td>' +
       '<td>' + status + '</td>' +
       '<td><button class="btn btn-outline btn-sm" onclick="tlOpenFinanceForm(' + u.id + ', \'' + (latest ? latest.semester : '1st') + '\')">View / Edit</button></td>' +
@@ -671,7 +627,6 @@ function renderFinTeachingLoads() {
             '<th style="padding:8px 10px;text-align:left">Rank</th>' +
             '<th style="padding:8px 10px;text-align:left">Rate</th>' +
             '<th style="padding:8px 10px;text-align:left">Workload</th>' +
-            '<th style="padding:8px 10px;text-align:left">Est. Monthly Pay</th>' +
             '<th style="padding:8px 10px;text-align:left">Sem · SY</th>' +
             '<th style="padding:8px 10px;text-align:left">Status</th>' +
             '<th style="padding:8px 10px;text-align:left">Action</th>' +
