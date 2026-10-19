@@ -310,6 +310,33 @@ tr:hover td{background:#FEFCF8}
   font-weight:700;
 }
 
+/* ── DAYS popover (Mon–Sat checkboxes) ── */
+.tl-days-pop{position:relative}
+.tl-days-menu{
+  display:none;
+  position:fixed;
+  background:var(--white);
+  border:1.5px solid var(--border);
+  border-radius:9px;
+  min-width:150px;
+  padding:4px 0;
+  z-index:300;
+  box-shadow:0 10px 30px rgba(0,0,0,0.12);
+}
+.tl-days-menu.show{display:block}
+.tl-days-opt{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 13px;
+  font-size:13px;
+  color:var(--text);
+  cursor:pointer;
+  user-select:none;
+}
+.tl-days-opt:hover{background:var(--gold-pale)}
+.tl-days-opt input{margin:0;accent-color:var(--maroon)}
+
 /* ── PRINT ── */
 #printOverlay{display:none}
 @media print{

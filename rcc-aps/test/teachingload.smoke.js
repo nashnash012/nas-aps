@@ -125,5 +125,15 @@ if (fnMatch) {
   eq('TL prefill no record -> []', latestTeachingLoads(999).length, 0);
 }
 
+// 14) tlDaysParse / tlDaysFormat — days popover parser
+eq('days "MWF" -> 3 codes', tlDaysParse('MWF').join(','), 'M,W,F');
+eq('days "M, W" -> 2 codes', tlDaysParse('M, W').join(','), 'M,W');
+eq('days "TTH" -> T,Th', tlDaysParse('TTH').join(','), 'T,Th');
+eq('days "Thursday" -> Th', tlDaysParse('Thursday').join(','), 'Th');
+eq('days canonical order "F,M"', tlDaysParse('F,M').join(','), 'M,F');
+eq('days empty -> 0', tlDaysParse('').length, 0);
+eq('days null -> 0', tlDaysParse(null).length, 0);
+eq('days format "M, W"', tlDaysFormat(['W', 'M']), 'M, W');
+
 console.log('\nRESULT: ' + pass + ' passed, ' + fail + ' failed  ' + (fail ? '❌' : '✅'));
 process.exit(fail ? 1 : 0);

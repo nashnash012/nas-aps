@@ -72,7 +72,7 @@ function tlParseTimeRange(str) {
 function tlRowHours(tr) {
   const g = f => { const el = tr.querySelector('[data-f=' + f + ']'); return el ? (el.value || '') : ''; };
   const tr2 = tlParseTimeRange(g('timeStart') + '-' + g('timeEnd'));
-  const days = g('days').split(',').map(x => x.trim()).filter(Boolean).length;
+  const days = tlDaysParse(g('days')).length;
   if (!tr2 || !days) return 0;
   return Math.round(tr2.hours * days * 10) / 10;
 }
@@ -83,6 +83,68 @@ function tlTotalHours(pfx) {
   if (!body) return 0;
   body.querySelectorAll('tr').forEach(tr => { total += tlRowHours(tr); });
   return Math.round(total * 10) / 10;
+}
+
+// ── Days popover (Mon–Sat checkboxes) ────────────────────────
+const TL_DAYS = [['M','Mon'],['T','Tue'],['W','Wed'],['Th','Thu'],['F','Fri'],['S','Sat']];
+const TL_DAY_CODES = TL_DAYS.map(d => d[0]);
+const TL_DAY_TOKENS = {
+  MON:'M', MONDAY:'M', TUE:'T', TUESDAY:'T', WED:'W', WEDNESDAY:'W',
+  THU:'Th', TH:'Th', THUR:'Th', THURS:'Th', THURSDAY:'Th',
+  FRI:'F', FRIDAY:'F', SAT:'S', SATURDAY:'S'
+};
+const TL_DAY_CHARS = { M:'M', T:'T', W:'W', F:'F', S:'S', H:'Th', R:'Th' };
+
+// Parse free text ("MWF", "M, W", "TTH", "Thursday") into canonical day codes.
+function tlDaysParse(str) {
+  const out = [];
+  const add = c => { if (c && out.indexOf(c) < 0) out.push(c); };
+  String(str || '').toUpperCase().split(/[^A-Z]+/).forEach(tok => {
+    if (!tok) return;
+    if (TL_DAY_TOKENS[tok]) add(TL_DAY_TOKENS[tok]);
+    else for (const ch of tok) add(TL_DAY_CHARS[ch]);
+  });
+  return TL_DAY_CODES.filter(c => out.indexOf(c) >= 0); // canonical Mon–Sat order
+}
+
+function tlDaysFormat(codes) {
+  return TL_DAY_CODES.filter(c => codes.indexOf(c) >= 0).join(', ');
+}
+
+function tlDaysCloseAll() {
+  document.querySelectorAll('.tl-days-menu.show').forEach(m => m.classList.remove('show'));
+}
+
+function tlDaysToggle(ev) {
+  const inp = ev.currentTarget;
+  ev.stopPropagation();
+  const wrap = inp.closest('.tl-days-pop');
+  const menu = wrap ? wrap.querySelector('.tl-days-menu') : null;
+  if (!menu) return;
+  const wasOpen = menu.classList.contains('show');
+  tlDaysCloseAll();
+  if (wasOpen) return;
+  const codes = tlDaysParse(inp.value);
+  menu.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = codes.indexOf(cb.value) >= 0; });
+  const r = inp.getBoundingClientRect();
+  menu.style.left = Math.max(4, Math.min(Math.round(r.left), window.innerWidth - 170)) + 'px';
+  menu.classList.add('show');
+  // Open upward when there is not enough room below (measure while visible).
+  const h = menu.offsetHeight;
+  const top = (r.bottom + 4 + h > window.innerHeight && r.top - h - 4 >= 0) ? r.top - h - 4 : r.bottom + 4;
+  menu.style.top = Math.round(top) + 'px';
+}
+
+function tlDaysChanged(cb) {
+  const wrap = cb.closest('.tl-days-pop');
+  if (!wrap) return;
+  const inp = wrap.querySelector('input[data-f=days]');
+  const codes = [];
+  wrap.querySelectorAll('.tl-days-menu input[type=checkbox]:checked').forEach(x => codes.push(x.value));
+  if (inp) {
+    inp.value = tlDaysFormat(codes);
+    inp.dispatchEvent(new Event('input')); // fires inline oninput → tlPreview (hours recompute)
+  }
 }
 
 // ── Core computation (shared by preview + save) ──────────────
@@ -225,13 +287,20 @@ function tlClassRowHtml(c, pfx) {
   const lvCell = '<select class="fi tl-level-sel" data-f="level" title="For College / For Grad — tag which level this subject is for" onchange="tlPreview(\'' + pfx + '\')">' + lvOpts + '</select>';
   const timeCell = f => '<select class="fi tl-time-sel" data-f="' + f + '" onchange="tlPreview(\'' + pfx + '\')">' +
     tlTimeOpts(c ? v(f) : '') + '</select>';
+  const daysCell = '<div class="tl-days-pop">' +
+    '<input class="fi" style="padding:7px 9px;width:62px" data-f="days" value="' + v('days') + '" placeholder="M,W" ' +
+      'onclick="tlDaysToggle(event)" oninput="tlPreview(\'' + pfx + '\')"/>' +
+    '<div class="tl-days-menu">' +
+      TL_DAYS.map(d => '<label class="tl-days-opt"><input type="checkbox" value="' + d[0] + '" onchange="tlDaysChanged(this)"/>' + d[1] + '</label>').join('') +
+    '</div>' +
+  '</div>';
   return '<tr data-cid="' + (c ? c.id : '') + '">' +
     '<td>' + inp('subject', '150px', 'Subject') + '</td>' +
     '<td>' + lvCell + '</td>' +
     '<td>' + inp('deptCode', '62px', 'CBA') + '</td>' +
     '<td>' + timeCell('timeStart') + '</td>' +
     '<td>' + timeCell('timeEnd') + '</td>' +
-    '<td>' + inp('days', '62px', 'M,W') + '</td>' +
+    '<td>' + daysCell + '</td>' +
     '<td><input class="fi" style="padding:7px 9px;width:48px" type="number" min="0" data-f="studentsM" value="' + (c ? (c.studentsMale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
     '<td><input class="fi" style="padding:7px 9px;width:48px" type="number" min="0" data-f="studentsF" value="' + (c ? (c.studentsFemale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
     '<td>' + inp('room', '60px', '410') + '</td>' +
@@ -647,4 +716,14 @@ function renderFinTeachingLoads() {
         '</table>' +
       '</div>' +
     '</div>';
+}
+
+// Days popover: close on outside click / Escape / any scroll (menu is
+// position:fixed, so scrolling would detach it from its input).
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', function(e) {
+    if (!e.target || !e.target.closest || !e.target.closest('.tl-days-pop')) tlDaysCloseAll();
+  });
+  document.addEventListener('keydown', function(e) { if (e.key === 'Escape') tlDaysCloseAll(); });
+  document.addEventListener('scroll', function() { tlDaysCloseAll(); }, true);
 }
