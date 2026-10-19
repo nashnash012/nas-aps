@@ -395,13 +395,16 @@ function getPhil(s) {
 
 // ── PAYROLL CALCULATOR ────────────────────────────────────────
 // Active calculator tab (department group): 'Non-Teaching', 'Elementary',
-// 'High School', 'College', or 'Graduate School'.
+// 'High School', or 'College / Graduate' (College + Graduate School share
+// one tab — rates differ per subject via the Level tag).
 let currentCalcTab = 'Non-Teaching';
 
 // Whether an employee belongs to the given calculator tab group.
 function calcTabMatches(u, group) {
   if (group === 'Non-Teaching') return u.classification === 'Non-Teaching';
   if (group === 'Elementary') return u.classification === 'Teaching' && u.schoolLevel === 'Elementary';
+  if (group === 'College / Graduate') return u.classification === 'Teaching'
+    && (u.schoolLevel === 'College' || u.schoolLevel === 'Graduate School');
   return u.classification === 'Teaching' && u.schoolLevel === group;
 }
 
@@ -425,7 +428,7 @@ function renderCalcEmpList(list, show) {
   const box = document.getElementById('calcEmpList');
   if (!box) return;
   box.innerHTML = list.length
-    ? list.map(u=>`<div class="combobox-item" onclick="selectCalcEmp(${u.id})">${esc(displayName(u))} — ${u.classification}${u.department?' · '+esc(u.department):''}</div>`).join('')
+    ? list.map(u=>`<div class="combobox-item" onclick="selectCalcEmp(${u.id})">${esc(displayName(u))} — ${u.classification}${u.classification==='Teaching'&&u.schoolLevel?' · '+esc(u.schoolLevel):''}${u.department?' · '+esc(u.department):''}</div>`).join('')
     : '<div class="combobox-empty">No employee found.</div>';
   box.classList.toggle('show', show !== false);
 }
@@ -471,7 +474,7 @@ function onCalcEmpInput() {
 
 // Label shown in the search field once an employee is selected
 function calcEmpLabel(u) {
-  return `${displayName(u)} — ${u.classification}${u.department?' · '+u.department:''}`;
+  return `${displayName(u)} — ${u.classification}${u.classification==='Teaching'&&u.schoolLevel?' · '+u.schoolLevel:''}${u.department?' · '+u.department:''}`;
 }
 
 function selectCalcEmp(id) {
@@ -578,6 +581,10 @@ function showCalcTab(group) {
   if (inp) inp.value = '';
   const note = document.getElementById('calcPayNote');
   if (note) note.value = '';
+  // Drop the EXPLANATION rows too — they belong to the previous Payroll Group
+  // (subjects/rates are per level), so they must never leak into the new tab.
+  const subjBody = document.getElementById('calcSubjectBody');
+  if (subjBody) subjBody.innerHTML = '';
   resetCalcOutput();
   recomputeCalcTotals();
   populateCalcEmployees();
@@ -592,7 +599,7 @@ function syncCalcTabUI() {
   });
   const isNT = group === 'Non-Teaching';
   const isElem = group === 'Elementary';
-  const isExpl = group === 'High School' || group === 'College' || group === 'Graduate School';
+  const isExpl = group === 'High School' || group === 'College / Graduate';
   const attField = document.getElementById('calcAttField');
   const attLabel = document.getElementById('calcAttLabel');
   const explRow = document.getElementById('calcExplanationRow');
@@ -693,7 +700,7 @@ function recomputeCalcTotals() {
 
 // Latest teaching load rows from the Teaching Load module (most recent
 // school year / semester on file) — used to pre-fill the EXPLANATION
-// editor for High School / College / Graduate School tabs. TL stores
+// editor for High School / College + Graduate tabs. TL stores
 // hrs/week per subject; converted here to hrs/month for the calculator.
 function latestTeachingLoads(empId) {
   if (typeof teachingLoadRecords === 'undefined' || !Array.isArray(teachingLoadRecords)) return [];
@@ -737,9 +744,9 @@ function loadEmployeeData() {
   }
   const isTeaching = emp.classification === 'Teaching';
   const group = currentCalcTab;
-  const isExplTab = group === 'High School' || group === 'College' || group === 'Graduate School';
+  const isExplTab = group === 'High School' || group === 'College / Graduate';
   document.getElementById('calcMetaName').textContent = displayName(emp);
-  document.getElementById('calcMetaClass').textContent = emp.classification + (emp.rankName ? ' · ' + emp.rankName : '');
+  document.getElementById('calcMetaClass').textContent = emp.classification + (isTeaching && emp.schoolLevel ? ' · ' + emp.schoolLevel : '') + (emp.rankName ? ' · ' + emp.rankName : '');
   document.getElementById('calcMetaDept').textContent = emp.department || '—';
   meta.style.display = 'block';
 
@@ -750,7 +757,7 @@ function loadEmployeeData() {
 
   const hasData = periodHasData(emp.id, monthNum, year);
   if (isExplTab) {
-    // High School / College / Graduate School: pre-fill the EXPLANATION
+    // High School / College + Graduate: pre-fill the EXPLANATION
     // editor from the employee's latest Teaching Load record. Subject,
     // days and hrs/month come from the load schedule; rate is auto-filled
     // from the rank table.
@@ -951,11 +958,11 @@ function computePayroll() {
   let gross = 0, meta = '';
   let subjectBreakdown = null;
   const group = currentCalcTab;
-  const isExplTab = group === 'High School' || group === 'College' || group === 'Graduate School';
+  const isExplTab = group === 'High School' || group === 'College / Graduate';
   if (isExplTab) {
     // Gross comes from the EXPLANATION editor rows.
     // High School: 3 hours = 1 workload, paid at teacherRate per workload.
-    // College / Graduate School: paid at teacherRate per hour.
+    // College / Graduate: paid at teacherRate per hour.
     const R = teacherRate(emp);
     subjectBreakdown = [];
     let totalQty = 0, subjGross = 0;

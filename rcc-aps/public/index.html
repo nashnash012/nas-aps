@@ -578,8 +578,7 @@
                   <button class="btn btn-outline calc-tab active" data-group="Non-Teaching" onclick="showCalcTab('Non-Teaching')">Non-Teaching</button>
                   <button class="btn btn-outline calc-tab" data-group="Elementary" onclick="showCalcTab('Elementary')">Elementary</button>
                   <button class="btn btn-outline calc-tab" data-group="High School" onclick="showCalcTab('High School')">High School</button>
-                  <button class="btn btn-outline calc-tab" data-group="College" onclick="showCalcTab('College')">College</button>
-                  <button class="btn btn-outline calc-tab" data-group="Graduate School" onclick="showCalcTab('Graduate School')">Graduate School</button>
+                  <button class="btn btn-outline calc-tab" data-group="College / Graduate" onclick="showCalcTab('College / Graduate')">College / Graduate</button>
                 </div>
               </div>
               <div class="fg">
@@ -608,7 +607,7 @@
               <div class="fg"><label class="fl">Cash Advance (₱)</label><input class="fi" type="number" id="calcCash" step="0.01" min="0" placeholder="0.00" oninput="computePayroll()"/></div>
             </div>
 
-            <!-- EXPLANATION editor (High School / College / Graduate School) -->
+            <!-- EXPLANATION editor (High School / College + Graduate) -->
             <div id="calcExplanationRow" style="display:none;margin-bottom:16px">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
                 <div style="font-size:13px;font-weight:700;color:var(--maroon)">📝 Explanation — Subjects &amp; Hours Rendered</div>
@@ -1889,7 +1888,7 @@
   <script src="js/core.js?v=20261018a"></script>
   <script src="js/auth.js?v=20261018a"></script>
   <script src="js/employees.js?v=20260822c"></script>
-  <script src="js/payroll.js?v=20261019a"></script>
+  <script src="js/payroll.js?v=20261019c"></script>
   <script src="js/reports.js?v=20260822g"></script>
   <script src="js/bonus.js?v=20260903a"></script>
   <script src="js/ranks.js?v=20261017a"></script>
