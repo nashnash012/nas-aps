@@ -563,6 +563,7 @@ function renderUserTable() {
       <td><span class="badge ${u.status==='Active'?'b-green':'b-gray'}">${u.status==='Active'?'● Active':'● Inactive'}</span></td>
       <td>${u.date}</td>
       <td><div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm btn-icon" title="Edit" onclick="openEditUserModal(${u.id})">✏️</button>
         <button class="btn btn-outline btn-sm btn-icon" title="View" onclick="viewUser(${u.id})">👁</button>
         ${u.status==='Active'
           ? `<button class="btn btn-outline btn-sm btn-icon" style="color:#C62828;border-color:#FFCDD2" title="Deactivate" onclick="confirmDeactivate(${u.id})">⏸</button>`
@@ -815,8 +816,10 @@ function saveUser() {
   saveDemo();
   renderUserTable(); renderAdminRecentUsers(); updateAdminStats();
 }
+let viewCurrentUserId = null;   // user id shown in the User Profile (view) modal
 function viewUser(id) {
   const u=users.find(x=>x.id===id); if(!u) return;
+  viewCurrentUserId = id;
   document.getElementById('viewUserBody').innerHTML = `
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
       <div style="width:56px;height:56px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700">${initials(u.first,u.last)}</div>
