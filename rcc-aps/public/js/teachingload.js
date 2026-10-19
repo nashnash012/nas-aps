@@ -134,6 +134,81 @@ function tlCompute(emp, totalHours, absences) {
   };
 }
 
+// ── Time pickers (Time Start / Time End) ─────────────────────
+// Grid runs 5:00 AM → 11:45 PM in 15-minute steps plus 12:00 MN (midnight).
+// Option values stay in "h:mm AM/PM" form so tlParseTimeRange reads them
+// unchanged; only the labels use the Filipino noon/midnight spelling.
+const TL_TIME_GRID = (() => {
+  const out = [];
+  for (let mins = 5 * 60; mins < 24 * 60; mins += 15) {
+    const h = Math.floor(mins / 60), m = mins % 60;
+    const value = h12Value(h, m);
+    const label = (h === 12) ? h12Value(h, m).replace('PM', 'NN') : value;
+    out.push({ value: value, label: label });
+  }
+  out.push({ value: '12:00 AM', label: '12:00 MN' }); // midnight
+  return out;
+  function h12Value(h, m) {
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    return h12 + ':' + String(m).padStart(2, '0') + ' ' + (h < 12 ? 'AM' : 'PM');
+  }
+})();
+
+// Normalize a stored/typed time to "h:mm AM/PM" (null when unparseable).
+// Accepts the legacy free-text forms: "2:30p", "2:30 pm", "14:00", "7:00a".
+function tlTimeNorm(str) {
+  const s = String(str == null ? '' : str).trim();
+  if (!s) return '';
+  const m = s.match(/^(\d{1,2}):?(\d{2})?\s*(am|pm|a|p)?$/i);
+  if (!m) return null;
+  let h = parseInt(m[1], 10);
+  const min = m[2] != null && m[2] !== '' ? parseInt(m[2], 10) : 0;
+  const ap = (m[3] || '').toLowerCase();
+  if (isNaN(h) || isNaN(min) || min > 59) return null;
+  if (ap === 'pm' || ap === 'p') { if (h < 12) h += 12; }
+  else if (ap === 'am' || ap === 'a') { if (h === 12) h = 0; }
+  else if (h > 23) { if (!(h === 24 && min === 0)) return null; }
+  if (h === 24) h = 0;
+  if (h > 23) return null;
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return h12 + ':' + String(min).padStart(2, '0') + ' ' + (h < 12 ? 'AM' : 'PM');
+}
+
+// Minutes since midnight for a "h:mm AM/PM" value (null when unparseable).
+function tlTimeMins(str) {
+  const n = tlTimeNorm(str);
+  if (!n) return null;
+  const m = n.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+  let h = parseInt(m[1], 10);
+  if (/p/i.test(m[3])) { if (h < 12) h += 12; }
+  else if (h === 12) h = 0;
+  return h * 60 + parseInt(m[2], 10);
+}
+
+// True when both ends are picked and the range is unusable (end <= start).
+function tlTimeBad(startVal, endVal) {
+  const a = tlTimeMins(startVal), b = tlTimeMins(endVal);
+  if (a == null || b == null) return false;
+  return b <= a;
+}
+
+function tlTimeOpts(cur) {
+  const raw = String(cur == null ? '' : cur).trim();
+  const norm = tlTimeNorm(raw);
+  let sel = '';
+  if (norm && TL_TIME_GRID.some(t => t.value === norm)) sel = norm;
+  else if (norm) sel = norm;                       // off-grid time: keep as-is
+  else if (raw) sel = raw;                          // unparseable: preserve raw
+  let html = '<option value=""' + (sel ? '' : ' selected') + '>— Select —</option>';
+  html += TL_TIME_GRID.map(t =>
+    '<option value="' + t.value + '"' + (t.value === sel ? ' selected' : '') + '>' + t.label + '</option>').join('');
+  if (sel && !TL_TIME_GRID.some(t => t.value === sel)) {
+    // not on the 15-minute grid (or legacy free text) — never lose the value
+    html += '<option value="' + esc(sel) + '" selected>' + esc(sel) + '</option>';
+  }
+  return html;
+}
+
 // ── Form markup (one template, two hosts: tl / finTl) ────────
 function tlClassRowHtml(c, pfx) {
   // data-f 'room'/'gcode' are stored as roomNo/googleCode on the class object
@@ -148,12 +223,14 @@ function tlClassRowHtml(c, pfx) {
     .concat(TL_LEVELS.map(l => '<option value="' + l + '"' + (lv === l ? ' selected' : '') + '>' + l + '</option>'))
     .join('');
   const lvCell = '<select class="fi tl-level-sel" data-f="level" title="For College / For Grad — tag which level this subject is for" onchange="tlPreview(\'' + pfx + '\')">' + lvOpts + '</select>';
+  const timeCell = f => '<select class="fi tl-time-sel" data-f="' + f + '" onchange="tlPreview(\'' + pfx + '\')">' +
+    tlTimeOpts(c ? v(f) : '') + '</select>';
   return '<tr data-cid="' + (c ? c.id : '') + '">' +
     '<td>' + inp('subject', '150px', 'Subject') + '</td>' +
     '<td>' + lvCell + '</td>' +
     '<td>' + inp('deptCode', '62px', 'CBA') + '</td>' +
-    '<td>' + inp('timeStart', '66px', '2:30p') + '</td>' +
-    '<td>' + inp('timeEnd', '66px', '4:00p') + '</td>' +
+    '<td>' + timeCell('timeStart') + '</td>' +
+    '<td>' + timeCell('timeEnd') + '</td>' +
     '<td>' + inp('days', '62px', 'M,W') + '</td>' +
     '<td><input class="fi" style="padding:7px 9px;width:48px" type="number" min="0" data-f="studentsM" value="' + (c ? (c.studentsMale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
     '<td><input class="fi" style="padding:7px 9px;width:48px" type="number" min="0" data-f="studentsF" value="' + (c ? (c.studentsFemale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
@@ -361,6 +438,18 @@ function tlPreview(pfx) {
         const cell = tr.querySelector('.tl-hours-cell');
         if (cell) cell.textContent = h.toFixed(1);
         total += h;
+        // Flag an unusable time range (End <= Start). Visual warning only —
+        // the hours math still comes from tlParseTimeRange as before.
+        const ts = tr.querySelector('[data-f=timeStart]');
+        const te = tr.querySelector('[data-f=timeEnd]');
+        const bad = tlTimeBad(ts ? ts.value : '', te ? te.value : '');
+        [ts, te].forEach(el => {
+          if (!el) return;
+          el.classList.toggle('tl-time-bad', bad);
+          if (bad) el.title = '⚠ End time must be later than Start time';
+          else el.removeAttribute('title');
+        });
+        if (cell) cell.style.color = bad ? '#C62828' : '';
       });
     }
     total = Math.round(total * 10) / 10;

@@ -294,8 +294,21 @@ tr:hover td{background:#FEFCF8}
 .tl-level-sel:hover,.calc-level-sel:hover{background:var(--white)}
 #tlClassBody td,#finTlClassBody td{padding:4px 5px}
 #tlClassBody th,#finTlClassBody th{padding:6px 6px}
-#tlClassBody td,#finTlClassBody td{padding:4px 5px}
-#tlClassBody th,#finTlClassBody th{padding:6px 6px}
+
+/* ── TIME START / END dropdowns ── */
+.tl-time-sel{
+  width:92px;
+  max-width:92px;
+  padding:6px 6px;
+  font-size:12px;
+  cursor:pointer;
+}
+.tl-time-bad{
+  border-color:#C62828 !important;
+  background:#FFF5F5 !important;
+  color:#C62828 !important;
+  font-weight:700;
+}
 
 /* ── PRINT ── */
 #printOverlay{display:none}
