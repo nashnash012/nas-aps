@@ -136,8 +136,12 @@ function tlCompute(emp, totalHours, absences) {
 
 // ── Form markup (one template, two hosts: tl / finTl) ────────
 function tlClassRowHtml(c, pfx) {
-  const v = f => c ? esc(c[f] != null ? c[f] : '') : '';
-  const inp = (f, w, ph) => '<input class="fi" style="padding:6px 8px' + (w ? ';width:' + w : '') + '" data-f="' + f +
+  // data-f 'room'/'gcode' are stored as roomNo/googleCode on the class object
+  const v = f => {
+    const key = (f === 'room') ? 'roomNo' : (f === 'gcode') ? 'googleCode' : f;
+    return c ? esc(c[key] != null ? c[key] : '') : '';
+  };
+  const inp = (f, w, ph) => '<input class="fi" style="padding:7px 9px' + (w ? ';width:' + w : '') + '" data-f="' + f +
     '" value="' + v(f) + '" placeholder="' + ph + '" oninput="tlPreview(\'' + pfx + '\')"/>';
   const lv = (c && c.level) ? c.level : '';
   const lvOpts = ['<option value="">(auto)</option>']
@@ -145,16 +149,16 @@ function tlClassRowHtml(c, pfx) {
     .join('');
   const lvCell = '<select class="fi tl-level-sel" data-f="level" title="For College / For Grad — tag which level this subject is for" onchange="tlPreview(\'' + pfx + '\')">' + lvOpts + '</select>';
   return '<tr data-cid="' + (c ? c.id : '') + '">' +
-    '<td>' + inp('subject', '140px', 'Subject') + '</td>' +
+    '<td>' + inp('subject', '160px', 'Subject') + '</td>' +
     '<td>' + lvCell + '</td>' +
-    '<td>' + inp('deptCode', '56px', 'CBA') + '</td>' +
-    '<td>' + inp('timeStart', '58px', '2:30p') + '</td>' +
-    '<td>' + inp('timeEnd', '58px', '4:00p') + '</td>' +
-    '<td>' + inp('days', '52px', 'M,W') + '</td>' +
-    '<td><input class="fi" style="padding:6px 8px;width:44px" type="number" min="0" data-f="studentsM" value="' + (c ? (c.studentsMale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
-    '<td><input class="fi" style="padding:6px 8px;width:44px" type="number" min="0" data-f="studentsF" value="' + (c ? (c.studentsFemale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
-    '<td>' + inp('room', '50px', '410') + '</td>' +
-    '<td>' + inp('gcode', '66px', 'Class Code') + '</td>' +
+    '<td>' + inp('deptCode', '70px', 'CBA') + '</td>' +
+    '<td>' + inp('timeStart', '78px', '2:30p') + '</td>' +
+    '<td>' + inp('timeEnd', '78px', '4:00p') + '</td>' +
+    '<td>' + inp('days', '70px', 'M,W') + '</td>' +
+    '<td><input class="fi" style="padding:7px 9px;width:56px" type="number" min="0" data-f="studentsM" value="' + (c ? (c.studentsMale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
+    '<td><input class="fi" style="padding:7px 9px;width:56px" type="number" min="0" data-f="studentsF" value="' + (c ? (c.studentsFemale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
+    '<td>' + inp('room', '70px', '410') + '</td>' +
+    '<td>' + inp('gcode', '100px', 'Class Code') + '</td>' +
     '<td class="tl-hours-cell" style="font-weight:600;color:var(--maroon-dark);white-space:nowrap">0.0</td>' +
     '<td><button class="btn btn-outline btn-sm" onclick="tlRemoveRow(this,\'' + pfx + '\')">🗑</button></td>' +
     '</tr>';

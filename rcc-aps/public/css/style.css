@@ -281,7 +281,7 @@ tr:hover td{background:#FEFCF8}
 
 /* ── SUBJECT LEVEL TAG (For College / For Grad) ── */
 .tl-level-sel,.calc-level-sel{
-  padding:5px 6px;
+  padding:6px 8px;
   font-size:12px;
   font-weight:600;
   color:var(--maroon-dark);
@@ -289,7 +289,7 @@ tr:hover td{background:#FEFCF8}
   border:1px solid var(--gold);
   border-radius:6px;
   cursor:pointer;
-  max-width:94px;
+  max-width:110px;
 }
 .tl-level-sel:hover,.calc-level-sel:hover{background:var(--white)}
 
