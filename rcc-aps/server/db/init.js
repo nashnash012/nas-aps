@@ -62,12 +62,13 @@ async function init() {
       'ALTER TABLE users ADD COLUMN IF NOT EXISTS rateCustom TINYINT(1) NOT NULL DEFAULT 0',
       'ALTER TABLE users ADD COLUMN IF NOT EXISTS schoolLevel VARCHAR(20) NOT NULL DEFAULT \'\'',
       'ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS subjectBreakdown TEXT',
-      'ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS payNote VARCHAR(500) DEFAULT \'\''
+      'ALTER TABLE payroll_records ADD COLUMN IF NOT EXISTS payNote VARCHAR(500) DEFAULT \'\'',
+      'ALTER TABLE teaching_load_classes ADD COLUMN IF NOT EXISTS level VARCHAR(30) NOT NULL DEFAULT \'\''
     ];
     for (const m of migrations) {
       try { await poolConn.query(m); } catch (e) { /* ignore duplicate column errors */ }
     }
-    console.log('[MySQL] Migration: users + payroll_records columns verified.');
+    console.log('[MySQL] Migration: users + payroll_records + teaching_load_classes columns verified.');
 
     // Step 3c: Migration — rename teacher_ranks.ratePerHour → rate (idempotent)
     const [rateCols] = await poolConn.query(

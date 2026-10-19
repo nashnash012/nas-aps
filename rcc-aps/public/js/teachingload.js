@@ -11,6 +11,7 @@ let nextTeachingLoadId = (_savedDemo && _savedDemo.nextTeachingLoadId) || 1;
 let nextTeachingLoadClassId = (_savedDemo && _savedDemo.nextTeachingLoadClassId) || 1;
 
 const TL_SEMS = ['1st', '2nd', 'Summer'];
+const TL_LEVELS = ['College', 'Graduate School', 'High School', 'Elementary'];
 const tlCtx = {
   tl:   { empId: null, sem: '1st', sy: '' },
   finTl: { empId: null, sem: '1st', sy: '' }
@@ -138,8 +139,14 @@ function tlClassRowHtml(c, pfx) {
   const v = f => c ? esc(c[f] != null ? c[f] : '') : '';
   const inp = (f, w, ph) => '<input class="fi" style="padding:6px 8px' + (w ? ';width:' + w : '') + '" data-f="' + f +
     '" value="' + v(f) + '" placeholder="' + ph + '" oninput="tlPreview(\'' + pfx + '\')"/>';
+  const lv = (c && c.level) ? c.level : '';
+  const lvOpts = ['<option value="">(auto)</option>']
+    .concat(TL_LEVELS.map(l => '<option value="' + l + '"' + (lv === l ? ' selected' : '') + '>' + l + '</option>'))
+    .join('');
+  const lvCell = '<select class="fi tl-level-sel" data-f="level" title="For College / For Grad — tag which level this subject is for" onchange="tlPreview(\'' + pfx + '\')">' + lvOpts + '</select>';
   return '<tr data-cid="' + (c ? c.id : '') + '">' +
     '<td>' + inp('subject', '', 'Subject') + '</td>' +
+    '<td>' + lvCell + '</td>' +
     '<td>' + inp('deptCode', '64px', 'CBA') + '</td>' +
     '<td>' + inp('timeStart', '62px', '2:30p') + '</td>' +
     '<td>' + inp('timeEnd', '62px', '4:00p') + '</td>' +
@@ -183,6 +190,7 @@ function tlFormMarkup(pfx) {
             '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
               '<thead><tr style="background:var(--maroon-dark);color:#fff">' +
                 '<th style="padding:8px 6px;text-align:left">Subject</th>' +
+                '<th style="padding:8px 6px;text-align:left" title="Tag which level this subject is for (College / Graduate)">Level</th>' +
                 '<th style="padding:8px 6px;text-align:left">Dept</th>' +
                 '<th style="padding:8px 6px;text-align:left">Time Start</th>' +
                 '<th style="padding:8px 6px;text-align:left">Time End</th>' +
@@ -485,6 +493,7 @@ function tlSave(pfx) {
         id: id,
         recordId: rec.id,
         subject: g('subject'),
+        level: g('level'),
         deptCode: g('deptCode'),
         timeStart: g('timeStart'),
         timeEnd: g('timeEnd'),

@@ -188,6 +188,7 @@ CREATE TABLE IF NOT EXISTS teaching_load_classes (
   id             INT PRIMARY KEY,
   recordId       INT NOT NULL,
   subject        VARCHAR(150) NOT NULL DEFAULT '',
+  level          VARCHAR(30)  NOT NULL DEFAULT '',
   deptCode       VARCHAR(30)  NOT NULL DEFAULT '',
   timeStart      VARCHAR(20)  NOT NULL DEFAULT '',
   timeEnd        VARCHAR(20)  NOT NULL DEFAULT '',

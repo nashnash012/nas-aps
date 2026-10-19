@@ -611,6 +611,28 @@ function syncCalcTabUI() {
   }
 }
 
+// Level options for per-subject "For College / For Grad" tagging.
+const CALC_LEVELS = ['College', 'Graduate School', 'High School', 'Elementary'];
+function calcLevelOpts(cur) {
+  return ['<option value="">(auto)</option>']
+    .concat(CALC_LEVELS.map(l => '<option value="' + l + '"' + ((cur || '') === l ? ' selected' : '') + '>' + l + '</option>'))
+    .join('');
+}
+// Auto-suggest the rate from the entry rank of the chosen level when the
+// subject's level tag changes. Still editable (manual rate override).
+function onCalcSubjectLevel(sel) {
+  const tr = sel && sel.closest ? sel.closest('tr') : null;
+  if (!tr) return;
+  const lv = sel.value;
+  const rateEl = tr.querySelector('.calc-rate');
+  if (lv && rateEl && typeof ranksByDept === 'function') {
+    const ranks = ranksByDept(lv);
+    if (ranks && ranks.length) rateEl.value = (parseFloat(ranks[0].rate) || 0).toFixed(2);
+  }
+  recomputeCalcTotals();
+  computePayroll();
+}
+
 // Add a subject row to the EXPLANATION editor. Rate is auto-filled from
 // teacherRate(emp) when known; qty is left at 0 for Finance to encode.
 function addCalcSubject(prefill) {
@@ -620,6 +642,7 @@ function addCalcSubject(prefill) {
   tr.dataset.type = 'subject';
   tr.innerHTML =
     '<td style="padding:4px 4px"><input class="fi" style="width:100%;padding:4px 6px" placeholder="Subject" value="' + esc((prefill && prefill.subject) || '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
+    '<td style="padding:4px 4px"><select class="fi calc-level-sel" style="width:104px;padding:4px 6px" title="For College / For Grad — tag which level this subject is for" onchange="onCalcSubjectLevel(this)">' + calcLevelOpts((prefill && prefill.level) || '') + '</select></td>' +
     '<td style="padding:4px 4px"><input class="fi" style="width:90px;padding:4px 6px" placeholder="e.g. MWF" title="Schedule days — display only, does not affect pay" value="' + esc((prefill && prefill.days) || '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
     '<td style="padding:4px 4px"><input class="fi calc-qty" style="width:70px;padding:4px 6px" type="number" step="0.5" min="0" placeholder="0" value="' + ((prefill && prefill.qty != null) ? prefill.qty : 0) + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
     '<td style="padding:4px 4px"><input class="fi calc-rate" style="width:90px;padding:4px 6px" type="number" step="0.01" min="0" placeholder="0" value="' + ((prefill && prefill.rate != null) ? prefill.rate : '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
@@ -688,6 +711,7 @@ function latestTeachingLoads(empId) {
     .filter(c => c.recordId === latest.id)
     .map(c => ({
       subject: c.subject || '',
+      level: c.level || '',
       days: c.days || '',
       qty: Math.round((parseFloat(c.hoursPerWeek) || 0) * weeks * 2) / 2
     }));
@@ -733,7 +757,16 @@ function loadEmployeeData() {
     const tbody = document.getElementById('calcSubjectBody');
     if (tbody) tbody.innerHTML = '';
     const rate = teacherRate(emp);
-    latestTeachingLoads(emp.id).forEach(l => addCalcSubject({ subject: l.subject || '', days: l.days || '', qty: l.qty || 0, rate: rate || 0 }));
+    latestTeachingLoads(emp.id).forEach(l => {
+      // Per-row rate: use the entry rank of the tagged level when set,
+      // else fall back to the employee's profile rate.
+      let rowRate = rate || 0;
+      if (l.level && typeof ranksByDept === 'function') {
+        const ranks = ranksByDept(l.level);
+        if (ranks && ranks.length) rowRate = parseFloat(ranks[0].rate) || rowRate;
+      }
+      addCalcSubject({ subject: l.subject || '', level: l.level || '', days: l.days || '', qty: l.qty || 0, rate: rowRate });
+    });
     salEl.value = rate || '';
     attEl.value = '';
   } else if (isTeaching) {
@@ -935,17 +968,19 @@ function computePayroll() {
       const isIncr = tr.dataset.type === 'increment';
       const nameEl = tr.querySelector('input');
       const daysEl = tr.querySelectorAll('input')[1];
+      const lvEl = tr.querySelector('.calc-level-sel');
       const subject = isIncr ? 'Increment - S.Y' : (nameEl ? nameEl.value : '');
       const days = isIncr ? '' : (daysEl ? daysEl.value : '');
+      const level = lvEl ? (lvEl.value || '') : '';
       let amount;
       if (!isIncr && group === 'High School') {
         // Per-hour rate = per-workload rate ÷ hours-per-workload
         const wlRate = parseFloat((rate / HOURS_PER_WORKLOAD).toFixed(2));
         amount = parseFloat((qty * wlRate).toFixed(2));
-        subjectBreakdown.push({ type:'subject', subject, days, qty, rate: wlRate, amount });
+        subjectBreakdown.push({ type:'subject', subject, days, level, qty, rate: wlRate, amount });
       } else {
         amount = parseFloat((qty * rate).toFixed(2));
-        subjectBreakdown.push({ type: isIncr ? 'increment' : 'subject', subject, days, qty, rate, amount });
+        subjectBreakdown.push({ type: isIncr ? 'increment' : 'subject', subject, days, level, qty, rate, amount });
       }
       subjGross += amount;
       totalQty += qty;
@@ -1014,10 +1049,11 @@ function computePayroll() {
   if (isExplTab && subjectBreakdown && subjectBreakdown.length) {
     subjectBreakdown.forEach(b => {
       const isIncr = b.type === 'increment';
-      const label = isIncr ? '📈 Increment - S.Y' : '📚 ' + esc(b.subject || '');
+      const lvlTag = (!isIncr && b.level) ? ' <span style="display:inline-block;padding:1px 7px;border-radius:10px;background:var(--gold-pale);color:var(--maroon-dark);font-size:11px;font-weight:700;border:1px solid var(--gold)">' + esc(b.level) + '</span>' : '';
+      const label = (isIncr ? '📈 Increment - S.Y' : '📚 ' + esc(b.subject || '')) + lvlTag;
       const qtyLabel = (group === 'High School' && !isIncr)
         ? (b.qty / HOURS_PER_WORKLOAD) + ' workload(s)' + (b.days ? ' · ' + esc(b.days) : '')
-        : b.qty + ' hrs';
+        : b.qty + ' hrs' + (b.days && !isIncr ? ' · ' + esc(b.days) : '');
       earningsHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">' + label + ' — ' + qtyLabel + ' × ₱' + fmt(b.rate) + '</span><span style="font-weight:600">+' + fmt(b.amount) + '</span></div>';
     });
     earningsHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">Gross from Subjects</span><span style="font-weight:600">' + fmt(gross) + '</span></div>';

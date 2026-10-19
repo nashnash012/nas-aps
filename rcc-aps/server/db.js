@@ -182,6 +182,7 @@ async function assembleState() {
     hoursPerWorkload: num(cfgObj.hoursPerWorkload) != null && !isNaN(parseFloat(cfgObj.hoursPerWorkload)) ? parseFloat(cfgObj.hoursPerWorkload) : 3,
     teachingLoadClasses: tlClasses.map(l => ({
       id: l.id, recordId: l.recordId, subject: l.subject || '',
+      level: l.level || '',
       deptCode: l.deptCode || '', timeStart: l.timeStart || '',
       timeEnd: l.timeEnd || '', days: l.days || '',
       studentsMale: l.studentsMale || 0, studentsFemale: l.studentsFemale || 0,
@@ -377,10 +378,10 @@ async function persistState(s) {
     for (const l of s.teachingLoadClasses || []) {
       await c.query(
         `INSERT INTO teaching_load_classes
-           (id, recordId, subject, deptCode, timeStart, timeEnd, days,
+           (id, recordId, subject, level, deptCode, timeStart, timeEnd, days,
             studentsMale, studentsFemale, roomNo, googleCode, hoursPerWeek, sortOrder)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [l.id, l.recordId || 0, l.subject || '', l.deptCode || '',
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+        [l.id, l.recordId || 0, l.subject || '', l.level || '', l.deptCode || '',
          l.timeStart || '', l.timeEnd || '', l.days || '',
          l.studentsMale || 0, l.studentsFemale || 0, l.roomNo || '',
          l.googleCode || '', l.hoursPerWeek || 0, l.sortOrder || 0]

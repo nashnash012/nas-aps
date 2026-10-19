@@ -108,8 +108,8 @@ if (fnMatch) {
     '];' +
     'teachingLoadClasses = [' +
     '{ id: 1, recordId: 1, subject: "Old Subject", days: "M", hoursPerWeek: 10 },' +
-    '{ id: 2, recordId: 2, subject: "Web Systems", days: "MWF", hoursPerWeek: 3 },' +
-    '{ id: 3, recordId: 2, subject: "Capstone", days: "F", hoursPerWeek: 1.5 },' +
+    '{ id: 2, recordId: 2, subject: "Web Systems", level: "College", days: "MWF", hoursPerWeek: 3 },' +
+    '{ id: 3, recordId: 2, subject: "Capstone", level: "Graduate School", days: "F", hoursPerWeek: 1.5 },' +
     '{ id: 4, recordId: 99, subject: "Ghost", days: "", hoursPerWeek: 5 }' +
     '];'
   );
@@ -120,6 +120,8 @@ if (fnMatch) {
   eq('TL prefill days kept', rows[0] && rows[0].days, 'MWF');
   eq('TL prefill qty 3h/wk×4.4wk', rows[0] && rows[0].qty, 13);
   eq('TL prefill qty 1.5h/wk×4.4wk', rows[1] && rows[1].qty, 6.5);
+  eq('TL prefill carries level (College)', rows[0] && rows[0].level, 'College');
+  eq('TL prefill carries level (Grad)', rows[1] && rows[1].level, 'Graduate School');
   eq('TL prefill no record -> []', latestTeachingLoads(999).length, 0);
 }
 

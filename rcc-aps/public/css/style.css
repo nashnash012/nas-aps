@@ -279,6 +279,20 @@ tr:hover td{background:#FEFCF8}
 }
 .calc-tab.active::before{content:'✓ ';font-weight:700}
 
+/* ── SUBJECT LEVEL TAG (For College / For Grad) ── */
+.tl-level-sel,.calc-level-sel{
+  padding:5px 6px;
+  font-size:12px;
+  font-weight:600;
+  color:var(--maroon-dark);
+  background:var(--gold-pale);
+  border:1px solid var(--gold);
+  border-radius:6px;
+  cursor:pointer;
+  max-width:110px;
+}
+.tl-level-sel:hover,.calc-level-sel:hover{background:var(--white)}
+
 /* ── PRINT ── */
 #printOverlay{display:none}
 @media print{
