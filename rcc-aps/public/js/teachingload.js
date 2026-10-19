@@ -424,9 +424,7 @@ function tlCloseFinanceForm() {
 function tlAddClassRow(pfx) {
   const body = document.getElementById(pfx + 'ClassBody');
   if (!body) return;
-  const div = document.createElement('div');
-  div.innerHTML = tlClassRowHtml(null, pfx);
-  body.appendChild(div.firstChild);
+  body.insertAdjacentHTML('beforeend', tlClassRowHtml(null, pfx));
   tlPreview(pfx);
 }
 
