@@ -289,7 +289,7 @@ tr:hover td{background:#FEFCF8}
   border:1px solid var(--gold);
   border-radius:6px;
   cursor:pointer;
-  max-width:110px;
+  max-width:94px;
 }
 .tl-level-sel:hover,.calc-level-sel:hover{background:var(--white)}
 
