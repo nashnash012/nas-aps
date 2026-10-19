@@ -618,7 +618,7 @@ function addCalcSubject(prefill) {
   tr.dataset.type = 'subject';
   tr.innerHTML =
     '<td style="padding:4px 4px"><input class="fi" style="width:100%;padding:4px 6px" placeholder="Subject" value="' + esc((prefill && prefill.subject) || '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
-    '<td style="padding:4px 4px"><input class="fi" style="width:70px;padding:4px 6px" placeholder="Days" value="' + esc((prefill && prefill.days) || '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
+    '<td style="padding:4px 4px"><input class="fi" style="width:90px;padding:4px 6px" placeholder="e.g. MWF — label only" title="Schedule days — display only, does not affect pay" value="' + esc((prefill && prefill.days) || '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
     '<td style="padding:4px 4px"><input class="fi calc-qty" style="width:70px;padding:4px 6px" type="number" step="0.5" min="0" placeholder="0" value="' + ((prefill && prefill.qty != null) ? prefill.qty : 0) + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
     '<td style="padding:4px 4px"><input class="fi calc-rate" style="width:90px;padding:4px 6px" type="number" step="0.01" min="0" placeholder="0" value="' + ((prefill && prefill.rate != null) ? prefill.rate : '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
     '<td style="padding:4px 4px;font-weight:600" class="calc-amt">0.00</td>' +
