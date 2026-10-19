@@ -289,9 +289,13 @@ tr:hover td{background:#FEFCF8}
   border:1px solid var(--gold);
   border-radius:6px;
   cursor:pointer;
-  max-width:110px;
+  max-width:140px;
 }
 .tl-level-sel:hover,.calc-level-sel:hover{background:var(--white)}
+#tlClassBody td,#finTlClassBody td{padding:4px 5px}
+#tlClassBody th,#finTlClassBody th{padding:6px 6px}
+#tlClassBody td,#finTlClassBody td{padding:4px 5px}
+#tlClassBody th,#finTlClassBody th{padding:6px 6px}
 
 /* ── PRINT ── */
 #printOverlay{display:none}

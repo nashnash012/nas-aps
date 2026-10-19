@@ -149,16 +149,16 @@ function tlClassRowHtml(c, pfx) {
     .join('');
   const lvCell = '<select class="fi tl-level-sel" data-f="level" title="For College / For Grad — tag which level this subject is for" onchange="tlPreview(\'' + pfx + '\')">' + lvOpts + '</select>';
   return '<tr data-cid="' + (c ? c.id : '') + '">' +
-    '<td>' + inp('subject', '160px', 'Subject') + '</td>' +
+    '<td>' + inp('subject', '150px', 'Subject') + '</td>' +
     '<td>' + lvCell + '</td>' +
-    '<td>' + inp('deptCode', '70px', 'CBA') + '</td>' +
-    '<td>' + inp('timeStart', '78px', '2:30p') + '</td>' +
-    '<td>' + inp('timeEnd', '78px', '4:00p') + '</td>' +
-    '<td>' + inp('days', '70px', 'M,W') + '</td>' +
-    '<td><input class="fi" style="padding:7px 9px;width:56px" type="number" min="0" data-f="studentsM" value="' + (c ? (c.studentsMale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
-    '<td><input class="fi" style="padding:7px 9px;width:56px" type="number" min="0" data-f="studentsF" value="' + (c ? (c.studentsFemale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
-    '<td>' + inp('room', '70px', '410') + '</td>' +
-    '<td>' + inp('gcode', '100px', 'Class Code') + '</td>' +
+    '<td>' + inp('deptCode', '62px', 'CBA') + '</td>' +
+    '<td>' + inp('timeStart', '66px', '2:30p') + '</td>' +
+    '<td>' + inp('timeEnd', '66px', '4:00p') + '</td>' +
+    '<td>' + inp('days', '62px', 'M,W') + '</td>' +
+    '<td><input class="fi" style="padding:7px 9px;width:48px" type="number" min="0" data-f="studentsM" value="' + (c ? (c.studentsMale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
+    '<td><input class="fi" style="padding:7px 9px;width:48px" type="number" min="0" data-f="studentsF" value="' + (c ? (c.studentsFemale || 0) : 0) + '" oninput="tlPreview(\'' + pfx + '\')"/></td>' +
+    '<td>' + inp('room', '60px', '410') + '</td>' +
+    '<td>' + inp('gcode', '90px', 'Class Code') + '</td>' +
     '<td class="tl-hours-cell" style="font-weight:600;color:var(--maroon-dark);white-space:nowrap">0.0</td>' +
     '<td><button class="btn btn-outline btn-sm" onclick="tlRemoveRow(this,\'' + pfx + '\')">🗑</button></td>' +
     '</tr>';
