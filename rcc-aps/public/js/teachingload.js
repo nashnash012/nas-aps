@@ -244,13 +244,32 @@ function tlRenderForm(pfx, empId, sem) {
     if (empId) ctx.empId = parseInt(empId) || ctx.empId;
     if (!ctx.empId) {
       if (pfx === 'tl') ctx.empId = (typeof loggedInUser !== 'undefined' && loggedInUser) ? loggedInUser.id : null;
-      else if (users.length) ctx.empId = users[0].id;
+      else { const t = users.find(u => !tlIsNT(u)); if (t) ctx.empId = t.id; }
     }
     if (sem) ctx.sem = sem;
     if (!ctx.sy) ctx.sy = tlDefaultSY();
 
-    const emp = users.find(u => u.id === ctx.empId);
-    if (!emp) return;
+    let emp = users.find(u => u.id === ctx.empId);
+    // Teaching Load applies to Teaching staff only.
+    // Finance view falls back to the first faculty member; the employee
+    // view shows a notice for Non-Teaching accounts.
+    if (tlIsNT(emp) && pfx === 'finTl') {
+      emp = users.find(u => !tlIsNT(u));
+      if (emp) ctx.empId = emp.id;
+    }
+    if (!emp || tlIsNT(emp)) {
+      delete host.dataset.armed;
+      const isFin = pfx === 'finTl';
+      host.innerHTML = '<div class="empty-state" style="margin-top:30px">' +
+        '<div class="empty-icon">📚</div>' +
+        '<div class="empty-title">' + (isFin ? 'No faculty members found' : 'Not applicable') + '</div>' +
+        '<div style="font-size:13px;color:var(--text-muted)">' +
+        (isFin
+          ? 'Add Teaching employees in User Management first.'
+          : 'The Teaching Load page applies to Teaching staff only.') +
+        '</div></div>';
+      return;
+    }
 
     // tabs
     host.querySelectorAll('.tl-tab').forEach(t => t.classList.toggle('active', t.dataset.sem === ctx.sem));
@@ -259,12 +278,12 @@ function tlRenderForm(pfx, empId, sem) {
     const empSel = document.getElementById('finTlEmployee');
     if (empSel) {
       if (!empSel.dataset.populated) {
-        empSel.innerHTML = users.map(u =>
+        empSel.innerHTML = users.filter(u => !tlIsNT(u)).map(u =>
           '<option value="' + u.id + '">' + esc(u.first + ' ' + u.last) + ' — ' + esc(u.classification) +
           (u.schoolLevel ? ' · ' + esc(u.schoolLevel) : '') + '</option>').join('');
         empSel.dataset.populated = '1';
       }
-      empSel.value = String(emp.id);
+      if (String(emp.id) !== empSel.value) empSel.value = String(emp.id);
     }
 
     // header (auto from profile)
@@ -490,12 +509,23 @@ function tlSave(pfx) {
   }
 }
 
+// Show/hide the "Teaching Load" sidebar item — Teaching accounts only.
+function refreshEmpTlNav() {
+  const nav = document.getElementById('empTlNav');
+  if (!nav) return;
+  const emp = (typeof loggedInUser !== 'undefined' && loggedInUser &&
+               typeof users !== 'undefined' && Array.isArray(users))
+    ? users.find(u => u.id === loggedInUser.id) : null;
+  nav.style.display = (emp && emp.classification === 'Teaching') ? '' : 'none';
+}
+
 // ── Finance: list of all teaching load records ───────────────
 function renderFinTeachingLoads() {
   const c = document.getElementById('finTeachingLoadContent');
   if (!c || typeof users === 'undefined') return;
   const semOrder = s => TL_SEMS.indexOf(s) < 0 ? 9 : TL_SEMS.indexOf(s);
-  const rows = users.map(u => {
+  const faculty = users.filter(u => !tlIsNT(u));
+  const rows = faculty.map(u => {
     const recs = teachingLoadRecords.filter(r => r.empId === u.id);
     const latest = recs.slice().sort((a, b) =>
       (a.schoolYear || '').localeCompare(b.schoolYear || '') ||

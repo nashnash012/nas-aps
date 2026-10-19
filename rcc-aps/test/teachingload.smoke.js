@@ -85,5 +85,13 @@ eq('tlUnitOf NT -> per Month', tlUnitOf(NT), 'per Month');
 eq('tlUnitOf Teaching -> per Hour', tlUnitOf(HS), 'per Hour');
 eq('tlRateOf NT salary', tlRateOf(NT), 18000);
 
+// 12) Non-Teaching exclusion (sidebar/list filter logic)
+eq('tlIsNT Teaching -> false', tlIsNT({ classification: 'Teaching' }), false);
+eq('tlIsNT Non-Teaching -> true', tlIsNT({ classification: 'Non-Teaching' }), true);
+eq('tlIsNT null -> true', tlIsNT(null), true);
+eq('tlIsNT missing classification -> true', tlIsNT({}), true);
+const mixed = [{ classification: 'Teaching' }, { classification: 'Non-Teaching' }, { classification: 'Teaching' }];
+eq('filter keeps Teaching only', mixed.filter(u => !tlIsNT(u)).length, 2);
+
 console.log('\nRESULT: ' + pass + ' passed, ' + fail + ' failed  ' + (fail ? '❌' : '✅'));
 process.exit(fail ? 1 : 0);

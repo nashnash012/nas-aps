@@ -171,6 +171,7 @@ function renderIdentity() {
   setTxt('empHeroTag', '🌅 ' + greeting());
   setTxt('finHeroName', `${greeting()}, ${emp.first}! 👋`);
   setTxt('admHeroName', `${greeting()}, ${emp.first}! 👋`);
+  if (typeof refreshEmpTlNav === 'function') refreshEmpTlNav();
 }
 
 function populateProfilePages() {
