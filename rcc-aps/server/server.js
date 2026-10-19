@@ -14,7 +14,11 @@ const HRIS_API_KEY = process.env.HRIS_API_KEY || '';      // bearer token for th
 
 app.use(express.json({ limit: '10mb' }));
 app.use('/api/auth', require('./auth-router'));
-app.use(express.static(path.join(__dirname, '..', 'public')));
+// Serve static assets with no-store so browsers always revalidate (prevents
+// stale JS/CSS after edits — users were seeing old cached teachingload.js).
+app.use(express.static(path.join(__dirname, '..', 'public'), {
+  setHeaders: (res) => { res.set('Cache-Control', 'no-store, must-revalidate'); }
+}));
 
 // Routes that must be handled by the browser (SPA fallback).
 
