@@ -527,9 +527,10 @@ function renderFinTeachingLoads() {
   const faculty = users.filter(u => !tlIsNT(u));
   const rows = faculty.map(u => {
     const recs = teachingLoadRecords.filter(r => r.empId === u.id);
+    // Sort newest-first: SY desc → semester desc → id desc.
     const latest = recs.slice().sort((a, b) =>
-      (a.schoolYear || '').localeCompare(b.schoolYear || '') ||
-      semOrder(a.semester) - semOrder(b.semester) ||
+      (b.schoolYear || '').localeCompare(a.schoolYear || '') ||
+      semOrder(b.semester) - semOrder(a.semester) ||
       (b.id || 0) - (a.id || 0))[0];
     const isNT = tlIsNT(u);
     const level = isNT ? 'Non-Teaching' : (u.schoolLevel || '—');

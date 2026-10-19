@@ -666,13 +666,29 @@ function recomputeCalcTotals() {
   if (sg) sg.textContent = gross.toFixed(2);
 }
 
-// Teaching loads from the employee's most recent information sheet
-// (latest school year / semester on file), used to pre-fill the EXPLANATION
-// editor for High School / College / Graduate School tabs.
+// Latest teaching load rows from the Teaching Load module (most recent
+// school year / semester on file) — used to pre-fill the EXPLANATION
+// editor for High School / College / Graduate School tabs. TL stores
+// hrs/week per subject; converted here to hrs/month for the calculator.
 function latestTeachingLoads(empId) {
-  const sheets = sheetsFor(empId);
-  if (!sheets.length) return [];
-  return loadsForSheet(sheets[sheets.length - 1].id);
+  if (typeof teachingLoadRecords === 'undefined' || !Array.isArray(teachingLoadRecords)) return [];
+  if (typeof teachingLoadClasses === 'undefined' || !Array.isArray(teachingLoadClasses)) return [];
+  const recs = teachingLoadRecords.filter(r => r.empId === empId);
+  if (!recs.length) return [];
+  const semOrder = s => ['1st', '2nd', 'Summer'].indexOf(s);
+  // Sort newest-first: SY desc → semester desc → id desc.
+  const latest = recs.slice().sort((a, b) =>
+    (b.schoolYear || '').localeCompare(a.schoolYear || '') ||
+    semOrder(b.semester) - semOrder(a.semester) ||
+    (b.id || 0) - (a.id || 0))[0];
+  const weeks = ((typeof WORK_DAYS !== 'undefined' && WORK_DAYS) ? WORK_DAYS : 22) / 5;
+  return teachingLoadClasses
+    .filter(c => c.recordId === latest.id)
+    .map(c => ({
+      subject: c.subject || '',
+      days: c.days || '',
+      qty: Math.round((parseFloat(c.hoursPerWeek) || 0) * weeks * 2) / 2
+    }));
 }
 
 document.addEventListener('click', function(e){
@@ -709,13 +725,13 @@ function loadEmployeeData() {
   const hasData = periodHasData(emp.id, monthNum, year);
   if (isExplTab) {
     // High School / College / Graduate School: pre-fill the EXPLANATION
-    // editor from the employee's most recent information sheet. Subject
-    // names and days come from the sheet; rate is auto-filled from the
-    // rank table; qty is left at 0 for Finance to encode.
+    // editor from the employee's latest Teaching Load record. Subject,
+    // days and hrs/month come from the load schedule; rate is auto-filled
+    // from the rank table.
     const tbody = document.getElementById('calcSubjectBody');
     if (tbody) tbody.innerHTML = '';
     const rate = teacherRate(emp);
-    latestTeachingLoads(emp.id).forEach(l => addCalcSubject({ subject: l.subject || '', days: l.days || '', rate: rate || 0 }));
+    latestTeachingLoads(emp.id).forEach(l => addCalcSubject({ subject: l.subject || '', days: l.days || '', qty: l.qty || 0, rate: rate || 0 }));
     salEl.value = rate || '';
     attEl.value = '';
   } else if (isTeaching) {

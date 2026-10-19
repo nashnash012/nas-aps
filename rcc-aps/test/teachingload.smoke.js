@@ -93,5 +93,35 @@ eq('tlIsNT missing classification -> true', tlIsNT({}), true);
 const mixed = [{ classification: 'Teaching' }, { classification: 'Non-Teaching' }, { classification: 'Teaching' }];
 eq('filter keeps Teaching only', mixed.filter(u => !tlIsNT(u)).length, 2);
 
+// 13) latestTeachingLoads — extracted from payroll.js (calculator prefill)
+const payrollSrc = fs.readFileSync(__dirname + '/../public/js/payroll.js', 'utf8');
+const fnMatch = payrollSrc.match(/function latestTeachingLoads[\s\S]*?\n}/);
+eq('latestTeachingLoads exists in payroll.js', !!fnMatch, true);
+eq('payroll.js no longer calls deleted sheetsFor', /sheetsFor|loadsForSheet/.test(payrollSrc), false);
+if (fnMatch) {
+  // Assign into the shared global lexical scope (where teachingload.js
+  // declared these via `let`) — plain global.X would be shadowed.
+  vm.runInThisContext(
+    'teachingLoadRecords = [' +
+    '{ id: 1, empId: 3, semester: "1st", schoolYear: "2025-2026" },' +
+    '{ id: 2, empId: 3, semester: "2nd", schoolYear: "2026-2027" }' +
+    '];' +
+    'teachingLoadClasses = [' +
+    '{ id: 1, recordId: 1, subject: "Old Subject", days: "M", hoursPerWeek: 10 },' +
+    '{ id: 2, recordId: 2, subject: "Web Systems", days: "MWF", hoursPerWeek: 3 },' +
+    '{ id: 3, recordId: 2, subject: "Capstone", days: "F", hoursPerWeek: 1.5 },' +
+    '{ id: 4, recordId: 99, subject: "Ghost", days: "", hoursPerWeek: 5 }' +
+    '];'
+  );
+  eval(fnMatch[0]);
+  const rows = latestTeachingLoads(3);
+  eq('TL prefill row count', rows.length, 2);
+  eq('TL prefill latest subject', rows[0] && rows[0].subject, 'Web Systems');
+  eq('TL prefill days kept', rows[0] && rows[0].days, 'MWF');
+  eq('TL prefill qty 3h/wk×4.4wk', rows[0] && rows[0].qty, 13);
+  eq('TL prefill qty 1.5h/wk×4.4wk', rows[1] && rows[1].qty, 6.5);
+  eq('TL prefill no record -> []', latestTeachingLoads(999).length, 0);
+}
+
 console.log('\nRESULT: ' + pass + ' passed, ' + fail + ' failed  ' + (fail ? '❌' : '✅'));
 process.exit(fail ? 1 : 0);
