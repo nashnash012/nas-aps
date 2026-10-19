@@ -292,6 +292,11 @@ function tlFormMarkup(pfx) {
           '</div>' +
         '</div>' +
 
+        '<div class="fg" id="' + pfx + 'AbsencesWrap" style="display:none;margin-top:16px;max-width:240px">' +
+          '<label class="fl">Absences (days)</label>' +
+          '<input class="fi" id="' + pfx + 'Absences" type="number" min="0" step="0.5" placeholder="0"/>' +
+        '</div>' +
+
         '<div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap">' +
           '<button class="btn btn-primary" onclick="tlSave(\'' + pfx + '\')">💾 Save Teaching Load</button>' +
           '<button class="btn btn-outline" onclick="tlRenderForm(\'' + pfx + '\', tlCtx[\'' + pfx + '\'].empId, tlCtx[\'' + pfx + '\'].sem)">↻ Reload</button>' +
@@ -377,6 +382,13 @@ function tlRenderForm(pfx, empId, sem) {
     if (clsSec) clsSec.style.display = isNT ? 'none' : 'block';
     const body = document.getElementById(pfx + 'ClassBody');
     if (body) body.innerHTML = cls.map(c => tlClassRowHtml(c, pfx)).join('');
+
+    // absences field (Elementary / Non-Teaching only — pay = rate − (absences ÷ WD) × rate)
+    const absWrap = document.getElementById(pfx + 'AbsencesWrap');
+    const absEl = document.getElementById(pfx + 'Absences');
+    const absType = isNT || level === 'Elementary';
+    if (absWrap) absWrap.style.display = absType ? 'block' : 'none';
+    if (absEl) absEl.value = rec ? (rec.absences || 0) : '';
 
     // saved status
     const st = document.getElementById(pfx + 'SaveStatus');
