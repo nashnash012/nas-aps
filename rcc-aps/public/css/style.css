@@ -215,6 +215,35 @@ tr:hover td{background:#FEFCF8}
 .ps-total{background:var(--maroon);color:var(--white);border-radius:8px;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;margin-top:16px}
 .ps-total-label{font-size:14px;font-weight:600}
 .ps-total-value{font-family:"Playfair Display",serif;font-size:22px;font-weight:700;color:var(--gold-light)}
+.ps-viewer{max-width:1200px;margin:0 auto}
+.ps-document{padding:28px;overflow-x:auto}
+.ps-sheet{min-width:960px;max-width:1144px;margin:0 auto;color:#222;font-family:'Source Sans 3',Arial,sans-serif;font-size:12px}
+.ps-brand{display:flex;justify-content:space-between;align-items:center;gap:24px;border-bottom:2px solid #713238;padding-bottom:14px;margin-bottom:18px}
+.ps-school{font-family:'Playfair Display',Georgia,serif;font-size:21px;font-weight:700;color:#64252d}
+.ps-period{text-align:right;font-size:13px;line-height:1.6;white-space:nowrap}
+.ps-period>strong{font-size:18px;letter-spacing:1px}
+.ps-employee{display:grid;grid-template-columns:1.3fr 1fr .8fr;gap:20px;margin-bottom:18px}
+.ps-employee span{display:block;font-size:10px;letter-spacing:.6px;color:#666;margin-bottom:4px}
+.ps-employee strong{display:block;overflow-wrap:anywhere}
+.ps-pay-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:11px}
+.ps-pay-table th,.ps-pay-table td{border:1px solid #aaa;padding:8px 5px;vertical-align:middle;text-align:right;font-variant-numeric:tabular-nums;line-height:1.4;color:#222;letter-spacing:normal;text-transform:none}
+.ps-pay-table thead th{background:#f3eeeb;text-align:center;font-size:10px;font-weight:700;overflow-wrap:anywhere}
+.ps-pay-table .ps-text{text-align:left;overflow-wrap:anywhere}
+.ps-pay-table tbody tr:hover{background:transparent}
+.ps-pay-table tfoot th,.ps-pay-table tfoot td{border-top:2px solid #713238;background:#f8f4f1;font-weight:700}
+.ps-pay-table .ps-net{color:#64252d}
+.ps-deduction-row{background:#fbfaf8}
+.ps-notes{display:flex;flex-wrap:wrap;gap:6px 24px;font-size:11px;line-height:1.6;padding:12px 0 20px;overflow-wrap:anywhere}
+.ps-office{display:grid;grid-template-columns:1fr 1.2fr;gap:28px;border-top:1px dashed #999;padding-top:20px;margin-top:4px;break-inside:avoid}
+.ps-office h4{font-size:11px;letter-spacing:1px;margin:0 0 12px}
+.ps-office-details{border-right:1px solid #ddd;padding-right:28px}
+.ps-office dl{display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px 14px;margin:0}
+.ps-office dt{color:#666}
+.ps-office dd{margin:0;overflow-wrap:anywhere}
+.ps-receipt p{font-size:11px;line-height:1.6;margin:0}
+.ps-signatures{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:36px;text-align:center;font-size:10px;color:#666}
+.ps-signatures>div{border-top:1px solid #777;padding-top:6px}
+.ps-retain{text-align:center;font-size:10px;color:#777;padding-top:22px}
 
 /* ── DEDUCTION TABLE ── */
 .ded-section{margin-bottom:24px}
@@ -340,16 +369,37 @@ tr:hover td{background:#FEFCF8}
 /* ── PRINT ── */
 #printOverlay{display:none}
 @media print{
+  @page{size:A4 landscape;margin:12mm}
   body > *:not(#printOverlay){display:none !important}
   #printOverlay{
     display:block !important;
     position:absolute;
     top:0;left:0;
     width:100%;
-    max-width:680px;
+    max-width:none;
     background:#fff;
-    padding:36px 40px;
+    padding:0;
     color:#1A1A1A;
   }
   #printOverlay *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  #printOverlay .ps-sheet{min-width:0;max-width:none;width:100%}
+  #printOverlay .ps-pay-table{display:table !important;width:100%;table-layout:fixed;font-size:10px}
+  #printOverlay .ps-pay-table th,#printOverlay .ps-pay-table td{display:table-cell !important;padding:6px 4px;text-align:right !important;white-space:normal}
+  #printOverlay .ps-pay-table .ps-text{text-align:left !important}
+  #printOverlay .ps-pay-table thead{display:table-header-group !important}
+  #printOverlay .ps-pay-table tbody,#printOverlay .ps-pay-table tfoot{display:table-row-group !important}
+  #printOverlay .ps-pay-table tr{display:table-row !important;break-inside:avoid;margin:0;box-shadow:none;border-radius:0}
+  #printOverlay .ps-pay-table td::before{display:none !important;content:none !important}
+  #printOverlay.report-print{font:10px Arial,sans-serif}
+  #printOverlay.report-print h2{font-size:18px;margin:0 0 8px}
+  #printOverlay.report-print h3{font-size:13px;margin:0 0 16px}
+  #printOverlay.report-print p{font-size:10px;line-height:1.6;margin-top:16px}
+  #printOverlay .report-print-table{display:table;width:100%;table-layout:fixed;border-collapse:collapse}
+  #printOverlay .report-print-table thead{display:table-header-group}
+  #printOverlay .report-print-table tbody{display:table-row-group}
+  #printOverlay .report-print-table tr{display:table-row;break-inside:avoid}
+  #printOverlay .report-print-table th,#printOverlay .report-print-table td{display:table-cell;border:1px solid #aaa;padding:6px 4px;font-size:9px;letter-spacing:normal;overflow-wrap:anywhere;vertical-align:top}
+  #printOverlay .report-print-table th{background:#f3eeeb;color:#222}
+  #printOverlay .report-print-table td:not(:first-child){text-align:right}
+  #printOverlay .report-print-table td::before{display:none;content:none}
 }

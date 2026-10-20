@@ -181,3 +181,77 @@ function renderAnalytics() {
       </div>`;
   }
 }
+// Export the displayed report so downloaded rows match the selected period.
+function reportExportData(kind) {
+  const government = kind === 'government';
+  const output = document.getElementById(government ? 'govReportOutput' : 'reportOutput');
+  const body = document.getElementById(government ? 'govBody' : 'rptBody');
+  if (!output || output.style.display === 'none' || !body || !body.rows.length) {
+    showToast('⚠️', 'Select a report period with payroll records before exporting.');
+    return null;
+  }
+  const title = document.getElementById(government ? 'govReportTitle' : 'reportTitle').textContent.trim();
+  const table = body.closest('table');
+  const totals = document.getElementById(government ? 'govTotals' : 'rptTotals').textContent.replace(/\s+/g, ' ').trim();
+  const rows = Array.from(table.querySelectorAll('tr')).map(row =>
+    Array.from(row.cells).map(cell => cell.textContent.replace(/\s+/g, ' ').trim()));
+  const filename = title.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, '_');
+  return { title, table, totals, rows, filename };
+}
+
+function reportCsvCell(value) {
+  let text = String(value);
+  // Keep monetary columns numeric when opened in a spreadsheet.
+  if (/^[+−-]?₱\s*[\d,]+(?:\.\d+)?$/.test(text)) text = text.replace(/[₱,\s+]/g, '').replace('−', '-');
+  // Employee names and other text must not execute spreadsheet formulas.
+  if (/^[=+@-]/.test(text.trimStart()) && !/^-?\d+(?:\.\d+)?$/.test(text)) text = "'" + text;
+  return '"' + text.replace(/"/g, '""') + '"';
+}
+
+function exportReport(kind = 'payroll') {
+  const report = reportExportData(kind);
+  if (!report) return;
+  const rows = [[report.title], [], ...report.rows, [], [report.totals]];
+  const csv = '\uFEFF' + rows.map(row => row.map(reportCsvCell).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = report.filename + '.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+  showToast('📥', 'CSV download started. Open the file in Excel or another spreadsheet app.');
+}
+
+function printReport(kind = 'payroll') {
+  const report = reportExportData(kind);
+  if (!report) return;
+  const old = document.getElementById('printOverlay');
+  if (old) old.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'printOverlay';
+  overlay.className = 'report-print';
+  const heading = document.createElement('h2');
+  heading.textContent = 'Republic Central Colleges';
+  const title = document.createElement('h3');
+  title.textContent = report.title;
+  const table = report.table.cloneNode(true);
+  table.removeAttribute('id');
+  table.className = 'report-print-table';
+  table.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+  const totals = document.createElement('p');
+  totals.textContent = report.totals;
+  overlay.append(heading, title, table, totals);
+  document.body.appendChild(overlay);
+  const oldTitle = document.title;
+  document.title = report.filename;
+  const cleanup = () => {
+    overlay.remove();
+    document.title = oldTitle;
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  try { window.print(); } catch (error) { cleanup(); throw error; }
+}

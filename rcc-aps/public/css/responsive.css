@@ -27,7 +27,7 @@ body{min-width:320px;overflow-x:hidden}
 #sbBackdrop.show{display:block;animation:fadeIn .2s ease}
 
 /* ── ≤1024px · TABLET ─────────────────────────────────────── */
-@media (max-width:1024px){
+@media screen and (max-width:1024px){
   .menu-btn{display:inline-flex}
   .sidebar{
     transform:translateX(-100%);
@@ -53,7 +53,7 @@ body{min-width:320px;overflow-x:hidden}
 }
 
 /* ── ≤768px · MOBILE ──────────────────────────────────────── */
-@media (max-width:768px){
+@media screen and (max-width:768px){
   /* DASHBOARD SHELL */
   .dash-content{padding:14px}
   .topbar{padding:0 12px}
@@ -83,32 +83,32 @@ body{min-width:320px;overflow-x:hidden}
   [style*="display:flex;gap:32px"]{flex-wrap:wrap}
 
   /* TABLES → stacked cards (no horizontal scroll ever) */
-  table{width:100%;min-width:0}
-  table thead{display:none}
-  table tbody,table tr,table td{display:block}
-  table tr{
+  table:not(.ps-pay-table){width:100%;min-width:0}
+  table:not(.ps-pay-table) thead{display:none}
+  table:not(.ps-pay-table) tbody,table:not(.ps-pay-table) tr,table:not(.ps-pay-table) td{display:block}
+  table:not(.ps-pay-table) tr{
     margin:0 0 12px;padding:8px 14px;
     background:#fff;border:1px solid var(--border);border-radius:12px;
     box-shadow:0 1px 3px rgba(0,0,0,.05);
   }
-  table td{
+  table:not(.ps-pay-table) td{
     display:flex;align-items:center;justify-content:space-between;
     gap:12px;flex-wrap:wrap;padding:10px 2px;
     border-bottom:1px solid #F5F0EA;text-align:left !important;
   }
-  table td:last-child{border-bottom:none}
-  table td::before{
+  table:not(.ps-pay-table) td:last-child{border-bottom:none}
+  table:not(.ps-pay-table) td::before{
     content:attr(data-label);
     font-size:10.5px;font-weight:700;letter-spacing:.05em;
     text-transform:uppercase;color:var(--text-muted);flex-shrink:0;max-width:45%;
   }
-  table td[data-label=""]::before{display:none}
-  table td[colspan]{
+  table:not(.ps-pay-table) td[data-label=""]::before{display:none}
+  table:not(.ps-pay-table) td[colspan]{
     justify-content:center;text-align:center !important;
     background:#FAFAF8;border-radius:8px;margin:6px 0;
   }
-  table td[colspan]::before{display:none}
-  table tr:hover{background:#fff}
+  table:not(.ps-pay-table) td[colspan]::before{display:none}
+  table:not(.ps-pay-table) tr:hover{background:#fff}
 
   /* MODALS — full-screen sheet */
   .modal{width:100%;max-width:100%;height:100vh;max-height:100vh;border-radius:0}
@@ -130,7 +130,7 @@ body{min-width:320px;overflow-x:hidden}
 }
 
 /* ── ≤480px · SMALL PHONES ────────────────────────────────── */
-@media (max-width:480px){
+@media screen and (max-width:480px){
   .stats-grid.s4,
   .stats-grid.s3,
   .stats-grid.s2,

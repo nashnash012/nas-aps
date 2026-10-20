@@ -98,7 +98,7 @@ async function assembleState() {
   }; });
 
   const profiles = {};
-  profRows.forEach(p => { profiles[p.id] = { empPhone: p.empPhone, empAddr: p.empAddr }; });
+  profRows.forEach(p => { profiles[p.id] = { empPhone: p.empPhone, empAddr: p.empAddr, photo: p.photo || '' }; });
 
   const cashAdvances = {};
   cashRows.forEach(c => { cashAdvances[c.id] = num(c.amount); });
@@ -133,6 +133,7 @@ async function assembleState() {
       phil: num(p.phil), pag: num(p.pag), bir: num(p.bir), cash: num(p.cash),
       bonuses: (() => { try { return JSON.parse(p.bonuses || '[]'); } catch (e) { return []; } })(),
       subjectBreakdown: (() => { try { return JSON.parse(p.subjectBreakdown || '[]'); } catch (e) { return []; } })(),
+      customDeds: (() => { try { return JSON.parse(p.customDeds || '[]'); } catch (e) { return []; } })(),
       payNote: p.payNote || '',
       date: p.date
     })),
@@ -254,8 +255,8 @@ async function persistState(s) {
       const p = s.profiles[key];
       if (!p) continue;
       await c.query(
-        'INSERT INTO profiles (id, empPhone, empAddr) VALUES (?,?,?)',
-        [parseInt(key, 10) || 0, p.empPhone || '', p.empAddr || '']
+        'INSERT INTO profiles (id, empPhone, empAddr, photo) VALUES (?,?,?,?)',
+        [parseInt(key, 10) || 0, p.empPhone || '', p.empAddr || '', p.photo || '']
       );
     }
 
@@ -302,14 +303,14 @@ async function persistState(s) {
         `INSERT INTO payroll_records
            (empId, name, month, monthName, year, period, gross, deMinimisSum,
             thirteenth, thirteenTaxable, thirteenExempt, thirteenTax, net,
-            sss, phil, pag, bir, cash, bonuses, subjectBreakdown, payNote, date)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            sss, phil, pag, bir, cash, bonuses, subjectBreakdown, customDeds, payNote, date)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [p.empId, p.name || '', p.month || 0, p.monthName || '', p.year || 0,
          p.period || '', p.gross || 0, p.deMinimisSum || 0, p.thirteenth || 0,
          p.thirteenTaxable || 0, p.thirteenExempt || 0, p.thirteenTax || 0,
          p.net || 0, p.sss || 0, p.phil || 0, p.pag || 0, p.bir || 0,
          p.cash || 0, JSON.stringify(p.bonuses || []),
-         JSON.stringify(p.subjectBreakdown || []), p.payNote || '',
+         JSON.stringify(p.subjectBreakdown || []), JSON.stringify(p.customDeds || []), p.payNote || '',
          p.date || '']
       );
     }

@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>RCC-APS | Automated Payroll System</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="css/style.css?v=20261019h"/>
-  <link rel="stylesheet" href="css/responsive.css?v=3"/>
+  <link rel="stylesheet" href="css/style.css?v=20261020c"/>
+  <link rel="stylesheet" href="css/responsive.css?v=20261020a"/>
 </head>
 <body>
 
@@ -218,9 +218,9 @@
         </div>
 
         <!-- Payslip Document -->
-        <div style="max-width:680px;margin:0 auto">
+        <div class="ps-viewer">
           <div class="card" style="padding:0">
-            <div id="psDoc" style="padding:40px 48px">
+            <div id="psDoc" class="ps-document">
               <!-- Content rendered by JS -->
             </div>
             <div style="padding:0 48px 32px;display:flex;justify-content:center">
@@ -240,6 +240,7 @@
           <div class="card">
             <div class="card-body" style="text-align:center">
               <div id="empProfAvatar" style="width:80px;height:80px;border-radius:50%;background:var(--maroon);color:var(--white);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;margin:0 auto 16px;border:3px solid var(--gold)">JG</div>
+              <button type="button" class="btn btn-outline btn-sm profile-photo-button" style="margin-bottom:12px" onclick="chooseProfilePhoto()">Change photo</button>
               <div id="empProfName" style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--maroon-dark)">Jhon Gerald Batuaan</div>
               <div id="empProfRole" style="font-size:12px;color:var(--text-muted);margin-top:4px">Employee</div>
               <div id="empProfStatus" style="margin-top:12px"><span class="badge b-green">● Active</span></div>
@@ -527,7 +528,7 @@
               <div>
                 <div id="finProfName" style="font-weight:700;font-size:16px;color:var(--text)">John Cabigting</div>
                 <div id="finProfRole" style="font-size:12px;color:var(--text-muted)">Finance Officer</div>
-                <button class="btn btn-outline btn-sm" style="margin-top:6px;padding:4px 12px;font-size:11px" onclick="showToast('📷','Photo upload coming soon.')">Change photo</button>
+                <button class="btn btn-outline btn-sm profile-photo-button" style="margin-top:6px;padding:4px 12px;font-size:11px" onclick="chooseProfilePhoto()">Change photo</button>
               </div>
             </div>
             <div class="fg-row">
@@ -604,11 +605,32 @@
             <!-- Absences (Non-Teaching / Elementary only) + Cash Advance (all groups) -->
             <div class="fg-row" style="margin-bottom:16px" id="calcAttRow">
               <div class="fg" id="calcAttField"><label class="fl" id="calcAttLabel">Absences (days)</label><input class="fi" type="number" id="calcAtt" step="0.5" min="0" placeholder="0" oninput="computePayroll()"/></div>
+              <div class="fg" id="calcWorkDaysField">
+                <label class="fl" for="calcWorkDays">Work Days (absence divisor)</label>
+                <input class="fi" type="number" id="calcWorkDays" step="0.5" min="1" max="31" oninput="computePayroll()"/>
+                <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px">Defaults to Formula Management. Changes apply to this payroll computation only.</div>
+                <div id="calcWorkDaysErr" role="status" style="display:none;font-size:12px;color:#C62828;margin-top:4px">Enter Work Days between 1 and 31.</div>
+              </div>
               <div class="fg"><label class="fl">Cash Advance (₱)</label><input class="fi" type="number" id="calcCash" step="0.01" min="0" placeholder="0.00" oninput="computePayroll()"/></div>
             </div>
 
             <!-- EXPLANATION editor (High School / College + Graduate) -->
             <div id="calcExplanationRow" style="display:none;margin-bottom:16px">
+              <div class="fg-row" style="margin-bottom:12px">
+                <div class="fg">
+                  <label class="fl" for="calcSchoolYear">Teaching Load School Year</label>
+                  <select class="fi" id="calcSchoolYear" onchange="onCalcTeachingTermChange()"></select>
+                </div>
+                <div class="fg">
+                  <label class="fl" for="calcSemester">Semester</label>
+                  <select class="fi" id="calcSemester" onchange="onCalcTeachingTermChange()">
+                    <option value="1st">1st Sem</option>
+                    <option value="2nd">2nd Sem</option>
+                    <option value="Summer">Summer</option>
+                  </select>
+                </div>
+              </div>
+              <div id="calcTeachingTermStatus" role="status" style="font-size:12px;color:var(--text-muted);margin-bottom:12px"></div>
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px">
                 <div style="font-size:13px;font-weight:700;color:var(--maroon)">📝 Explanation — Subjects &amp; Hours Rendered</div>
                 <div style="display:flex;gap:8px">
@@ -778,7 +800,8 @@
               <div class="card-title" id="govReportTitle">Government Contribution Report</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center">
-              <button class="btn btn-primary btn-sm" onclick="exportReport()">📥 Export</button>
+              <button class="btn btn-primary btn-sm" onclick="exportReport('government')">📥 Export CSV</button>
+              <button class="btn btn-outline btn-sm" onclick="printReport('government')">PDF / Print</button>
               <button class="btn btn-outline btn-sm" onclick="document.getElementById('govReportOutput').style.display='none'">✕</button>
             </div>
           </div>
@@ -868,7 +891,8 @@
               <div class="card-title" id="reportTitle">Payroll Summary Report</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center">
-              <button class="btn btn-primary btn-sm" onclick="exportReport()">📥 Export</button>
+              <button class="btn btn-primary btn-sm" onclick="exportReport('payroll')">📥 Export CSV</button>
+              <button class="btn btn-outline btn-sm" onclick="printReport('payroll')">PDF / Print</button>
               <button class="btn btn-outline btn-sm" onclick="document.getElementById('reportOutput').style.display='none'">✕</button>
             </div>
           </div>
@@ -990,6 +1014,16 @@
         </div>
 
         <!-- Custom Deduction Categories -->
+        <div class="card" style="margin-top:24px">
+          <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap">
+            <div>
+              <div class="card-title">PERAA Retirement Contribution</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:6px">Private Education Retirement Annuity Association. Set the employee contribution as a fixed amount or percentage of gross pay. Initial amount: ₱0.</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:4px">Active deductions apply to all employees by default. Enter 0 in the Payroll Calculator for an employee who does not contribute.</div>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="openPeraaDeduction()">Configure PERAA</button>
+          </div>
+        </div>
         <div class="card" style="margin-top:24px">
           <div class="card-head">
             <div>
@@ -1251,9 +1285,9 @@
         <div style="margin-bottom:16px">
           <button onclick="document.getElementById('finPayslipDetail').style.display='none';showFinPage('finMyPayslip',null)" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--maroon-dark);padding:0">← Back to My Payslips</button>
         </div>
-        <div style="max-width:680px;margin:0 auto">
+        <div class="ps-viewer">
           <div class="card" style="padding:0">
-            <div id="finPsDoc" style="padding:40px 48px"></div>
+            <div id="finPsDoc" class="ps-document"></div>
             <div style="padding:0 48px 32px;display:flex;justify-content:center">
               <button class="btn btn-primary" onclick="printPayslip()" style="padding:12px 32px;display:flex;align-items:center;gap:8px">📥 Download PDF</button>
             </div>
@@ -1538,9 +1572,9 @@
         <div style="margin-bottom:16px">
           <button onclick="document.getElementById('admPayslipDetail').style.display='none';showAdmPage('admMyPayslip',null)" style="background:none;border:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--maroon-dark);padding:0">← Back to My Payslips</button>
         </div>
-        <div style="max-width:680px;margin:0 auto">
+        <div class="ps-viewer">
           <div class="card" style="padding:0">
-            <div id="admPsDoc" style="padding:40px 48px"></div>
+            <div id="admPsDoc" class="ps-document"></div>
             <div style="padding:0 48px 32px;display:flex;justify-content:center">
               <button class="btn btn-primary" onclick="printPayslip()" style="padding:12px 32px;display:flex;align-items:center;gap:8px">📥 Download PDF</button>
             </div>
@@ -1559,7 +1593,7 @@
               <div>
                 <div id="admProfName" style="font-weight:700;font-size:16px;color:var(--text)">Nash Valencia</div>
                 <div id="admProfRole" style="font-size:12px;color:var(--text-muted)">System Admin</div>
-                <button class="btn btn-outline btn-sm" style="margin-top:6px;padding:4px 12px;font-size:11px" onclick="showToast('📷','Photo upload coming soon.')">Change photo</button>
+                <button class="btn btn-outline btn-sm profile-photo-button" style="margin-top:6px;padding:4px 12px;font-size:11px" onclick="chooseProfilePhoto()">Change photo</button>
               </div>
             </div>
             <div class="fg-row">
@@ -1632,6 +1666,8 @@
      MODALS
 ════════════════════════════════════════════════════════════ -->
 
+<input type="file" id="profilePhotoInput" accept="image/jpeg,image/png,image/webp" hidden onchange="uploadProfilePhoto(this)"/>
+
 <!-- Add/Edit User Modal -->
 <div class="modal-overlay" id="userModal">
   <div class="modal">
@@ -1662,6 +1698,7 @@
         </select>
         <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Determines which rank table applies to this teacher</div>
       </div>
+      <div id="uCompensationFields" hidden>
       <div id="uPaySectionTitle" style="font-size:11px;font-weight:700;letter-spacing:.08em;color:var(--maroon-dark);margin:16px 0 10px">💰 PAY SETUP — MONTHLY-RATE</div>
       <div class="fg-row">
         <div class="fg">
@@ -1681,6 +1718,7 @@
           </select>
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px;line-height:1.45">Selecting a rank auto-fills the hourly rate. Type a custom rate to override.</div>
         </div>
+      </div>
       </div>
       <div class="fg-row">
         <div class="fg"><label class="fl">Date Hired</label><input class="fi" id="uHire" type="date"/></div>
@@ -1885,17 +1923,18 @@
 <!-- ════════════════════════════════════════════════════════════
      JAVASCRIPT
 ════════════════════════════════════════════════════════════ -->
-  <script src="js/core.js?v=20261018a"></script>
-  <script src="js/auth.js?v=20261018a"></script>
+  <script src="js/core.js?v=20261021a"></script>
+  <script src="js/auth.js?v=20261021a"></script>
+  <script src="js/profile-photo.js?v=20261021a"></script>
   <script src="js/employees.js?v=20260822c"></script>
-  <script src="js/payroll.js?v=20261019d"></script>
-  <script src="js/reports.js?v=20260822g"></script>
+  <script src="js/payroll.js?v=20261021a"></script>
+  <script src="js/reports.js?v=20261020a"></script>
   <script src="js/bonus.js?v=20260903a"></script>
   <script src="js/ranks.js?v=20261017a"></script>
-  <script src="js/teachingload.js?v=20261019l"></script>
-  <script src="js/formula.js?v=20261018a"></script>
-  <script src="js/deductions.js?v=20261019a"></script>
-  <script src="js/ui.js?v=20260903a"></script>
+  <script src="js/teachingload.js?v=20261020c"></script>
+  <script src="js/formula.js?v=20261020b"></script>
+  <script src="js/deductions.js?v=20261021a"></script>
+  <script src="js/ui.js?v=20261020a"></script>
 
 <!-- ═══ ACCESS DENIED SCREEN ═══════════════════════════════ -->
 <div id="accessDenied" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;align-items:center;justify-content:center">
@@ -1997,7 +2036,12 @@
     <div style="padding:24px;display:flex;flex-direction:column;gap:16px">
       <div>
         <label style="display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:6px">Employee <span style="color:#C62828">*</span></label>
-        <select id="leaveRecordEmp" class="fi"></select>
+        <div class="combobox" id="leaveRecordEmpWrap">
+          <input type="hidden" id="leaveRecordEmp"/>
+          <input type="text" id="leaveRecordEmpSearch" class="fi" style="width:100%;padding-right:36px" placeholder="Search employee name or email..." autocomplete="off" role="combobox" aria-label="Employee" aria-autocomplete="list" aria-controls="leaveRecordEmpList" aria-expanded="false" onfocus="openLeaveRecordEmpList()" oninput="onLeaveRecordEmpInput()" onkeydown="onLeaveRecordEmpKey(event)"/>
+          <button type="button" class="combobox-arrow" aria-label="Show employee list" onclick="toggleLeaveRecordEmpList()">▼</button>
+          <div class="combobox-list" id="leaveRecordEmpList" role="listbox"></div>
+        </div>
       </div>
       <div>
         <label style="display:block;font-size:13px;font-weight:600;color:#444;margin-bottom:6px">Leave Type <span style="color:#C62828">*</span></label>

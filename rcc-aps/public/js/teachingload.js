@@ -1,7 +1,7 @@
 // ── TEACHING LOAD MODULE ─────────────────────────────────────
 // Employee-submitted schedule of classes + workload, per semester+SY.
 // Header (name/level/rank/rate) is auto from the profile — employee
-// only encodes the schedule and (for Elementary/Non-Teaching) absences.
+// only encodes the schedule.
 // Finance may change the teacher's rank in the TL form (rate follows
 // the rank table); the employee side stays read-only.
 // Finance can view/edit all records. Formula parameters (workDays,
@@ -179,15 +179,20 @@ function tlCompute(emp, totalHours, absences) {
     };
   }
   if (level === 'Elementary') {
-    const pay = Math.max(0, parseFloat((r - (a / WD) * r).toFixed(2)));
+    // Pay base = profile Monthly Salary (encoded by Finance in the TL form,
+    // or synced from the payroll calculator). Fall back to the rank-table
+    // rate only while no salary has been entered yet.
+    const s = Math.max(0, parseFloat(emp.salary) || 0);
+    const b = s > 0 ? s : r;
+    const pay = Math.max(0, parseFloat((b - (a / WD) * b).toFixed(2)));
     return {
       pay, workloadType: 'absences', workloadValue: 0, absences: a,
-      hint: 'Elementary pay = Monthly Rate − (Absences ÷ Work Days) × Monthly Rate.',
-      formulaText: fmt(r) + ' − (' + a + ' ÷ ' + WD + ') × ' + fmt(r) + ' = ' + fmt(pay)
+      hint: 'Elementary pay = Monthly Salary − (Absences ÷ Work Days) × Monthly Salary.',
+      formulaText: fmt(b) + ' − (' + a + ' ÷ ' + WD + ') × ' + fmt(b) + ' = ' + fmt(pay)
     };
   }
   if (level === 'High School') {
-    const mh = Math.round(h * weeks * 10) / 10;
+    const mh = h * weeks;
     const wl = mh / HPW;
     const pay = Math.max(0, parseFloat((wl * r).toFixed(2)));
     return {
@@ -198,7 +203,7 @@ function tlCompute(emp, totalHours, absences) {
     };
   }
   // College / Graduate School (and unset level): rate per hour
-  const mh = Math.round(h * weeks * 10) / 10;
+  const mh = h * weeks;
   const pay = Math.max(0, parseFloat((mh * r).toFixed(2)));
   return {
     pay, workloadType: 'hours', workloadValue: h, absences: 0,
@@ -375,9 +380,9 @@ function tlFormMarkup(pfx) {
           '</div>' +
         '</div>' +
 
-        '<div class="fg" id="' + pfx + 'AbsencesWrap" style="display:none;margin-top:16px;max-width:240px">' +
-          '<label class="fl">Absences (days)</label>' +
-          '<input class="fi" id="' + pfx + 'Absences" type="number" min="0" step="0.5" placeholder="0"/>' +
+        '<div class="fg" id="' + pfx + 'SalaryWrap" style="display:none;margin-top:16px;max-width:240px">' +
+          '<label class="fl">Monthly Salary (₱)</label>' +
+          '<input class="fi" id="' + pfx + 'Salary" type="number" min="0" step="0.01" placeholder="0.00"/>' +
         '</div>' +
 
         '<div style="margin-top:20px;display:flex;gap:12px;flex-wrap:wrap">' +
@@ -474,12 +479,15 @@ function tlRenderForm(pfx, empId, sem) {
     const body = document.getElementById(pfx + 'ClassBody');
     if (body) body.innerHTML = cls.map(c => tlClassRowHtml(c, pfx)).join('');
 
-    // absences field (Elementary / Non-Teaching only — pay = rate − (absences ÷ WD) × rate)
-    const absWrap = document.getElementById(pfx + 'AbsencesWrap');
-    const absEl = document.getElementById(pfx + 'Absences');
-    const absType = isNT || level === 'Elementary';
-    if (absWrap) absWrap.style.display = absType ? 'block' : 'none';
-    if (absEl) absEl.value = rec ? (rec.absences || 0) : '';
+    // Monthly Salary field (Elementary only) — the pay base encoded by
+    // Finance; readonly outside the finance form (same pattern as Rank).
+    const salWrap = document.getElementById(pfx + 'SalaryWrap');
+    const salEl = document.getElementById(pfx + 'Salary');
+    if (salWrap) salWrap.style.display = (!isNT && level === 'Elementary') ? 'block' : 'none';
+    if (salEl) {
+      salEl.readOnly = pfx !== 'finTl';
+      salEl.value = parseFloat(emp.salary) > 0 ? parseFloat(emp.salary) : '';
+    }
 
     // saved status
     const st = document.getElementById(pfx + 'SaveStatus');
@@ -572,6 +580,8 @@ function tlRankChange() {
   const rateEl = document.getElementById('finTlRate');
   if (rateEl) rateEl.value = fmt(tlRateOf(emp)) + ' ' + tlUnitOf(emp) + (emp.rateCustom ? ' (custom rate)' : '');
   if (typeof renderFinTeachingLoads === 'function') renderFinTeachingLoads();
+  const calcEmp = document.getElementById('calcEmp');
+  if (calcEmp && parseInt(calcEmp.value) === emp.id && typeof computePayroll === 'function') computePayroll();
   saveDemo();
   showToast('✅', r ? ('Rank updated — ' + r.rank + ' · ' + fmt(tlRateOf(emp)) + ' ' + tlUnitOf(emp)) : 'Rank cleared');
 }
@@ -620,17 +630,26 @@ function tlSave(pfx) {
     if (body && !isNT) rows = Array.from(body.querySelectorAll('tr'));
 
     const total = tlTotalHours(pfx);
-    const absEl = document.getElementById(pfx + 'Absences');
-    const a = absEl ? (parseFloat(absEl.value) || 0) : 0;
+    // Keep previously saved absences when editing a schedule without an absence input.
+    const existing = tlRecordFor(emp.id, ctx.sem, sy);
+    const a = existing ? (parseFloat(existing.absences) || 0) : 0;
     const absType = isNT || level === 'Elementary';
     if (!absType && total <= 0) {
       showToast('⚠️', 'Encode at least one class with valid time and days (Total Hours/Week > 0).');
       return;
     }
 
+    // Elementary: the Monthly Salary input is the pay base — persist it to
+    // the profile (finance form only) so payroll prefill/summary agree.
+    const salInp = document.getElementById(pfx + 'Salary');
+    if (pfx === 'finTl' && !isNT && level === 'Elementary' && salInp) {
+      const rawSal = String(salInp.value || '').trim();
+      const sv = parseFloat(rawSal);
+      if (rawSal !== '' && !isNaN(sv) && sv >= 0) emp.salary = sv;
+    }
+
     const out = tlCompute(emp, total, a);
     const rank = isNT ? null : ((typeof rankById === 'function' && rankById(emp.rankId)) ? rankById(emp.rankId) : null);
-    const existing = tlRecordFor(emp.id, ctx.sem, sy);
 
     const rec = {
       id: existing ? existing.id : nextTeachingLoadId++,
@@ -717,10 +736,10 @@ function renderFinTeachingLoads() {
     const rank = isNT ? '—' : ((typeof rankById === 'function' && rankById(u.rankId)) ? rankById(u.rankId).rank : (u.rankName || '—'));
     const r = tlRateOf(u);
     const unit = tlUnitOf(u);
+    const weeklyHours = latest ? tlClassesFor(latest.id).reduce((sum, cls) =>
+      sum + (parseFloat(cls.hoursPerWeek) || 0), 0) : 0;
     const workload = latest
-      ? (latest.workloadType === 'hours'
-          ? (latest.workloadValue || 0) + ' hrs/wk'
-          : (latest.absences || 0) + ' absence(s)')
+      ? (latest.workloadType === 'hours' ? (latest.workloadValue || 0) : Math.round(weeklyHours * 10) / 10) + ' hrs/wk'
       : '—';
     const status = latest
       ? '<span class="badge b-green">✓ Saved (' + recs.length + ')</span>'

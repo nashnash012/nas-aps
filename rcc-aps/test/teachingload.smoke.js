@@ -104,13 +104,15 @@ if (fnMatch) {
   vm.runInThisContext(
     'teachingLoadRecords = [' +
     '{ id: 1, empId: 3, semester: "1st", schoolYear: "2025-2026" },' +
-    '{ id: 2, empId: 3, semester: "2nd", schoolYear: "2026-2027" }' +
+    '{ id: 2, empId: 3, semester: "2nd", schoolYear: "2026-2027" },' +
+    '{ id: 3, empId: 4, semester: "Summer", schoolYear: "2026-2027" }' +
     '];' +
     'teachingLoadClasses = [' +
     '{ id: 1, recordId: 1, subject: "Old Subject", days: "M", hoursPerWeek: 10 },' +
     '{ id: 2, recordId: 2, subject: "Web Systems", level: "College", days: "MWF", hoursPerWeek: 3 },' +
     '{ id: 3, recordId: 2, subject: "Capstone", level: "Graduate School", days: "F", hoursPerWeek: 1.5 },' +
-    '{ id: 4, recordId: 99, subject: "Ghost", days: "", hoursPerWeek: 5 }' +
+    '{ id: 4, recordId: 99, subject: "Ghost", days: "", hoursPerWeek: 5 },' +
+    '{ id: 5, recordId: 3, subject: "Summer Class", days: "M", hoursPerWeek: 2 }' +
     '];'
   );
   eval(fnMatch[0]);
@@ -118,13 +120,30 @@ if (fnMatch) {
   eq('TL prefill row count', rows.length, 2);
   eq('TL prefill latest subject', rows[0] && rows[0].subject, 'Web Systems');
   eq('TL prefill days kept', rows[0] && rows[0].days, 'MWF');
-  eq('TL prefill qty 3h/wk×4.4wk', rows[0] && rows[0].qty, 13);
-  eq('TL prefill qty 1.5h/wk×4.4wk', rows[1] && rows[1].qty, 6.5);
-  eq('TL prefill wlQty 13.2h÷3', rows[0] && rows[0].wlQty, 4.5);
-  eq('TL prefill wlQty 6.6h÷3', rows[1] && rows[1].wlQty, 2);
+  eq('TL prefill qty 3h/wk×4.4wk', rows[0] && rows[0].qty, 13.2);
+  eq('TL prefill qty 1.5h/wk×4.4wk', rows[1] && rows[1].qty, 6.6);
+  eq('TL prefill wlQty 13.2h÷3', rows[0] && rows[0].wlQty, 4.4);
+  eq('TL prefill wlQty 6.6h÷3', rows[1] && rows[1].wlQty, 2.2);
+  eq('College imported amount matches Teaching Load', Number((rows[0].qty * COL.__rate).toFixed(2)), tlCompute(COL, 3, 0).pay);
+  eq('HS imported amount matches Teaching Load', Number((rows[0].wlQty * HS.__rate).toFixed(2)), tlCompute(HS, 3, 0).pay);
+  global.WORK_DAYS = 21.5;
+  global.HOURS_PER_WORKLOAD = 7;
+  const fractional = latestTeachingLoads(3);
+  eq('fractional monthly hours kept', fractional[1].qty, 6.45);
+  eq('fractional HS workload kept', fractional[1].wlQty, 6.45 / 7, 1e-12);
+  eq('fractional College pay matches Teaching Load', Number((fractional[1].qty * COL.__rate).toFixed(2)), tlCompute(COL, 1.5, 0).pay);
+  eq('fractional HS pay matches Teaching Load', Number((fractional[1].wlQty * HS.__rate).toFixed(2)), tlCompute(HS, 1.5, 0).pay);
+  global.WORK_DAYS = 22;
+  global.HOURS_PER_WORKLOAD = 3;
   eq('TL prefill carries level (College)', rows[0] && rows[0].level, 'College');
   eq('TL prefill carries level (Grad)', rows[1] && rows[1].level, 'Graduate School');
   eq('TL prefill no record -> []', latestTeachingLoads(999).length, 0);
+  eq('selected 2nd semester loads subjects', latestTeachingLoads(3, '2nd', '2026-2027')[0].subject, 'Web Systems');
+  eq('selected old school year loads its schedule', latestTeachingLoads(3, '1st', '2025-2026')[0].subject, 'Old Subject');
+  eq('missing semester never falls back', latestTeachingLoads(3, 'Summer', '2026-2027').length, 0);
+  eq('missing school year never falls back', latestTeachingLoads(3, '2nd', '2027-2028').length, 0);
+  eq('Summer loads matching schedule', latestTeachingLoads(4, 'Summer', '2026-2027')[0].subject, 'Summer Class');
+  eq('employee schedules stay separate', latestTeachingLoads(3, 'Summer', '2026-2027').length, 0);
 }
 
 // 14) tlDaysParse / tlDaysFormat — days popover parser

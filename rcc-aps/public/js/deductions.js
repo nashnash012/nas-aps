@@ -41,6 +41,16 @@ function renderDeductionCategories() {
     </div>`).join('');
 }
 
+function openPeraaDeduction() {
+  const existing = deductionCategories.find(c => String(c.name).trim().toUpperCase() === 'PERAA');
+  if (existing) { editDeductionCategory(existing.id); return; }
+  openAddDeductionCategory();
+  document.getElementById('dedCatModalTitle').textContent = 'Configure PERAA Contribution';
+  document.getElementById('dedCatName').value = 'PERAA';
+  document.getElementById('dedCatAmount').value = '0';
+  document.getElementById('dedCatDesc').value = 'Private Education Retirement Annuity Association — employee retirement contribution';
+}
+
 function openAddDeductionCategory() {
   document.getElementById('dedCatModalTitle').textContent = 'Add Deduction Category';
   document.getElementById('dedCatName').value   = '';
@@ -71,15 +81,23 @@ function editDeductionCategory(id) {
 function saveDeductionCategory() {
   const name   = document.getElementById('dedCatName').value.trim();
   const type   = document.getElementById('dedCatType').value;
-  const amount = parseFloat(document.getElementById('dedCatAmount').value) || 0;
+  const amount = Number(document.getElementById('dedCatAmount').value);
   const desc   = document.getElementById('dedCatDesc').value.trim();
   const status = document.getElementById('dedCatStatus').value;
   const err    = document.getElementById('dedCatErr');
   err.style.display = 'none';
 
   if (!name) { err.textContent='Please enter a category name.'; err.style.display='block'; return; }
+  if (!Number.isFinite(amount) || amount < 0 || (type === 'percent' && amount > 100)) {
+    err.textContent = 'Enter a non-negative amount, or a percentage between 0 and 100.';
+    err.style.display = 'block'; return;
+  }
 
   const editId = document.getElementById('dedCatModal').dataset.editId;
+  if (deductionCategories.some(c => String(c.name).trim().toLowerCase() === name.toLowerCase() && c.id !== parseInt(editId))) {
+    err.textContent = 'A deduction category with this name already exists.';
+    err.style.display = 'block'; return;
+  }
   if (editId) {
     const c = deductionCategories.find(x=>x.id===parseInt(editId));
     if (c) { c.name=name; c.type=type; c.amount=amount; c.desc=desc; c.status=status; }
@@ -111,7 +129,6 @@ document.addEventListener('change', e => {
   }
 });
 
-function exportReport() { showToast('📥','Report exported to PDF/Excel successfully!'); }
 
 
 // ── LEAVE TYPES MANAGEMENT ────────────────────────────────────
@@ -456,12 +473,57 @@ document.addEventListener('click', function(e) {
   if (wrap && !wrap.contains(e.target)) closeAttEmpList();
 });
 
+function leaveRecordEmpOptions() {
+  return users.filter(u => u.status === 'Active' && (u.role === 'Employee' || u.role === 'Finance Officer' || u.role === 'System Admin'));
+}
+function closeLeaveRecordEmpList() {
+  document.getElementById('leaveRecordEmpList').classList.remove('show');
+  document.getElementById('leaveRecordEmpSearch').setAttribute('aria-expanded', 'false');
+}
+function openLeaveRecordEmpList() {
+  const input = document.getElementById('leaveRecordEmpSearch');
+  const selected = document.getElementById('leaveRecordEmp').value;
+  const query = selected ? '' : input.value.trim().toLowerCase();
+  const list = leaveRecordEmpOptions().filter(u =>
+    displayName(u).toLowerCase().includes(query) || `${u.first} ${u.last}`.toLowerCase().includes(query) || (u.email || '').toLowerCase().includes(query));
+  const box = document.getElementById('leaveRecordEmpList');
+  box.innerHTML = list.length
+    ? list.map(u => `<div class="combobox-item" role="option" aria-selected="${String(u.id) === selected}" onclick="selectLeaveRecordEmp(${u.id})">${esc(displayName(u))} — ${esc(u.classification || '')}</div>`).join('')
+    : '<div class="combobox-empty">No employee found.</div>';
+  box.classList.add('show');
+  input.setAttribute('aria-expanded', 'true');
+}
+function selectLeaveRecordEmp(id) {
+  const emp = users.find(u => u.id === id);
+  document.getElementById('leaveRecordEmp').value = emp ? emp.id : '';
+  document.getElementById('leaveRecordEmpSearch').value = emp ? displayName(emp) : '';
+  closeLeaveRecordEmpList();
+}
+function onLeaveRecordEmpInput() {
+  document.getElementById('leaveRecordEmp').value = '';
+  openLeaveRecordEmpList();
+}
+function toggleLeaveRecordEmpList() {
+  if (document.getElementById('leaveRecordEmpList').classList.contains('show')) closeLeaveRecordEmpList();
+  else openLeaveRecordEmpList();
+}
+function onLeaveRecordEmpKey(e) {
+  if (e.key === 'Escape' || e.key === 'Tab') { closeLeaveRecordEmpList(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); openLeaveRecordEmpList(); }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const item = document.querySelector('#leaveRecordEmpList.show .combobox-item');
+    if (item) item.click();
+  }
+}
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('leaveRecordEmpWrap');
+  if (wrap && !wrap.contains(e.target)) closeLeaveRecordEmpList();
+});
+
 function openAddLeaveRecord() {
-  const empSel = document.getElementById('leaveRecordEmp');
+  selectLeaveRecordEmp(0);
   const typeSel = document.getElementById('leaveRecordType');
-  if (empSel) empSel.innerHTML = users
-    .filter(u => u.status === 'Active' && (u.role === 'Employee' || u.role === 'Finance Officer' || u.role === 'System Admin'))
-    .map(u => `<option value="${u.id}">${esc(displayName(u))} — ${esc(u.classification || '')}</option>`).join('');
   if (typeSel) typeSel.innerHTML = LEAVE_TYPES
     .map(t => `<option value="${t.id}">${esc(t.name)} (${t.isPaid ? 'Paid' : 'Unpaid'})</option>`).join('');
 
@@ -478,16 +540,12 @@ function openAddLeaveRecord() {
 function editLeaveRecord(id) {
   const rec = LEAVE_RECORDS.find(r => r.id === id);
   if (!rec) return;
-  const empSel = document.getElementById('leaveRecordEmp');
   const typeSel = document.getElementById('leaveRecordType');
-  if (empSel) empSel.innerHTML = users
-    .filter(u => u.status === 'Active' && (u.role === 'Employee' || u.role === 'Finance Officer' || u.role === 'System Admin'))
-    .map(u => `<option value="${u.id}">${esc(displayName(u))} — ${esc(u.classification || '')}</option>`).join('');
   if (typeSel) typeSel.innerHTML = LEAVE_TYPES
     .map(t => `<option value="${t.id}">${esc(t.name)} (${t.isPaid ? 'Paid' : 'Unpaid'})</option>`).join('');
 
   document.getElementById('leaveRecordModalTitle').textContent = 'Edit Leave Record';
-  document.getElementById('leaveRecordEmp').value = rec.empId;
+  selectLeaveRecordEmp(rec.empId);
   document.getElementById('leaveRecordType').value = rec.typeId;
   document.getElementById('leaveRecordStart').value = rec.startDate || '';
   document.getElementById('leaveRecordEnd').value = rec.endDate || '';
@@ -614,6 +672,10 @@ function renderAdminRecentUsers() {
     </tr>`).join('');
 }
 
+function isAdminUserManagement() {
+  return typeof loggedInUser !== 'undefined' && loggedInUser && loggedInUser.role === 'admin';
+}
+
 function openAddUserModal() {
   editingUserId = null;
   document.getElementById('uModalTitle').textContent = 'Add New User';
@@ -650,10 +712,10 @@ function openEditUserModal(id) {
   document.getElementById('uStatus').value = u.status;
   document.getElementById('uClass').value  = u.classification || 'Non-Teaching';
   document.getElementById('uDept').value   = u.department || '';
-  document.getElementById('uSalary').value = u.salary || '';
-  document.getElementById('uHourly').value = u.hourlyRate || '';
+  document.getElementById('uSalary').value = isAdminUserManagement() ? '' : (u.salary || '');
+  document.getElementById('uHourly').value = isAdminUserManagement() ? '' : (u.hourlyRate || '');
   document.getElementById('uSchoolLevel').value = u.schoolLevel || '';
-  if (typeof fillRankSelect === 'function') fillRankSelect(u.schoolLevel || '', u.rankId || 0);
+  if (!isAdminUserManagement() && typeof fillRankSelect === 'function') fillRankSelect(u.schoolLevel || '', u.rankId || 0);
   document.getElementById('uHire').value   = u.hireDate || '';
   document.getElementById('uHrsAbs').value = (u.hoursWorked || u.absenceDays || '');
   document.getElementById('uPassGroup').style.display = 'none';
@@ -664,6 +726,14 @@ function openEditUserModal(id) {
   document.getElementById('userModal').classList.add('show');
 }
 function toggleUserClassFields() {
+  const hidePay = isAdminUserManagement();
+  const compensation = document.getElementById('uCompensationFields');
+  if (compensation) compensation.hidden = hidePay;
+  if (hidePay) {
+    document.getElementById('uSalary').value = '';
+    document.getElementById('uHourly').value = '';
+    document.getElementById('uRank').innerHTML = '';
+  }
   const c = document.getElementById('uClass')?.value;
   const teaching = c === 'Teaching';
   const hg = document.getElementById('uHourlyGroup');
@@ -692,7 +762,7 @@ function toggleUserClassFields() {
   if (slg) slg.style.display = teaching ? 'block' : 'none';
   const rg = document.getElementById('uRankGroup');
   if (rg) rg.style.display = teaching ? 'block' : 'none';
-  if (teaching) {
+  if (teaching && !hidePay) {
     const sl = document.getElementById('uSchoolLevel')?.value || 'College';
     if (typeof fillRankSelect === 'function') fillRankSelect(sl, 0);
     updateHourlyRateLabel(sl);
@@ -717,6 +787,7 @@ function updateHourlyRateLabel(sl) {
 // ── Teaching auto-suggest: Basic Salary ≈ Hourly Rate × Hours ──
 let salaryAuto = true;
 function recalcSuggestedSalary() {
+  if (isAdminUserManagement()) return;
   if (!salaryAuto) return;
   const cls = document.getElementById('uClass')?.value;
   if (cls !== 'Teaching') return;
@@ -749,11 +820,12 @@ function recalcSuggestedSalary() {
 
 function onSchoolLevelChange() {
   const sl = document.getElementById('uSchoolLevel')?.value || '';
-  if (typeof fillRankSelect === 'function') fillRankSelect(sl, 0);
+  if (!isAdminUserManagement() && typeof fillRankSelect === 'function') fillRankSelect(sl, 0);
   updateHourlyRateLabel(sl);
 }
 
 function onRankChange() {
+  if (isAdminUserManagement()) return;
   const rankId = parseInt(document.getElementById('uRank')?.value) || 0;
   const rankObj = rankId ? (typeof rankById === 'function' ? rankById(rankId) : null) : null;
   if (rankObj) {
@@ -763,18 +835,20 @@ function onRankChange() {
   }
 }
 function saveUser() {
+  const hidePay = isAdminUserManagement();
+  const existingUser = users.find(u => u.id === editingUserId);
   const first=document.getElementById('uFirst').value.trim(), last=document.getElementById('uLast').value.trim();
   const email=document.getElementById('uEmail').value.trim(), role=document.getElementById('uRole').value;
   const status=document.getElementById('uStatus').value, pass=document.getElementById('uPass').value.trim();
   const classification=document.getElementById('uClass').value;
   const department=document.getElementById('uDept').value.trim();
-  const salary=Math.max(0,parseFloat(document.getElementById('uSalary').value)||0);
-  const hourlyRate=Math.max(0,parseFloat(document.getElementById('uHourly').value)||0);
+  const salary=hidePay ? (existingUser?.salary || 0) : Math.max(0,parseFloat(document.getElementById('uSalary').value)||0);
+  const hourlyRate=hidePay ? (existingUser?.hourlyRate || 0) : Math.max(0,parseFloat(document.getElementById('uHourly').value)||0);
   const schoolLevel=document.getElementById('uSchoolLevel')?.value || '';
-  const rankId=parseInt(document.getElementById('uRank')?.value)||0;
+  const rankId=hidePay ? (existingUser?.rankId || 0) : (parseInt(document.getElementById('uRank')?.value)||0);
   const rankObj = rankId ? (typeof rankById === 'function' ? rankById(rankId) : null) : null;
-  const rankName = rankObj ? rankObj.rank : '';
-  const rateCustom = !rankObj || (Math.abs(hourlyRate - parseFloat(rankObj.rate)) > 0.001);
+  const rankName = hidePay ? (existingUser?.rankName || '') : (rankObj ? rankObj.rank : '');
+  const rateCustom = hidePay ? !!existingUser?.rateCustom : (!rankObj || (Math.abs(hourlyRate - parseFloat(rankObj.rate)) > 0.001));
   const hireDate=document.getElementById('uHire').value;
   const hrsAbs=Math.max(0,parseFloat(document.getElementById('uHrsAbs').value)||0);
   const err=document.getElementById('uErr');
@@ -782,8 +856,8 @@ function saveUser() {
   if (!first||!last) { err.textContent='Please enter first and last name.'; err.classList.add('show'); return; }
   if (!email||!email.includes('@')) { err.textContent='Please enter a valid email address.'; err.classList.add('show'); return; }
   if (!editingUserId&&!pass) { err.textContent='Please set an initial password.'; err.classList.add('show'); return; }
-  if (!salary||salary<=0) { err.textContent='Please enter a valid monthly basic salary (required for all personnel — benefits basis).'; err.classList.add('show'); return; }
-  if (classification==='Teaching' && (!hourlyRate||hourlyRate<=0)) { err.textContent='Teaching personnel require a valid hourly rate (pay = rate × hours worked).'; err.classList.add('show'); return; }
+  if (!hidePay && (!salary||salary<=0)) { err.textContent='Please enter a valid monthly basic salary (required for all personnel — benefits basis).'; err.classList.add('show'); return; }
+  if (!hidePay && classification==='Teaching' && (!hourlyRate||hourlyRate<=0)) { err.textContent='Teaching personnel require a valid hourly rate (pay = rate × hours worked).'; err.classList.add('show'); return; }
   // Date of hire is REQUIRED — the RA 8515 proration (and thus 13th Month Pay
   // eligibility) depends on it. It also cannot be in the future.
   if (!hireDate) { err.textContent='Please set the date of hire (required for 13th Month Pay proration).'; err.classList.add('show'); return; }
@@ -831,8 +905,8 @@ function viewUser(id) {
       ${infoBox('🎓 Classification',`<span class="badge ${EMP_CLASS[u.classification]?.badge||'b-gray'}">${u.classification||'Non-Teaching'}</span>`)}      ${infoBox('🏢 Department',esc(u.department||'—'))}
       ${u.classification==='Teaching' && u.rankName ? infoBox('🎓 Academic Rank', esc(u.rankName)) : ''}
       ${u.classification==='Teaching' ? infoBox('🏫 School Level', esc(u.schoolLevel || '—')) : ''}
-      ${infoBox('💰 Monthly Base',`<strong>₱${(u.salary||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`)}${infoBox('🆔 Employee ID',`#USR-00${u.id}`)}
-      ${infoBox(u.classification==='Teaching'?'⏱ Hourly Rate':'📅 Date Hired', u.classification==='Teaching' ? '₱'+(u.hourlyRate||0).toFixed(2) : (u.hireDate||'—'))}${infoBox(u.classification==='Teaching'?'🕒 Hours Worked':'🚫 Absence Days', u.classification==='Teaching' ? (u.hoursWorked||0)+' hrs' : (u.absenceDays||0)+' days')}
+      ${!isAdminUserManagement() ? infoBox('💰 Monthly Base',`<strong>₱${(u.salary||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`) : ''}${infoBox('🆔 Employee ID',`#USR-00${u.id}`)}
+      ${!isAdminUserManagement() && u.classification==='Teaching' ? infoBox('⏱ Hourly Rate', '₱'+(u.hourlyRate||0).toFixed(2)) : ''}${infoBox('📅 Date Hired', u.hireDate||'—')}${infoBox(u.classification==='Teaching'?'🕒 Hours Worked':'🚫 Absence Days', u.classification==='Teaching' ? (u.hoursWorked||0)+' hrs' : (u.absenceDays||0)+' days')}
     </div>`;
   // edit removed
   document.getElementById('viewUserModal').classList.add('show');

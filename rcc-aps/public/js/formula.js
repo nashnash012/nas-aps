@@ -60,25 +60,25 @@ function renderFormulaManagement() {
       fmt(18000) + ' − (3 ÷ ' + WD + ') × ' + fmt(18000) + ' = ' + fmt(18000 - (3 / WD) * 18000),
       'Salary comes from User Management.') +
 
-    card('🏫', 'Elementary', 'Rate per Month',
-      'Gross = Monthly Rate − (Absences ÷ Work Days) × Monthly Rate',
+    card('🏫', 'Elementary', 'Salary per Month',
+      'Gross = Monthly Salary − (Absences ÷ Work Days) × Monthly Salary',
       fmt(14000) + ' − (2 ÷ ' + WD + ') × ' + fmt(14000) + ' = ' + fmt(14000 - (2 / WD) * 14000),
-      'Monthly rate comes from the Faculty Rank Tables.') +
+      'Monthly salary comes from Teaching Load (encoded by Finance) or User Management.') +
 
     card('📖', 'High School', 'Rate per Workload',
       'Gross = Rate per Workload × (Total Hours ÷ ' + HPW + ')',
       '92.4 hrs ÷ ' + HPW + ' = ' + (92.4 / HPW).toFixed(2) + ' wl × ' + fmt(500) + ' = ' + fmt((92.4 / HPW) * 500),
-      '1 workload = ' + HPW + ' hrs · hours converted from Teaching Load schedule (hrs/week × Work Days ÷ 5).') +
+      '1 workload = ' + HPW + ' hrs · payroll hours = session hours × matching schedule dates in the selected payroll month. Teaching Load pay estimates use average weeks (Work Days ÷ 5).') +
 
     card('🎓', 'College', 'Rate per Hour',
       'Gross = Rate per Hour × Total Hours',
       '92.4 hrs × ' + fmt(190) + ' = ' + fmt(92.4 * 190),
-      'Hours converted from Teaching Load schedule (hrs/week × Work Days ÷ 5).') +
+      'Payroll hours = session hours × matching schedule dates in the selected payroll month. Teaching Load pay estimates use average weeks (Work Days ÷ 5).') +
 
     card('🎓', 'Graduate School', 'Rate per Hour',
       'Gross = Rate per Hour × Total Hours',
       '92.4 hrs × ' + fmt(230) + ' = ' + fmt(92.4 * 230),
-      'Hours converted from Teaching Load schedule (hrs/week × Work Days ÷ 5).');
+      'Payroll hours = session hours × matching schedule dates in the selected payroll month. Teaching Load pay estimates use average weeks (Work Days ÷ 5).');
 }
 
 function saveFormulaParams() {

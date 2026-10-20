@@ -56,7 +56,7 @@ function closeSidebar() {
 let tableLabelTimer = null;
 function stampTableLabels() {
   tableLabelTimer = null;
-  document.querySelectorAll('table').forEach(tbl => {
+  document.querySelectorAll('table:not(.ps-pay-table)').forEach(tbl => {
     const heads = Array.from(tbl.querySelectorAll('thead th'))
       .map(th => th.textContent.replace(/\s+/g, ' ').trim());
     tbl.querySelectorAll('tbody tr').forEach(tr => {

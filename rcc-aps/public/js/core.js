@@ -26,7 +26,7 @@ function saveDemo() {
         const pp = document.getElementById('empPhone');
         const pa = document.getElementById('empAddr');
         if (pp && pa && (pp.value.trim() || pa.value.trim())) {
-          PROFILES[uid] = { empPhone: pp.value, empAddr: pa.value };
+          PROFILES[uid] = { ...(PROFILES[uid] || {}), empPhone: pp.value, empAddr: pa.value };
         }
       }
       const state = {
@@ -50,8 +50,8 @@ function saveDemo() {
         savedAt: new Date().toISOString()
       };
       localStorage.setItem(DEMO_KEY, JSON.stringify(state));
-      pushToServer(state).then(() => {
-        resolve(true);
+      pushToServer(state).then(saved => {
+        resolve(saved);
       });
     } catch(e){
       resolve(false);

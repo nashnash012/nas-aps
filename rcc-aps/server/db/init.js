@@ -68,6 +68,14 @@ async function init() {
     for (const m of migrations) {
       try { await poolConn.query(m); } catch (e) { /* ignore duplicate column errors */ }
     }
+    const [customDedCols] = await poolConn.query(
+      "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payroll_records' AND COLUMN_NAME = 'customDeds'"
+    );
+    if (!customDedCols.length) await poolConn.query('ALTER TABLE payroll_records ADD COLUMN customDeds TEXT');
+    const [photoCols] = await poolConn.query(
+      "SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'profiles' AND COLUMN_NAME = 'photo'"
+    );
+    if (!photoCols.length) await poolConn.query('ALTER TABLE profiles ADD COLUMN photo MEDIUMTEXT');
     console.log('[MySQL] Migration: users + payroll_records + teaching_load_classes columns verified.');
 
     // Step 3c: Migration — rename teacher_ranks.ratePerHour → rate (idempotent)

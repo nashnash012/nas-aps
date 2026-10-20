@@ -45,7 +45,8 @@ CREATE TABLE IF NOT EXISTS auth (
 CREATE TABLE IF NOT EXISTS profiles (
   id       INT PRIMARY KEY,
   empPhone VARCHAR(40) NOT NULL DEFAULT '',
-  empAddr  VARCHAR(255) NOT NULL DEFAULT ''
+  empAddr  VARCHAR(255) NOT NULL DEFAULT '',
+  photo    MEDIUMTEXT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── CASH ADVANCES (per user id) ──────────────────────────────
@@ -107,6 +108,7 @@ CREATE TABLE IF NOT EXISTS payroll_records (
   cash          DECIMAL(12,2) NOT NULL DEFAULT 0,
   bonuses       VARCHAR(255) NOT NULL DEFAULT '[]',
   subjectBreakdown TEXT,
+  customDeds    TEXT,
   payNote       VARCHAR(500) DEFAULT '',
   date          VARCHAR(40)  NOT NULL DEFAULT '',
   KEY idx_payroll_emp (empId),
