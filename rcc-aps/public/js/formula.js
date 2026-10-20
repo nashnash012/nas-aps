@@ -81,7 +81,7 @@ function renderFormulaManagement() {
       'Payroll hours = session hours × matching schedule dates in the selected payroll month. Teaching Load pay estimates use average weeks (Work Days ÷ 5).');
 }
 
-function saveFormulaParams() {
+async function saveFormulaParams() {
   const wdEl = document.getElementById('fmWorkDays');
   const hpwEl = document.getElementById('fmHpw');
   const wd = Math.round(Number(wdEl ? wdEl.value : 0) * 100) / 100;
@@ -99,7 +99,7 @@ function saveFormulaParams() {
   if (typeof WORK_DAYS !== 'undefined') WORK_DAYS = wd;
   if (typeof HOURS_PER_WORKLOAD !== 'undefined') HOURS_PER_WORKLOAD = hpw;
   if (typeof stampDedMeta === 'function') stampDedMeta();
-  if (typeof saveDemo === 'function') saveDemo();
+  if (typeof saveDemo === 'function' && !await saveDemo()) return;
   renderFormulaManagement();
   showToast('✅', 'Parameters saved — Work Days = ' + wd + ', Hours per Workload = ' + hpw + '.');
 }

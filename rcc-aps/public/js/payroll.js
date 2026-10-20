@@ -104,12 +104,13 @@ function periodHasData(empId, monthNum, year) {
 // received payload actually carries are overwritten.
 function applyServerData(d) {
   if (!d) return;
+  if (Number.isInteger(d.stateRevision)) serverStateRevision = d.stateRevision;
   if (d.profiles && typeof d.profiles === 'object' && !Array.isArray(d.profiles)) {
     Object.keys(PROFILES).forEach(id => delete PROFILES[id]);
     Object.assign(PROFILES, d.profiles);
   }
   if (d.users) users = d.users;
-  if (d.auth && Object.keys(d.auth).length) {
+  if (d.auth) {
     Object.keys(USERS_AUTH).forEach(k => delete USERS_AUTH[k]);
     Object.assign(USERS_AUTH, d.auth);
   }
@@ -679,7 +680,8 @@ function addCalcSubject(prefill) {
   tr.innerHTML =
     '<td style="padding:4px 4px"><input class="fi" style="width:100%;padding:4px 6px" placeholder="Subject" value="' + esc((prefill && prefill.subject) || '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
     '<td style="padding:4px 4px"><select class="fi calc-level-sel" style="width:104px;padding:4px 6px" title="For College / For Grad — tag which level this subject is for" onchange="onCalcSubjectLevel(this)">' + calcLevelOpts((prefill && prefill.level) || '') + '</select></td>' +
-    '<td style="padding:4px 4px"><input class="fi" style="width:90px;padding:4px 6px" placeholder="e.g. MWF" title="Schedule days — display only, does not affect pay" value="' + esc((prefill && prefill.days) || '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
+    '<td style="padding:4px 4px"><input class="fi calc-dept" style="width:90px;padding:4px 6px" aria-label="Subject department" placeholder="e.g. CCS" value="' + esc((prefill && prefill.deptCode) || '') + '" oninput="computePayroll()"/></td>' +
+    '<td style="padding:4px 4px"><input class="fi calc-days" style="width:90px;padding:4px 6px" placeholder="e.g. MWF" title="Schedule days" value="' + esc((prefill && prefill.days) || '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
     '<td style="padding:4px 4px"><input class="fi calc-qty" style="width:100px;padding:4px 6px" type="number" step="any" min="0" placeholder="0" value="' + ((prefill && prefill.qty != null) ? prefill.qty : 0) + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
     '<td style="padding:4px 4px"><input class="fi calc-rate" style="width:90px;padding:4px 6px" type="number" step="0.01" min="0" placeholder="0" value="' + ((prefill && prefill.rate != null) ? prefill.rate : '') + '" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
     '<td style="padding:4px 4px;font-weight:600" class="calc-amt">0.00</td>' +
@@ -695,8 +697,7 @@ function addCalcIncrement() {
   const tr = document.createElement('tr');
   tr.dataset.type = 'increment';
   tr.innerHTML =
-    '<td style="padding:4px 4px;font-weight:600">Increment - S.Y</td>' +
-    '<td style="padding:4px 4px"></td>' +
+    '<td colspan="4" style="padding:4px 4px;font-weight:600">Increment - S.Y</td>' +
     '<td style="padding:4px 4px"><input class="fi calc-qty" style="width:70px;padding:4px 6px" type="number" step="0.5" min="0" placeholder="0" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
     '<td style="padding:4px 4px"><input class="fi calc-rate" style="width:90px;padding:4px 6px" type="number" step="0.01" min="0" placeholder="0" oninput="recomputeCalcTotals();computePayroll()"/></td>' +
     '<td style="padding:4px 4px;font-weight:600" class="calc-amt">0.00</td>' +
@@ -769,6 +770,7 @@ function latestTeachingLoads(empId, semester, schoolYear, month, year) {
         : (parseFloat(c.hoursPerWeek) || 0) * weeks;
       return {
       subject: c.subject || '',
+      deptCode: c.deptCode || '',
       level: c.level || '',
       days: c.days || '',
       // Normalize floating-point noise without rounding to half-hour steps.
@@ -863,7 +865,7 @@ function loadEmployeeData() {
       : 'No saved Teaching Load subjects for this employee in the selected semester and school year.';
     const rate = teacherRate(emp);
     loads.forEach(l => {
-      addCalcSubject({ subject: l.subject || '', level: l.level || '', days: l.days || '', qty: (group === 'High School' ? l.wlQty : l.qty) || 0, rate });
+      addCalcSubject({ subject: l.subject || '', level: l.level || '', deptCode: l.deptCode || '', days: l.days || '', qty: (group === 'High School' ? l.wlQty : l.qty) || 0, rate });
     });
     salEl.value = rate || '';
     attEl.value = '';
@@ -1089,13 +1091,15 @@ function computePayroll() {
       const rate = isNaN(typedRate) ? 0 : typedRate;
       const isIncr = tr.dataset.type === 'increment';
       const nameEl = tr.querySelector('input');
-      const daysEl = tr.querySelectorAll('input')[1];
+      const daysEl = tr.querySelector('.calc-days');
+      const deptEl = tr.querySelector('.calc-dept');
       const lvEl = tr.querySelector('.calc-level-sel');
       const subject = isIncr ? 'Increment - S.Y' : (nameEl ? nameEl.value : '');
       const days = isIncr ? '' : (daysEl ? daysEl.value : '');
       const level = lvEl ? (lvEl.value || '') : '';
+      const deptCode = isIncr ? '' : (deptEl ? deptEl.value.trim() : '');
       const amount = parseFloat((qty * rate).toFixed(2));
-      subjectBreakdown.push({ type: isIncr ? 'increment' : 'subject', subject, days, level, qty, rate, amount });
+      subjectBreakdown.push({ type: isIncr ? 'increment' : 'subject', subject, days, level, deptCode, qty, rate, amount });
       subjGross += amount;
       totalQty += qty;
     });
@@ -1235,7 +1239,7 @@ function confirmPayroll() {
   doSavePayroll(rec, null);
 }
 
-function doSavePayroll(rec, existing) {
+async function doSavePayroll(rec, existing) {
   if (existing) Object.assign(existing, rec);
   else payrollRecords.push(rec);
   // Elementary: the calculator's Monthly Salary input is authoritative —
@@ -1248,7 +1252,7 @@ function doSavePayroll(rec, existing) {
   // One-time deduction semantics: the cash advance is consumed by this
   // payroll run — clear it so it is not deducted again in the next period.
   if ((parseFloat(rec.cash) || 0) > 0) cashAdvances[rec.empId] = 0;
-  saveDemo();
+  if (!await saveDemo()) return;
   renderPayrollSummary();
   updateCalcStatusBadge();
   const thirteenthMsg = rec.thirteenth > 0 ? ' — includes 13th Month Pay (RA 8515)' : '';

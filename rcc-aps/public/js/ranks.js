@@ -224,9 +224,9 @@ function deleteRank(id) {
   showToast('✅', 'Rank deleted.');
 }
 
-function saveRankModal() {
+async function saveRankModal() {
   closeModal('rankModal');
-  saveDemo();
+  if (!await saveDemo()) return;
   renderRankTable();
   renderAdmRankTable();
   showToast('✅', 'Faculty ranks updated. Changes apply to the next payroll cycle.');

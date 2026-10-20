@@ -78,7 +78,7 @@ function editDeductionCategory(id) {
   document.getElementById('dedCatModal').dataset.editId = id;
 }
 
-function saveDeductionCategory() {
+async function saveDeductionCategory() {
   const name   = document.getElementById('dedCatName').value.trim();
   const type   = document.getElementById('dedCatType').value;
   const amount = Number(document.getElementById('dedCatAmount').value);
@@ -107,7 +107,7 @@ function saveDeductionCategory() {
     showToast('✅', `"${name}" added successfully!`);
   }
   closeModal('dedCatModal');
-  saveDemo();
+  if (!await saveDemo()) return;
   renderDeductionCategories();
 }
 
@@ -189,7 +189,7 @@ function editLeaveType(id) {
   document.getElementById('leaveTypeModal').dataset.editId = id;
 }
 
-function saveLeaveType() {
+async function saveLeaveType() {
   const name = document.getElementById('leaveTypeName').value.trim();
   const isPaid = document.getElementById('leaveTypePaid').value === 'true';
   const err = document.getElementById('leaveTypeErr');
@@ -207,7 +207,7 @@ function saveLeaveType() {
     showToast('✅', `"${name}" added successfully!`);
   }
   closeModal('leaveTypeModal');
-  saveDemo();
+  if (!await saveDemo()) return;
   renderLeaveTypes();
 }
 
@@ -556,7 +556,7 @@ function editLeaveRecord(id) {
   document.getElementById('leaveRecordModal').style.display = 'flex';
 }
 
-function saveLeaveRecord() {
+async function saveLeaveRecord() {
   const empId = parseInt(document.getElementById('leaveRecordEmp').value) || 0;
   const typeId = parseInt(document.getElementById('leaveRecordType').value) || 0;
   const startDate = document.getElementById('leaveRecordStart').value;
@@ -581,7 +581,7 @@ function saveLeaveRecord() {
     showToast('✅', 'Leave record added successfully!');
   }
   closeModal('leaveRecordModal');
-  saveDemo();
+  if (!await saveDemo()) return;
   renderLeaveRecords();
 }
 
@@ -834,7 +834,7 @@ function onRankChange() {
     recalcSuggestedSalary();
   }
 }
-function saveUser() {
+async function saveUser() {
   const hidePay = isAdminUserManagement();
   const existingUser = users.find(u => u.id === editingUserId);
   const first=document.getElementById('uFirst').value.trim(), last=document.getElementById('uLast').value.trim();
@@ -887,7 +887,7 @@ function saveUser() {
     showToast('✅',`${first} ${last} added successfully.`);
   }
   closeModal('userModal');
-  saveDemo();
+  if (!await saveDemo()) return;
   renderUserTable(); renderAdminRecentUsers(); updateAdminStats();
 }
 let viewCurrentUserId = null;   // user id shown in the User Profile (view) modal
@@ -969,122 +969,20 @@ function confirmRemove(id) {
 }
 
 // ── HRIS SYNC ─────────────────────────────────────────────────
-function syncFromHris() {
+async function syncFromHris() {
   const btn = document.getElementById('hrisSyncBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing...'; }
-  fetch('/api/hris/sync')
-    .then(r => r.json())
-    .then(d => {
-      let added = 0, updated = 0;
-      (d.employees || []).forEach(h => {
-        const email = h.email.toLowerCase();
-        let u = users.find(x => x.email.toLowerCase() === email);
-        if (u) {
-          u.first = h.first; u.last = h.last; u.role = h.role; u.status = h.status;
-          u.department = h.department; u.classification = h.classification;
-          u.salary = h.salary; u.hourlyRate = h.hourlyRate; u.hireDate = h.hireDate;
-          u.schoolLevel = h.schoolLevel || u.schoolLevel || ''; u.rankId = h.rankId || u.rankId || 0; u.rankName = h.rankName || u.rankName || ''; u.rateCustom = h.rateCustom != null ? !!h.rateCustom : u.rateCustom;
-          if (h.classification === 'Teaching') u.hoursWorked = h.hoursWorked; else u.absenceDays = h.absenceDays;
-          ensureAuth(u, h.password);
-          updated++;
-        } else {
-          const nu = {id:nextUserId++, first:h.first, last:h.last, email,
-            role:h.role, status:h.status,
-            date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-            salary:h.salary, classification:h.classification, department:h.department, hireDate:h.hireDate};
-          if (h.classification === 'Teaching') { nu.hourlyRate = h.hourlyRate; nu.hoursWorked = h.hoursWorked; nu.schoolLevel = h.schoolLevel || ''; nu.rankId = h.rankId || 0; nu.rankName = h.rankName || ''; nu.rateCustom = !!h.rateCustom; }
-          else nu.absenceDays = h.absenceDays;
-          users.push(nu);
-          ensureAuth(nu, h.password);
-          added++;
-        }
-      });
-// Deactivate (NOT delete) any Active user missing from the HRIS pull,
-      // except accounts that were previously synced from HRIS, so payroll history is preserved.
-      // Mga account na galing sa Add User (manual) ay hindi madedeactivate.
-      const hrisEmails = new Set((d.employees || []).map(h => (h.email || '').toLowerCase()));
-      // HRIS_EMAILS mula sa localStorage (mga dati nang galing sa HRIS sync)
-      const prevHRIS_Emails = JSON.parse(localStorage.getItem('hrisSyncedEmails') || '[]');
-      const allHRIS_Emails = new Set([...prevHRIS_Emails, ...hrisEmails]);
-      // Store updated list para sa susunod na sync
-      localStorage.setItem('hrisSyncedEmails', JSON.stringify([...hrisEmails]));
-      let deactivated = 0;
-      users.forEach(u => {
-        if (u.status === 'Active' && allHRIS_Emails.has(u.email.toLowerCase()) && !hrisEmails.has(u.email.toLowerCase())) {
-          u.status = 'Inactive';
-          ensureAuth(u);
-          deactivated++;
-        }
-      });
-      // Process leave records from HRIS
-      let leavesAdded = 0;
-      (d.leaveRecords || []).forEach(lr => {
-        const email = lr.employee_email.toLowerCase();
-        const emp = users.find(u => u.email.toLowerCase() === email);
-        if (!emp) return;
-        // Find or create leave type
-        const leaveTypeName = lr.leave_type || 'Other Leave';
-        let lt = LEAVE_TYPES.find(x => x.name.toLowerCase() === leaveTypeName.toLowerCase());
-        if (!lt) {
-          lt = { id: NEXT_LEAVE_TYPE_ID++, name: leaveTypeName, isPaid: false };
-          LEAVE_TYPES.push(lt);
-        }
-        // Check for duplicate leave record
-        const exists = LEAVE_RECORDS.find(r =>
-          r.empId === emp.id && r.typeId === lt.id &&
-          r.startDate === lr.start_date && r.endDate === lr.end_date
-        );
-        if (!exists) {
-          LEAVE_RECORDS.push({
-            empId: emp.id,
-            typeId: lt.id,
-            startDate: lr.start_date,
-            endDate: lr.end_date,
-            days: lr.days || 1
-          });
-          leavesAdded++;
-        }
-      });
-      // Import attendance (clock-in/out) from HRIS — dedupe by empId+date.
-      // Hours = clockOut - clockIn (+24h if graveyard). Matched by email.
-      let attAdded = 0;
-      (d.attendance || []).forEach(a => {
-        const email = (a.employeeEmail || a.employee_email || '').toLowerCase();
-        const emp = users.find(u => u.email.toLowerCase() === email);
-        if (!emp) return;
-        const date = a.date;
-        if (!date) return;
-        const exists = ATTENDANCE.find(r => r.empId === emp.id && r.date === date);
-        const hours = attendanceRecordHours(a);
-        if (exists) {
-          exists.clockInAt = a.clockInAt || exists.clockInAt;
-          exists.clockOutAt = a.clockOutAt || exists.clockOutAt;
-          exists.hours = hours;
-          exists.employeeId = a.employeeId || exists.employeeId;
-        } else {
-          ATTENDANCE.push({
-            empId: emp.id,
-            employeeId: a.employeeId || '',
-            employeeEmail: email,
-            date,
-            clockInAt: a.clockInAt || '',
-            clockOutAt: a.clockOutAt || '',
-            hours
-          });
-          attAdded++;
-        }
-      });
-      saveDemo();
-      renderUserTable(); renderAdminRecentUsers(); updateAdminStats();
-      renderLeaveTypes();
-      renderAttendance();
-      const msg = `HRIS sync complete — ${added} added, ${updated} updated, ${deactivated} deactivated`;
-      const leavesMsg = leavesAdded > 0 ? `, ${leavesAdded} leave records` : '';
-      const attMsg = attAdded > 0 ? `, ${attAdded} attendance records` : '';
-      showToast('✅', `${msg}${leavesMsg}${attMsg} (source: ${d.source})`);
-    })
-    .catch(() => showToast('⚠️', 'HRIS sync failed. Make sure the server is running.'))
-    .finally(() => { if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync from HRIS'; } });
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Syncing...'; }
+  try {
+    const response = await fetch('/api/hris/sync',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(getAuthToken() || '')},body:JSON.stringify({stateRevision:serverStateRevision})});
+    const result = await response.json();
+    if (!response.ok) { if(response.status===409)await syncDemo(); throw new Error(result.error || 'HRIS sync failed.'); }
+    localStorage.setItem(DEMO_KEY,JSON.stringify(result.state));
+    applyServerData(result.state);
+    renderUserTable();renderAdminRecentUsers();updateAdminStats();renderLeaveTypes();renderAttendance();
+    const counts=result.counts;
+    showToast('✅','HRIS sync: '+counts.added+' accounts added, '+counts.updated+' updated, '+counts.leaves+' leaves, '+counts.attendance+' attendance records.'+(counts.skipped?' '+counts.skipped+' unmatched or incomplete accounts skipped.':''));
+  } catch(error) { showToast('⚠️',error.message || 'HRIS sync failed. Please try again.'); }
+  finally { if(btn){btn.disabled=false;btn.textContent='🔄 Sync from HRIS';} }
 }
 
 // ── DEDUCTION MODAL ───────────────────────────────────────────
@@ -1577,7 +1475,7 @@ function renderWorkDaysSetting() {
   const note = document.getElementById('workDaysFormula');
   if (note) note.textContent = WORK_DAYS;
 }
-function saveWorkDays() {
+async function saveWorkDays() {
   const el = document.getElementById('workDaysInput');
   if (!el) return;
   const v = Math.round(Number(el.value) * 100) / 100;
@@ -1588,7 +1486,7 @@ function saveWorkDays() {
   }
   WORK_DAYS = v;
   stampDedMeta();
-  saveDemo();
+  if (!await saveDemo()) return;
   renderWorkDaysSetting();
   showToast('✅', `Working days per month set to ${WORK_DAYS}. Absence deductions will use ÷${WORK_DAYS}.`);
 }
@@ -1612,7 +1510,7 @@ function renderBIRTable() {
   }).join('');
 }
 
-function saveDedModal() {
+async function saveDedModal() {
   const type = document.getElementById('dedModal').dataset.type;
 
   if (type === 'SSS' || type === 'BIR') {
@@ -1626,7 +1524,7 @@ function saveDedModal() {
 
   closeModal('dedModal');
   stampDedMeta();
-  saveDemo();
+  if (!await saveDemo()) return;
   // Refresh the detail page display
   if (type === 'SSS') renderSSSTable();
   if (type === 'PhilHealth') renderPhilHealthDisplay();

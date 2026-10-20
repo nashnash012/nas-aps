@@ -1,14 +1,25 @@
 'use strict';
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'rcc-aps-secret-key-change-in-production';
+const fs = require('fs');
+const path = require('path');
+function signingSecret() {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  const file = path.resolve(__dirname, '../../.jwt-secret');
+  if (!fs.existsSync(file)) {
+    try { fs.writeFileSync(file, require('crypto').randomBytes(64).toString('hex'), { flag:'wx', mode:0o600 }); }
+    catch (error) { if (error.code !== 'EEXIST') throw error; }
+  }
+  return fs.readFileSync(file,'utf8').trim();
+}
+const JWT_SECRET = signingSecret();
 
 /**
  * Express middleware that verifies the JWT Bearer token on every request.
  * On success, attaches req.user = { id, email, role, label, page, status }.
  * On failure, responds 401 Unauthorized.
  */
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   const header = req.headers['authorization'] || '';
   const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
 
@@ -18,7 +29,10 @@ function requireAuth(req, res, next) {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    req.user = payload;   // { id, email, role, label, page, status }
+    const rows = await require('../db').q('SELECT id, role, status FROM auth WHERE id=?', [payload.id]);
+    const account = rows[0];
+    if (!account || account.status !== 'Active') return res.status(401).json({ok:false,error:'Account unavailable. Please log in again.'});
+    req.user = { ...payload, role:account.role, status:account.status };
     next();
   } catch (e) {
     if (e.name === 'TokenExpiredError') {

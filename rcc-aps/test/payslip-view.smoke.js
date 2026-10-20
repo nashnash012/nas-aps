@@ -6,7 +6,7 @@ const months = ['January','February','March','April','May','June','July','August
 for (const [role,docId,detailId] of [['Employee','psDoc','payslipDetailPage'],['Finance Officer','finPsDoc','finPayslipDetail'],['System Admin','admPsDoc','admPayslipDetail']]) {
   for (const [level,month,thirteenth] of [['College',10,0],['High School',12,15000],['Elementary',12,15000],['Non-Teaching',10,0]]) {
     const elements = Object.fromEntries([...html.matchAll(/\bid="([^"]+)"/g)].map(m=>[m[1],{innerHTML:'',style:{}}]));
-    const record = {empId:3,month,year:2026,gross:25000,net:23000,date:'Oct 20, 2026',thirteenth,deMinimisSum:500,subjectBreakdown:[{type:'subject',subject:'Data Structures',qty:39,rate:190,amount:7410},{type:'increment',qty:1,rate:100,amount:100}]};
+    const record = {empId:3,month,year:2026,gross:25000,net:23000,date:'Oct 20, 2026',thirteenth,deMinimisSum:500,subjectBreakdown:[{type:'subject',subject:'Data Structures',deptCode:'CCS',qty:39,rate:190,amount:7410},{type:'increment',qty:1,rate:100,amount:100}]};
     record.customDeds = [{name:'PERAA',amount:400},{name:'School Loan',amount:100}];
     const alerts = [];
     const context = vm.createContext({
@@ -20,6 +20,8 @@ for (const [role,docId,detailId] of [['Employee','psDoc','payslipDetailPage'],['
     vm.runInContext(`viewPayslipDetail('${months[month-1]} 2026',3)`,context);
     assert.match(elements[docId].innerHTML,/Paolo Test/);
     assert.match(elements[docId].innerHTML,/Data Structures/);
+    assert.match(elements[docId].innerHTML,/<th>Dept<\/th>/);
+    assert.match(elements[docId].innerHTML,/>CCS<\/td>/);
     assert.match(elements[docId].innerHTML,/P400\.00/);
     assert.match(elements[docId].innerHTML,/School Loan/);
     assert.equal(elements[detailId].style.display,'block');
@@ -29,7 +31,7 @@ for (const [role,docId,detailId] of [['Employee','psDoc','payslipDetailPage'],['
       for (const row of body.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/g)) {
         let columns = 0;
         for (const cell of row[1].matchAll(/<(?:td|th)\b([^>]*)>/g)) columns += Number((cell[1].match(/colspan="(\d+)"/) || [,'1'])[1]);
-        assert.equal(columns,12,section + ' row must align to 12 columns');
+        assert.equal(columns,13,section + ' row must align to 13 columns');
       }
     }
     if(thirteenth) assert.match(elements[docId].innerHTML,/P15000\.00/);

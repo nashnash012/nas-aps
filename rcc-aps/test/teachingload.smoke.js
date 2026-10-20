@@ -109,7 +109,7 @@ if (fnMatch) {
     '];' +
     'teachingLoadClasses = [' +
     '{ id: 1, recordId: 1, subject: "Old Subject", days: "M", hoursPerWeek: 10 },' +
-    '{ id: 2, recordId: 2, subject: "Web Systems", level: "College", days: "MWF", hoursPerWeek: 3 },' +
+    '{ id: 2, recordId: 2, subject: "Web Systems", deptCode: "CCS", level: "College", days: "MWF", hoursPerWeek: 3 },' +
     '{ id: 3, recordId: 2, subject: "Capstone", level: "Graduate School", days: "F", hoursPerWeek: 1.5 },' +
     '{ id: 4, recordId: 99, subject: "Ghost", days: "", hoursPerWeek: 5 },' +
     '{ id: 5, recordId: 3, subject: "Summer Class", days: "M", hoursPerWeek: 2 }' +
@@ -120,6 +120,7 @@ if (fnMatch) {
   eq('TL prefill row count', rows.length, 2);
   eq('TL prefill latest subject', rows[0] && rows[0].subject, 'Web Systems');
   eq('TL prefill days kept', rows[0] && rows[0].days, 'MWF');
+  eq('TL prefill subject department kept', rows[0] && rows[0].deptCode, 'CCS');
   eq('TL prefill qty 3h/wk×4.4wk', rows[0] && rows[0].qty, 13.2);
   eq('TL prefill qty 1.5h/wk×4.4wk', rows[1] && rows[1].qty, 6.6);
   eq('TL prefill wlQty 13.2h÷3', rows[0] && rows[0].wlQty, 4.4);

@@ -5,6 +5,8 @@ function loadDemo() {
   try { const raw = localStorage.getItem(DEMO_KEY); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
 }
 const _savedDemo = loadDemo();
+let serverStateRevision = Number.isInteger(_savedDemo?.stateRevision) ? _savedDemo.stateRevision : null;
+let stateSavePending = false;
 // ── PER-USER PROFILE STORAGE ─────────────────────────────────
 // Profiles are keyed by the logged-in user's id so each account keeps its
 // own phone/address instead of one global blob shared by everyone.
@@ -21,6 +23,7 @@ function currentUid() {
 function saveDemo() {
   return new Promise((resolve) => {
     try {
+      if (stateSavePending) { showToast('⚠️','Please wait for the current save to finish.'); resolve(false); return; }
       const uid = currentUid();
       if (uid) {
         const pp = document.getElementById('empPhone');
@@ -30,6 +33,7 @@ function saveDemo() {
         }
       }
       const state = {
+        stateRevision: serverStateRevision,
         users, nextUserId, cashAdvances, bonusTypes, nextBonusId, auth: USERS_AUTH,
         deductionCategories, nextDedCatId, payrollRecords, bonusPayouts,
         sssTable, philData, pagData, birData, dedMeta, bonusExemptionLimit: BONUS_EXEMPTION_LIMIT,
@@ -49,73 +53,57 @@ function saveDemo() {
         profiles: PROFILES,
         savedAt: new Date().toISOString()
       };
-      localStorage.setItem(DEMO_KEY, JSON.stringify(state));
+      stateSavePending = true;
+      localStorage.setItem(DEMO_KEY, JSON.stringify({ ...state, auth:{} }));
       pushToServer(state).then(saved => {
+        stateSavePending = false;
         resolve(saved);
       });
     } catch(e){
+      stateSavePending = false;
       resolve(false);
     }
   });
 }
-function resetDemo() {
-  localStorage.removeItem(DEMO_KEY);
-  location.reload();
-}
 
-function pushToServer(state) {
-  return new Promise((resolve) => {
-    const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
-    if (!token) { resolve(false); return; }
-    try {
-      fetch('/api/data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-        body: JSON.stringify(state)
-      })
-        .then(r => { if (r.status === 401) clearAuthToken(); resolve(r.ok); })
-        .catch(() => { resolve(false); });
-    } catch(e) { resolve(false); }
-  });
+async function pushToServer(state) {
+  const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+  if (!token) return false;
+  try {
+    const response = await fetch('/api/data', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + token}, body:JSON.stringify(state)
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      if (response.status === 401) clearAuthToken();
+      if (response.status !== 401) await syncDemo();
+      showToast('⚠️',result.error || 'Save failed. Please try again.');
+      return false;
+    }
+    if (result.state) {
+      localStorage.setItem(DEMO_KEY,JSON.stringify(result.state));
+      applyServerData(result.state);
+    }
+    return true;
+  } catch (error) {
+    showToast('⚠️','The server could not save your changes. Check the connection and retry.');
+    return false;
+  }
 }
-function syncDemo() {
-  return new Promise((resolve) => {
-    try {
-      const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
-      const headers = {};
-      if (token) headers['Authorization'] = 'Bearer ' + token;
-      fetch('/api/data', { headers })
-        .then(r => {
-          if (r.status === 401) { clearAuthToken(); resolve(false); return null; }
-          if (!r.ok) throw new Error('server offline');
-          return r.json();
-        })
-        .then(d => {
-          if (!d || !d.users || !d.users.length) { resolve(false); return; }
-          const localRaw = localStorage.getItem(DEMO_KEY);
-          let adopt = false;
-          if (!localRaw) {
-            adopt = true;
-          } else {
-            let local = null;
-            try { local = JSON.parse(localRaw); } catch(e) {}
-            const serverTime = Date.parse(d.savedAt) || 0;
-            const localTime  = Date.parse(local && local.savedAt) || 0;
-            if (serverTime >= localTime) adopt = true;
-            else pushToServer(local);
-          }
-          if (adopt) {
-            localStorage.setItem(DEMO_KEY, JSON.stringify(d));
-            if (typeof applyServerData === 'function') applyServerData(d);
-            refreshVisiblePage();
-            resolve(true);
-          } else {
-            resolve(false);
-          }
-        })
-        .catch(() => { resolve(false); });
-    } catch(e) { resolve(false); }
-  });
+async function syncDemo() {
+  const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+  if (!token) return false;
+  try {
+    const response = await fetch('/api/data', {headers:{'Authorization':'Bearer ' + token},cache:'no-store'});
+    if (response.status === 401) { clearAuthToken(); return false; }
+    if (!response.ok) return false;
+    const state = await response.json();
+    if (!state || !Array.isArray(state.users) || !state.users.length) return false;
+    localStorage.setItem(DEMO_KEY,JSON.stringify(state));
+    applyServerData(state);
+    refreshVisiblePage();
+    return true;
+  } catch (error) { return false; }
 }
 function refreshVisiblePage() {
   if (!(typeof loggedInUser !== 'undefined' && loggedInUser && loggedInUser.page)) return;
@@ -130,24 +118,6 @@ const ROLE_ICON = {'System Admin':'🔧','Finance Officer':'💼','Employee':'�
 const ROLE_KEY  = {'System Admin':'admin','Finance Officer':'finance','Employee':'employee'};
 
 const USERS_AUTH = {};
-function rebuildAuthDefaults() {
-  USERS_AUTH['1'] = {id:1, email:'admin@rcc.edu.ph',    pass:'admin123',    label:'System Admin',   icon:'🔧', page:'adminPage',    role:'admin',    status:'Active'};
-  USERS_AUTH['2'] = {id:2, email:'finance@rcc.edu.ph',  pass:'finance123',  label:'Finance Officer',icon:'💼', page:'financePage', role:'finance',  status:'Active'};
-  USERS_AUTH['3'] = {id:3, email:'employee@rcc.edu.ph', pass:'employee123', label:'Employee',      icon:'👤', page:'empPage',     role:'employee', status:'Active'};
-}
-rebuildAuthDefaults();
-if (_savedDemo && _savedDemo.auth) {
-  const byEmail = {};
-  Object.values(USERS_AUTH).forEach(a => byEmail[a.email] = a);
-  Object.keys(_savedDemo.auth).forEach(k => {
-    const e = _savedDemo.auth[k];
-    if (!e) return;
-    if (e.id) { USERS_AUTH[k] = e; return; }                  // new id-keyed format: copy as-is
-    const target = byEmail[(e.email || '').toLowerCase()];    // legacy role-keyed format: migrate password
-    if (target) target.pass = e.pass;
-  });
-}
-
 function ensureAuth(u, pass) {
   let entry = Object.values(USERS_AUTH).find(a => a.id === u.id);
   if (!entry) { entry = { id: u.id }; USERS_AUTH['u' + u.id] = entry; }

@@ -564,7 +564,7 @@ function tlEmployeeChange(empId) {
   tlRenderForm('finTl', ctx.empId, ctx.sem);
 }
 
-function tlRankChange() {
+async function tlRankChange() {
   if (!loggedInUser || (loggedInUser.role !== 'finance' && loggedInUser.role !== 'admin')) return;
   const ctx = tlCtx && tlCtx.finTl;
   if (!ctx) return;
@@ -582,7 +582,7 @@ function tlRankChange() {
   if (typeof renderFinTeachingLoads === 'function') renderFinTeachingLoads();
   const calcEmp = document.getElementById('calcEmp');
   if (calcEmp && parseInt(calcEmp.value) === emp.id && typeof computePayroll === 'function') computePayroll();
-  saveDemo();
+  if (!await saveDemo()) return;
   showToast('✅', r ? ('Rank updated — ' + r.rank + ' · ' + fmt(tlRateOf(emp)) + ' ' + tlUnitOf(emp)) : 'Rank cleared');
 }
 
@@ -614,7 +614,7 @@ function tlRemoveRow(btn, pfx) {
 }
 
 // ── Save ─────────────────────────────────────────────────────
-function tlSave(pfx) {
+async function tlSave(pfx) {
   try {
     const ctx = tlCtx[pfx];
     const emp = (typeof users !== 'undefined') ? users.find(u => u.id === ctx.empId) : null;
@@ -698,7 +698,7 @@ function tlSave(pfx) {
     });
 
     ctx.sy = sy;
-    saveDemo();
+    if (!await saveDemo()) return;
     if (pfx === 'finTl' && typeof renderFinTeachingLoads === 'function') renderFinTeachingLoads();
     tlRenderForm(pfx, emp.id, ctx.sem);
     showToast('✅', 'Teaching Load saved — ' + tlSemLabel(ctx.sem) + ', SY ' + sy + '.');

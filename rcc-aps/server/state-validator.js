@@ -12,6 +12,13 @@ function validateStateBody(body) {
   if (body.users.length === 0) {
     return { ok: false, error: 'Refusing to persist: "users" array is empty.' };
   }
+  if (!Number.isInteger(body.stateRevision) || body.stateRevision < 0) {
+    return { ok:false, error:'Reload the page before saving. A record revision is required.' };
+  }
+  const arrays = ['users','payrollRecords','bonusTypes','deductionCategories','sssTable','birData','leaveTypes','leaveRecords','attendance','teacherRanks','teachingLoadRecords','teachingLoadClasses'];
+  for (const key of arrays) if (key in body && (!Array.isArray(body[key]) || body[key].some(row => !row || typeof row !== 'object' || Array.isArray(row)))) {
+    return { ok:false, error:'Invalid records: ' + key };
+  }
   return { ok: true };
 }
 

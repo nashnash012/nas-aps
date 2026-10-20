@@ -19,7 +19,8 @@ function getPool() {
     waitForConnections: true,
     connectionLimit: 5,
     queueLimit: 0,
-    charset: 'utf8mb4'
+    charset: 'utf8mb4',
+    dateStrings: true
   });
   return pool;
 }
@@ -44,7 +45,7 @@ async function status() {
       connected: true,
       host: process.env.DB_HOST || 'localhost',
       database: process.env.DB_NAME || 'rcc_aps',
-      serverTime: (rows[0] && rows[0].server_time) ? rows[0].server_time.toISOString() : null,
+      serverTime: (rows[0] && rows[0].server_time) ? new Date(rows[0].server_time).toISOString() : null,
       counts
     };
   } catch (e) {
@@ -111,19 +112,19 @@ async function assembleState() {
 
   return {
     users: usersOut,
-    nextUserId: parseInt(cfgObj.nextUserId, 10) || 1,
+    nextUserId: Math.max(parseInt(cfgObj.nextUserId, 10) || 1, ...users.map(row => Number(row.id) + 1)),
     cashAdvances,
     bonusTypes: bonusTypes.map(b => ({
       id: b.id, name: b.name, kind: b.kind, value: num(b.value),
       desc: b.desc, status: b.status, releaseDate: b.releaseDate, endDate: b.endDate
     })),
-    nextBonusId: parseInt(cfgObj.nextBonusId, 10) || 1,
+    nextBonusId: Math.max(parseInt(cfgObj.nextBonusId, 10) || 1, ...bonusTypes.map(row => Number(row.id) + 1)),
     auth,
     deductionCategories: dedCat.map(d => ({
       id: d.id, name: d.name, type: d.type, amount: num(d.amount),
       desc: d.desc, status: d.status
     })),
-    nextDedCatId: parseInt(cfgObj.nextDedCatId, 10) || 1,
+    nextDedCatId: Math.max(parseInt(cfgObj.nextDedCatId, 10) || 1, ...dedCat.map(row => Number(row.id) + 1)),
     payrollRecords: payroll.map(p => ({
       empId: p.empId, name: p.name, month: p.month, monthName: p.monthName,
       year: p.year, period: p.period, gross: num(p.gross),
@@ -135,7 +136,9 @@ async function assembleState() {
       subjectBreakdown: (() => { try { return JSON.parse(p.subjectBreakdown || '[]'); } catch (e) { return []; } })(),
       customDeds: (() => { try { return JSON.parse(p.customDeds || '[]'); } catch (e) { return []; } })(),
       payNote: p.payNote || '',
-      date: p.date
+      date: p.date || '',
+      salaryBase: num(p.salaryBase), absenceWorkDays: num(p.absenceWorkDays), absenceDays: num(p.absenceDays),
+      teachingSemester: p.teachingSemester || null, teachingSchoolYear: p.teachingSchoolYear || null
     })),
     bonusPayouts,
     sssTable: sss.map(s => ({
@@ -156,19 +159,19 @@ async function assembleState() {
     })),
     dedMeta: (() => { try { return JSON.parse(cfgObj.dedMeta || '{}'); } catch (e) { return {}; } })(),
     bonusExemptionLimit: parseInt(cfgObj.bonusExemptionLimit, 10) || 90000,
-    workDays: parseInt(cfgObj.workDays, 10) || 22,
+    workDays: parseFloat(cfgObj.workDays) || 22,
     leaveTypes: leaveTypes.map(l => ({ id: l.id, name: l.name, isPaid: !!l.isPaid })),
-    nextLeaveTypeId: parseInt(cfgObj.nextLeaveTypeId, 10) || 1,
+    nextLeaveTypeId: Math.max(parseInt(cfgObj.nextLeaveTypeId, 10) || 1, ...leaveTypes.map(row => Number(row.id) + 1)),
     leaveRecords: leaveRecords.map(l => ({
       id: l.id, empId: l.empId, typeId: l.typeId, startDate: l.startDate,
       endDate: l.endDate, days: l.days
     })),
-    nextLeaveRecordId: parseInt(cfgObj.nextLeaveRecordId, 10) || 1,
+    nextLeaveRecordId: Math.max(parseInt(cfgObj.nextLeaveRecordId, 10) || 1, ...leaveRecords.map(row => Number(row.id) + 1)),
     teacherRanks: ranks.map(r => ({
       id: r.id, department: r.department, rank: r.rank,
       rate: num(r.rate != null ? r.rate : r.ratePerHour)
     })),
-    nextRankId: parseInt(cfgObj.nextRankId, 10) || 1,
+    nextRankId: Math.max(parseInt(cfgObj.nextRankId, 10) || 1, ...ranks.map(row => Number(row.id) + 1)),
     teachingLoadRecords: tlRecords.map(r => ({
       id: r.id, empId: r.empId, semester: r.semester, schoolYear: r.schoolYear,
       classification: r.classification || 'Teaching', level: r.level || '',
@@ -178,8 +181,8 @@ async function assembleState() {
       workloadValue: num(r.workloadValue), absences: num(r.absences),
       computedPay: num(r.computedPay), savedAt: r.savedAt || ''
     })),
-    nextTeachingLoadId: parseInt(cfgObj.nextTeachingLoadId, 10) || 1,
-    nextTeachingLoadClassId: parseInt(cfgObj.nextTeachingLoadClassId, 10) || 1,
+    nextTeachingLoadId: Math.max(parseInt(cfgObj.nextTeachingLoadId, 10) || 1, ...tlRecords.map(row => Number(row.id) + 1)),
+    nextTeachingLoadClassId: Math.max(parseInt(cfgObj.nextTeachingLoadClassId, 10) || 1, ...tlClasses.map(row => Number(row.id) + 1)),
     hoursPerWorkload: num(cfgObj.hoursPerWorkload) != null && !isNaN(parseFloat(cfgObj.hoursPerWorkload)) ? parseFloat(cfgObj.hoursPerWorkload) : 3,
     teachingLoadClasses: tlClasses.map(l => ({
       id: l.id, recordId: l.recordId, subject: l.subject || '',
@@ -196,29 +199,25 @@ async function assembleState() {
       hours: num(a.hours)
     })),
     profiles,
+    stateRevision: Number(cfgObj.stateRevision) || 0,
     savedAt: cfgObj.savedAt || new Date().toISOString()
   };
 }
 
 // ── WRITE: teardown a full state object into the relational tables ──
 async function persistState(s) {
-  const c = await getPool().getConnection();
+  const connection = await getPool().getConnection();
+  const c = require('./db/state-writer').incrementalConnection(connection);
   try {
     await c.beginTransaction();
 
-    const clearAll = [
-      'DELETE FROM users', 'DELETE FROM auth', 'DELETE FROM profiles',
-      'DELETE FROM cash_advances', 'DELETE FROM bonus_types',
-      'DELETE FROM bonus_payouts', 'DELETE FROM deduction_categories',
-      'DELETE FROM payroll_records', 'DELETE FROM sss_table',
-      'DELETE FROM phil_data', 'DELETE FROM pag_data', 'DELETE FROM bir_table',
-      'DELETE FROM app_config', 'DELETE FROM leave_types',
-      'DELETE FROM leave_records', 'DELETE FROM attendance',
-      'DELETE FROM teacher_ranks',
-      'DELETE FROM teaching_load_classes',
-      'DELETE FROM teaching_load_records'
-    ];
-    for (const sql of clearAll) await c.query(sql);
+    // teacher ranks
+    for (const r of s.teacherRanks || []) {
+      await c.query(
+        'INSERT INTO teacher_ranks (id, department, rank, rate) VALUES (?,?,?,?)',
+        [r.id, r.department || 'College', r.rank || '', r.rate || 0]
+      );
+    }
 
     // users
     for (const u of s.users || []) {
@@ -303,15 +302,15 @@ async function persistState(s) {
         `INSERT INTO payroll_records
            (empId, name, month, monthName, year, period, gross, deMinimisSum,
             thirteenth, thirteenTaxable, thirteenExempt, thirteenTax, net,
-            sss, phil, pag, bir, cash, bonuses, subjectBreakdown, customDeds, payNote, date)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+            sss, phil, pag, bir, cash, bonuses, subjectBreakdown, customDeds, payNote, date, salaryBase, absenceWorkDays, absenceDays, teachingSemester, teachingSchoolYear)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
         [p.empId, p.name || '', p.month || 0, p.monthName || '', p.year || 0,
          p.period || '', p.gross || 0, p.deMinimisSum || 0, p.thirteenth || 0,
          p.thirteenTaxable || 0, p.thirteenExempt || 0, p.thirteenTax || 0,
          p.net || 0, p.sss || 0, p.phil || 0, p.pag || 0, p.bir || 0,
          p.cash || 0, JSON.stringify(p.bonuses || []),
          JSON.stringify(p.subjectBreakdown || []), JSON.stringify(p.customDeds || []), p.payNote || '',
-         p.date || '']
+         p.date || '', p.salaryBase ?? null, p.absenceWorkDays ?? null, p.absenceDays ?? null, p.teachingSemester || null, p.teachingSchoolYear || null]
       );
     }
 
@@ -350,14 +349,6 @@ async function persistState(s) {
       );
     }
 
-    // teacher ranks
-    for (const r of s.teacherRanks || []) {
-      await c.query(
-        'INSERT INTO teacher_ranks (id, department, rank, rate) VALUES (?,?,?,?)',
-        [r.id, r.department || 'College', r.rank || '', r.rate || 0]
-      );
-    }
-
     // teaching load records (employee-submitted, per semester+SY)
     for (const r of s.teachingLoadRecords || []) {
       await c.query(
@@ -391,6 +382,7 @@ async function persistState(s) {
 
     // app config
     const cfg = {
+      schemaVersion: 2, stateRevision: Number(s.stateRevision) || 0,
       nextUserId: s.nextUserId || 1,
       nextBonusId: s.nextBonusId || 1,
       nextDedCatId: s.nextDedCatId || 1,
@@ -445,8 +437,60 @@ async function persistState(s) {
   }
 }
 
-async function updatePassword(userId, hashed) {
-  await q('UPDATE auth SET pass = ? WHERE id = ?', [hashed, userId]);
+async function withStateLock(work) {
+  const lock = await getPool().getConnection();
+  const name = (process.env.DB_NAME || 'rcc_aps') + '_write';
+  let acquired = false;
+  try {
+    const [rows] = await lock.query('SELECT GET_LOCK(?, 15) AS acquired', [name]);
+    acquired = Number(rows[0].acquired) === 1;
+    if (!acquired) throw Object.assign(new Error('Another save is in progress. Please try again.'), { status: 503 });
+    return await work();
+  } finally {
+    if (acquired) await lock.query('SELECT RELEASE_LOCK(?)', [name]);
+    lock.release();
+  }
 }
 
-module.exports = { assembleState, persistState, status, q, updatePassword };
+async function saveClientState(submitted, token) {
+  return withStateLock(async () => {
+    const current = await assembleState();
+    const { actorFor, visibleState, mergeState } = require('./state-access');
+    const actor = actorFor(current, token);
+    if (!Number.isInteger(submitted.stateRevision) || submitted.stateRevision !== current.stateRevision) {
+      throw Object.assign(new Error('Records changed since you loaded this page. Reload and apply your changes again.'), { status: 409 });
+    }
+    const state = await mergeState(current, submitted, actor);
+    await persistState(state);
+    return visibleState(state, actor);
+  });
+}
+
+async function syncHrisData(data, token, revision) {
+  return withStateLock(async () => {
+    const current = await assembleState();
+    const { actorFor, mergeState, visibleState } = require('./state-access');
+    const actor = actorFor(current,token);
+    if (!['admin','finance'].includes(actor.role)) throw Object.assign(new Error('Access denied.'),{status:403});
+    if (revision !== current.stateRevision) throw Object.assign(new Error('Records changed. Refresh before syncing HRIS.'),{status:409});
+    const {submitted,counts} = require('./hris-sync').hrisSubmission(current,data,actor);
+    const state = await mergeState(current,submitted,actor);
+    await persistState(state);
+    return { state:visibleState(state,actor),counts,source:data.source };
+  });
+}
+
+async function updatePassword(userId, hashed) {
+  return withStateLock(async () => {
+    const c = await getPool().getConnection();
+    try {
+      await c.beginTransaction();
+      await c.query('UPDATE auth SET pass = ? WHERE id = ?', [hashed, userId]);
+      await c.query("INSERT INTO app_config (cfg_key,cfg_value) VALUES ('stateRevision','1') ON DUPLICATE KEY UPDATE cfg_value=CAST(cfg_value AS UNSIGNED)+1");
+      await c.commit();
+    } catch (error) { await c.rollback(); throw error; }
+    finally { c.release(); }
+  });
+}
+
+module.exports = { assembleState, persistState, status, q, updatePassword, saveClientState, syncHrisData };

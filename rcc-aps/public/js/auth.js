@@ -5,7 +5,7 @@ let loginFails = 0, lockUntil = 0;
 const JWT_KEY = 'rcc_aps_jwt_token';
 function getAuthToken() { return localStorage.getItem(JWT_KEY); }
 function setAuthToken(token) { localStorage.setItem(JWT_KEY, token); }
-function clearAuthToken() { localStorage.removeItem(JWT_KEY); }
+function clearAuthToken() { localStorage.removeItem(JWT_KEY); localStorage.removeItem(DEMO_KEY); }
 
 // Server-side login via /api/auth/login
 async function checkLogin(email, pass) {
@@ -56,7 +56,11 @@ async function handleLogin() {
   }
   const u = res.user;
   loggedInUser = { id: u.id, email: u.email, role: u.role, label: u.label, icon: u.role === 'admin' ? '🔧' : u.role === 'finance' ? '💼' : '👤', page: u.page, status: u.status };
-  await syncDemo();
+  if (!await syncDemo()) {
+    clearAuthToken(); loggedInUser = null;
+    document.getElementById('errText').textContent = 'Unable to load your account records. Please try logging in again.';
+    err.classList.add('show'); return;
+  }
   populateProfilePages();
   const btn = document.getElementById('loginBtn');
   btn.disabled = true;
@@ -89,6 +93,7 @@ async function handleLogin() {
 function logout() {
   if (typeof closeSidebar==='function') closeSidebar();
   clearAuthToken();
+  localStorage.removeItem(DEMO_KEY);
   loggedInUser = null;
   document.querySelectorAll('.dashboard-page').forEach(p=>p.classList.remove('show'));
   const lp = document.getElementById('loginPage');
@@ -106,12 +111,12 @@ function logout() {
 }
 
 // ── EMPLOYEE PROFILE & PASSWORD ──────────────────────────────
-function saveProfile() {
+async function saveProfile() {
   const phone = document.getElementById('empPhone').value.trim();
   const addr  = document.getElementById('empAddr').value.trim();
   if (!phone) { showToast('⚠️','Please enter your phone number.'); return; }
   if (!addr)  { showToast('⚠️','Please enter your home address.'); return; }
-  saveDemo();
+  if (!await saveDemo()) return;
   showToast('✅','Profile updated successfully!');
 }
 
@@ -137,6 +142,7 @@ async function changePassword() {
     document.getElementById('pwNew').value = '';
     document.getElementById('pwConfirm').value = '';
     showToast('✅','Password changed successfully!');
+    await syncDemo();
   } catch(e) {
     err.textContent = 'Cannot reach server. Please check your connection.'; err.classList.add('show');
   }
@@ -406,11 +412,11 @@ function viewPayslipDetail(period, empId) {
   const otherAmount = otherCustom.reduce((sum, x) => sum + (parseFloat(x.amount) || 0), 0);
   const number = value => Number(value || 0).toLocaleString('en-PH', { maximumFractionDigits: 4 });
   const blankDeductions = '<td></td>'.repeat(8);
-  const earningRow = (label, amount, qty = '', rate = '') =>
-    '<tr><td class="ps-text">' + esc(label) + '</td><td>' + qty + '</td><td>' + rate + '</td><td>' + fmt(amount) + '</td>' + blankDeductions + '</tr>';
+  const earningRow = (label, amount, qty = '', rate = '', dept = '') =>
+    '<tr><td class="ps-text">' + esc(label) + '</td><td class="ps-text">' + esc(dept) + '</td><td>' + qty + '</td><td>' + rate + '</td><td>' + fmt(amount) + '</td>' + blankDeductions + '</tr>';
   const subjectRows = breakdown.map(b => earningRow(
     b.type === 'increment' ? 'Increment - S.Y' : (b.subject || 'Subject'),
-    parseFloat(b.amount) || 0, number(b.qty), fmt(parseFloat(b.rate) || 0)
+    parseFloat(b.amount) || 0, number(b.qty), fmt(parseFloat(b.rate) || 0), b.deptCode || ''
   )).join('');
   const baseRow = subjectRows || earningRow(isTeaching ? (isMonthly ? 'Monthly salary after absences' : 'Teaching earnings') : 'Monthly salary after absences', grossTaxable);
   const customNotes = otherCustom.map(x => esc(x.name || 'Other deduction') + ': ' + fmt(parseFloat(x.amount) || 0)).join(' · ');
@@ -424,23 +430,23 @@ function viewPayslipDetail(period, empId) {
       </header>
       <div class="ps-employee">
         <div><span>EMPLOYEE</span><strong>${esc(displayName(emp))}</strong></div>
-        <div><span>DEPARTMENT / LEVEL</span><strong>${esc(emp.department || emp.schoolLevel || emp.classification || '—')}</strong></div>
+        <div><span>DEPARTMENT</span><strong>${esc(emp.department || '—')}</strong><div>${esc(emp.schoolLevel || emp.classification || '')}</div></div>
         <div><span>RELEASE DATE</span><strong>${esc(rec.date || '—')}</strong></div>
       </div>
       <table class="ps-pay-table">
-        <colgroup><col style="width:20%"/><col style="width:6%"/><col style="width:8%"/><col style="width:9%"/><col style="width:7%"/><col style="width:7%"/><col style="width:6%"/><col style="width:6%"/><col style="width:7%"/><col style="width:7%"/><col style="width:7%"/><col style="width:10%"/></colgroup>
+        <colgroup><col style="width:17%"/><col style="width:8%"/><col style="width:5%"/><col style="width:7%"/><col style="width:8%"/><col style="width:6%"/><col style="width:6%"/><col style="width:6%"/><col style="width:6%"/><col style="width:7%"/><col style="width:7%"/><col style="width:7%"/><col style="width:10%"/></colgroup>
         <thead>
-          <tr><th colspan="3">EXPLANATION</th><th rowspan="2">EARNINGS</th><th colspan="7">DEDUCTIONS</th><th rowspan="2">NET PAY</th></tr>
-          <tr><th class="ps-text">Description</th><th>${qtyLabel}</th><th>Rate</th><th>SSS</th><th>PhilHealth</th><th>Pag-IBIG</th><th>PERAA</th><th>W/Tax</th><th>Cash Adv.</th><th>Other</th></tr>
+          <tr><th colspan="4">EXPLANATION</th><th rowspan="2">EARNINGS</th><th colspan="7">DEDUCTIONS</th><th rowspan="2">NET PAY</th></tr>
+          <tr><th class="ps-text">Description</th><th>Dept</th><th>${qtyLabel}</th><th>Rate</th><th>SSS</th><th>PhilHealth</th><th>Pag-IBIG</th><th>PERAA</th><th>W/Tax</th><th>Cash Adv.</th><th>Other</th></tr>
         </thead>
         <tbody>
           ${baseRow}
           ${subjectRows ? bonusRows : ''}
           ${deMinimis > 0 && (!hasBonusDetails || !subjectRows) ? earningRow('De Minimis Benefits', deMinimis) : ''}
           ${thirteenth > 0 ? earningRow('13th Month Pay', thirteenth) : ''}
-          <tr class="ps-deduction-row"><td class="ps-text" colspan="4">Employee deductions</td><td>${fmt(sss)}</td><td>${fmt(phil)}</td><td>${fmt(pag)}</td><td>${fmt(peraa)}</td><td>${fmt(bir + thirteenTax)}</td><td>${fmt(cash)}</td><td>${fmt(otherAmount)}</td><td></td></tr>
+          <tr class="ps-deduction-row"><td class="ps-text" colspan="5">Employee deductions</td><td>${fmt(sss)}</td><td>${fmt(phil)}</td><td>${fmt(pag)}</td><td>${fmt(peraa)}</td><td>${fmt(bir + thirteenTax)}</td><td>${fmt(cash)}</td><td>${fmt(otherAmount)}</td><td></td></tr>
         </tbody>
-        <tfoot><tr><th class="ps-text" colspan="3">TOTAL</th><td>${fmt(totalGross)}</td><td>${fmt(sss)}</td><td>${fmt(phil)}</td><td>${fmt(pag)}</td><td>${fmt(peraa)}</td><td>${fmt(bir + thirteenTax)}</td><td>${fmt(cash)}</td><td>${fmt(otherAmount)}</td><td class="ps-net">${fmt(netPay)}</td></tr></tfoot>
+        <tfoot><tr><th class="ps-text" colspan="4">TOTAL</th><td>${fmt(totalGross)}</td><td>${fmt(sss)}</td><td>${fmt(phil)}</td><td>${fmt(pag)}</td><td>${fmt(peraa)}</td><td>${fmt(bir + thirteenTax)}</td><td>${fmt(cash)}</td><td>${fmt(otherAmount)}</td><td class="ps-net">${fmt(netPay)}</td></tr></tfoot>
       </table>
       <div class="ps-notes">
         ${emp.rankName ? '<div>Rank: ' + esc(emp.rankName) + '</div>' : ''}

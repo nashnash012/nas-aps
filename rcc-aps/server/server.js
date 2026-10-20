@@ -5,7 +5,8 @@ const hrisMock = require('./hris-mock');
 const { validateStateBody } = require('./state-validator');
 const db = require('./db');
 const { init } = require('./db/init');
-const { requireAuth } = require('./middleware/jwt');
+const { requireAuth, requireRole } = require('./middleware/jwt');
+const { actorFor, visibleState } = require('./state-access');
 
 const app = express();
 const PORT = parseInt(process.env.PORT) || 3000;
@@ -98,7 +99,7 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'RCC-APS Payroll System API', database: 'MySQL', hris: HRIS_API_URL ? 'connected' : 'mock' });
 });
 
-app.get('/api/db/status', async (req, res) => {
+app.get('/api/db/status', requireAuth, requireRole('admin','finance'), async (req, res) => {
   const st = await db.status();
   res.json({
     engine: 'MySQL',
@@ -111,7 +112,7 @@ app.get('/api/db/status', async (req, res) => {
   });
 });
 
-app.get('/api/hris/status', (req, res) => {
+app.get('/api/hris/status', requireAuth, requireRole('admin','finance'), (req, res) => {
   res.json({
     configured: !!HRIS_API_URL,
     url: HRIS_API_URL || null,
@@ -121,16 +122,19 @@ app.get('/api/hris/status', (req, res) => {
   });
 });
 
-app.get('/api/hris/sync', async (req, res) => {
-  const result = await fetchHrisData();
-  res.json({ source: result.source, employees: result.employees, attendance: result.attendance || [], leaveRecords: result.leaveRecords || [] });
+app.post('/api/hris/sync', requireAuth, requireRole('admin','finance'), async (req,res) => {
+  try {
+    const data = await fetchHrisData();
+    const result = await db.syncHrisData(data, req.user, req.body.stateRevision);
+    res.json({ok:true,...result});
+  } catch(error) { res.status(error.status || 500).json({ok:false,error:error.status ? error.message : 'Unable to sync HRIS records.'}); }
 });
 
 // ── STATE (MySQL-backed, frontend-blob compatible) ───────────
-app.get('/api/data', async (req, res) => {
+app.get('/api/data', requireAuth, async (req, res) => {
   try {
     const state = await db.assembleState();
-    res.json(state);
+    res.json(visibleState(state, actorFor(state, req.user)));
   } catch (e) {
     console.error('[DB] read failed:', e.message);
     res.status(500).json({ ok: false, error: 'Failed to read from MySQL.' });
@@ -143,75 +147,54 @@ app.post('/api/data', requireAuth, async (req, res) => {
     return res.status(400).json({ ok: false, error: check.error });
   }
   try {
-    await db.persistState(req.body);
-    res.json({ ok: true });
+    const state = await db.saveClientState(req.body, req.user);
+    res.json({ ok: true, state });
   } catch (e) {
     console.error('[DB] write failed:', e.message);
-    return res.status(500).json({ ok: false, error: 'Failed to persist data to MySQL.' });
+    return res.status(e.status || 500).json({ ok: false, error: e.status ? e.message : 'Failed to save records. Check references and required fields.' });
   }
 });
 
 // ── EMPLOYEES ────────────────────────────────────────────────
-app.get('/api/employees', async (req, res) => {
+app.get('/api/employees', requireAuth, async (req, res) => {
   try {
     const state = await db.assembleState();
-    res.json(state.users || []);
+    res.json(visibleState(state, actorFor(state, req.user)).users);
   } catch (e) {
     res.status(500).json({ ok: false, error: 'Failed to read employees.' });
   }
 });
 
 // ── LEAVE ENDPOINTS ──────────────────────────────────────────
-app.get('/api/leaves', async (req, res) => {
+app.get('/api/leaves', requireAuth, async (req, res) => {
   try {
     const state = await db.assembleState();
+    const scoped = visibleState(state, actorFor(state, req.user));
     res.json({
-      leaveTypes: state.leaveTypes || [],
-      nextLeaveTypeId: state.nextLeaveTypeId || 1,
-      leaveRecords: state.leaveRecords || []
+      leaveTypes: scoped.leaveTypes || [],
+      nextLeaveTypeId: scoped.nextLeaveTypeId || 1,
+      leaveRecords: scoped.leaveRecords || []
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: 'Failed to read leaves.' });
   }
 });
 
-app.post('/api/leave-types', requireAuth, async (req, res) => {
-  try {
-    const state = await db.assembleState();
-    state.leaveTypes = req.body.leaveTypes || state.leaveTypes || [];
-    state.nextLeaveTypeId = req.body.nextLeaveTypeId || state.nextLeaveTypeId || 1;
-    await db.persistState(state);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: 'Failed to save leave types.' });
-  }
-});
+for (const [route,key] of [['/api/leave-types','leaveTypes'],['/api/leave-records','leaveRecords']]) {
+  app.post(route, requireAuth, requireRole('finance'), async (req,res) => {
+    try {
+      if (!Array.isArray(req.body[key])) return res.status(400).json({ok:false,error:'Invalid records.'});
+      const state = await db.saveClientState({ [key]:req.body[key], stateRevision:req.body.stateRevision },req.user);
+      res.json({ok:true,state});
+    } catch(error) { res.status(error.status || 500).json({ok:false,error:error.status ? error.message : 'Unable to save records.'}); }
+  });
+}
 
-app.post('/api/leave-records', requireAuth, async (req, res) => {
-  try {
-    const state = await db.assembleState();
-    state.leaveRecords = req.body.leaveRecords || [];
-    await db.persistState(state);
-    res.json({ ok: true });
-  } catch (e) {
-    res.status(500).json({ ok: false, error: 'Failed to save leave records.' });
-  }
-});
-
-app.listen(PORT, async () => {
-  try {
-    const result = await init();
-    if (result.seeded) {
-      console.log('[MySQL] First-run auto-init complete — database created and seeded.');
-    }
-    const st = await db.status();
-    if (st.connected) {
-      console.log(`[MySQL] Connected to ${st.host}/${st.database} @ ${st.serverTime}`);
-    } else {
-      console.warn('[MySQL] WARNING: database unreachable — ' + st.error);
-    }
-  } catch (e) {
-    console.warn('[MySQL] WARNING: init failed — ' + e.message);
-  }
-  console.log(`RCC-APS Payroll System running at http://localhost:${PORT}`);
-});
+async function start() {
+  await init();
+  const st = await db.status();
+  if (!st.connected) throw new Error('MySQL database is unavailable: ' + st.error);
+  return app.listen(PORT, () => console.log('RCC-APS Payroll System running at http://localhost:' + PORT));
+}
+if (require.main === module) start().catch(error => { console.error('[Startup] ' + error.message); process.exitCode = 1; });
+module.exports = { app, start };

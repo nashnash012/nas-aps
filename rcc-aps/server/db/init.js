@@ -14,7 +14,8 @@ async function init() {
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
-    charset: 'utf8mb4'
+    charset: 'utf8mb4',
+    dateStrings: true
   });
 
   try {
@@ -29,7 +30,8 @@ async function init() {
 
   // Step 3: Run schema.sql (CREATE TABLE IF NOT EXISTS for all tables)
   const schemaPath = path.join(__dirname, 'sql', 'schema.sql');
-  const schema = fs.readFileSync(schemaPath, 'utf8');
+  if (!/^[A-Za-z0-9_]+$/.test(DB_NAME)) throw new Error('Invalid database name.');
+  const schema = fs.readFileSync(schemaPath, 'utf8').replace(/\brcc_aps\b/g, DB_NAME);
   const pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
     user: process.env.DB_USER || 'root',
@@ -90,6 +92,10 @@ async function init() {
     poolConn.release();
   }
 
+  const migrationConnection = await pool.getConnection();
+  try { await require('./upgrade-schema').upgradeSchema(migrationConnection); }
+  finally { migrationConnection.release(); }
+
   // Step 4: Check if users table is empty → seed if needed
   const [rows] = await pool.query('SELECT COUNT(*) AS cnt FROM users');
   if (rows[0].cnt > 0) {
@@ -135,6 +141,9 @@ async function init() {
 
   const seed = JSON.parse(fs.readFileSync(seedPath, 'utf8'));
   const db = require('../db');
+  for (const account of Object.values(seed.auth || {})) {
+    if (account.pass && !account.pass.startsWith('$2')) account.pass = await require('bcryptjs').hash(account.pass,10);
+  }
   await db.persistState(seed);
   console.log(`[MySQL] Seed data loaded: ${seed.users.length} users, ${seed.sssTable.length} SSS brackets, ${seed.birData.length} BIR brackets.`);
 

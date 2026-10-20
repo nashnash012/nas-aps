@@ -16,15 +16,19 @@ CREATE TABLE IF NOT EXISTS users (
   email          VARCHAR(200) NOT NULL DEFAULT '',
   role           VARCHAR(50)  NOT NULL DEFAULT 'Employee',
   status         VARCHAR(20)  NOT NULL DEFAULT 'Active',
-  date           VARCHAR(40)  NOT NULL DEFAULT '',
+  date           DATE NULL DEFAULT NULL,
   salary         DECIMAL(12,2) NOT NULL DEFAULT 0,
   classification VARCHAR(50)  NOT NULL DEFAULT 'Non-Teaching',
   department     VARCHAR(120) NOT NULL DEFAULT '',
-  hireDate       VARCHAR(30)  NOT NULL DEFAULT '',
+  hireDate       DATE NULL DEFAULT NULL,
   hourlyRate     DECIMAL(10,2) NOT NULL DEFAULT 0,
   absenceDays    DECIMAL(6,2) NOT NULL DEFAULT 0,
   hoursWorked    DECIMAL(8,2) NOT NULL DEFAULT 0,
-  endDate        VARCHAR(30)  NOT NULL DEFAULT '',
+  endDate        DATE NULL DEFAULT NULL,
+  rankId         INT NULL DEFAULT NULL,
+  rankName       VARCHAR(120) NOT NULL DEFAULT '',
+  rateCustom     TINYINT(1) NOT NULL DEFAULT 0,
+  schoolLevel    VARCHAR(20) NOT NULL DEFAULT '',
   UNIQUE KEY uk_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -63,15 +67,15 @@ CREATE TABLE IF NOT EXISTS bonus_types (
   value       DECIMAL(10,2) NOT NULL DEFAULT 0,
   `desc`      VARCHAR(255) NOT NULL DEFAULT '',
   status      VARCHAR(20)  NOT NULL DEFAULT 'Active',
-  releaseDate VARCHAR(30)  NOT NULL DEFAULT '',
-  endDate     VARCHAR(30)  NOT NULL DEFAULT ''
+  releaseDate DATE NULL DEFAULT NULL,
+  endDate     DATE NULL DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── BONUS PAYOUTS (key: empId + year) ────────────────────────
 CREATE TABLE IF NOT EXISTS bonus_payouts (
   empId INT NOT NULL,
   year  INT NOT NULL DEFAULT 0,
-  date  VARCHAR(40) NOT NULL DEFAULT '',
+  date  DATE NULL DEFAULT NULL,
   PRIMARY KEY (empId, year)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -106,11 +110,16 @@ CREATE TABLE IF NOT EXISTS payroll_records (
   pag           DECIMAL(12,2) NOT NULL DEFAULT 0,
   bir           DECIMAL(12,2) NOT NULL DEFAULT 0,
   cash          DECIMAL(12,2) NOT NULL DEFAULT 0,
-  bonuses       VARCHAR(255) NOT NULL DEFAULT '[]',
+  bonuses       MEDIUMTEXT NOT NULL DEFAULT '[]',
   subjectBreakdown TEXT,
   customDeds    TEXT,
+  salaryBase    DECIMAL(12,2) NULL,
+  absenceWorkDays DECIMAL(6,2) NULL,
+  absenceDays   DECIMAL(6,2) NULL,
+  teachingSemester VARCHAR(20) NULL,
+  teachingSchoolYear VARCHAR(30) NULL,
   payNote       VARCHAR(500) DEFAULT '',
-  date          VARCHAR(40)  NOT NULL DEFAULT '',
+  date          DATE NULL DEFAULT NULL,
   KEY idx_payroll_emp (empId),
   KEY idx_payroll_period (year, month)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -221,18 +230,18 @@ CREATE TABLE IF NOT EXISTS leave_records (
   id        INT AUTO_INCREMENT PRIMARY KEY,
   empId     INT NOT NULL,
   typeId    INT NOT NULL,
-  startDate VARCHAR(20) NOT NULL DEFAULT '',
-  endDate   VARCHAR(20) NOT NULL DEFAULT '',
-  days      INT NOT NULL DEFAULT 0
+  startDate DATE NULL DEFAULT NULL,
+  endDate   DATE NULL DEFAULT NULL,
+  days      DECIMAL(6,2) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── ATTENDANCE (imported from HRIS) ──────────────────────────
 CREATE TABLE IF NOT EXISTS attendance (
   id            INT AUTO_INCREMENT PRIMARY KEY,
-  empId         INT NOT NULL DEFAULT 0,
+  empId         INT NULL DEFAULT NULL,
   employeeId    VARCHAR(40) NOT NULL DEFAULT '',
   employeeEmail VARCHAR(200) NOT NULL DEFAULT '',
-  date          VARCHAR(20) NOT NULL DEFAULT '',
+  date          DATE NULL DEFAULT NULL,
   clockInAt     VARCHAR(40) NOT NULL DEFAULT '',
   clockOutAt    VARCHAR(40) NOT NULL DEFAULT '',
   hours         DECIMAL(6,2) NOT NULL DEFAULT 0,
