@@ -112,6 +112,7 @@ function tlDaysFormat(codes) {
 }
 
 function tlDaysCloseAll() {
+  // Hide only — the node must survive in <body> so its row can reopen it.
   document.querySelectorAll('.tl-days-menu.show').forEach(m => m.classList.remove('show'));
 }
 
@@ -119,11 +120,20 @@ function tlDaysToggle(ev) {
   const inp = ev.currentTarget;
   ev.stopPropagation();
   const wrap = inp.closest('.tl-days-pop');
-  const menu = wrap ? wrap.querySelector('.tl-days-menu') : null;
+  // After the first open the menu lives in <body> — remember it on the wrapper.
+  const menu = wrap ? (wrap.__menu || wrap.querySelector('.tl-days-menu')) : null;
   if (!menu) return;
   const wasOpen = menu.classList.contains('show');
   tlDaysCloseAll();
   if (wasOpen) return;
+  // Move to <body> so position:fixed anchors to the viewport — ancestors
+  // like .dash-content run fadeUp animations whose forwards fill keeps a
+  // transform, which would otherwise capture the fixed menu (offset bug).
+  if (menu.parentNode !== document.body) {
+    document.body.appendChild(menu);
+    wrap.__menu = menu;
+  }
+  menu.__input = inp; // menu lives in <body> — remember which input owns it
   const codes = tlDaysParse(inp.value);
   menu.querySelectorAll('input[type=checkbox]').forEach(cb => { cb.checked = codes.indexOf(cb.value) >= 0; });
   const r = inp.getBoundingClientRect();
@@ -136,11 +146,11 @@ function tlDaysToggle(ev) {
 }
 
 function tlDaysChanged(cb) {
-  const wrap = cb.closest('.tl-days-pop');
-  if (!wrap) return;
-  const inp = wrap.querySelector('input[data-f=days]');
+  const menu = cb.closest ? cb.closest('.tl-days-menu') : null;
+  if (!menu) return;
+  const inp = menu.__input; // set by tlDaysToggle (menu may live in <body>)
   const codes = [];
-  wrap.querySelectorAll('.tl-days-menu input[type=checkbox]:checked').forEach(x => codes.push(x.value));
+  menu.querySelectorAll('input[type=checkbox]:checked').forEach(x => codes.push(x.value));
   if (inp) {
     inp.value = tlDaysFormat(codes);
     inp.dispatchEvent(new Event('input')); // fires inline oninput → tlPreview (hours recompute)
@@ -722,7 +732,7 @@ function renderFinTeachingLoads() {
 // position:fixed, so scrolling would detach it from its input).
 if (typeof document !== 'undefined') {
   document.addEventListener('click', function(e) {
-    if (!e.target || !e.target.closest || !e.target.closest('.tl-days-pop')) tlDaysCloseAll();
+    if (!e.target || !e.target.closest || !e.target.closest('.tl-days-pop, .tl-days-menu')) tlDaysCloseAll();
   });
   document.addEventListener('keydown', function(e) { if (e.key === 'Escape') tlDaysCloseAll(); });
   document.addEventListener('scroll', function() { tlDaysCloseAll(); }, true);
