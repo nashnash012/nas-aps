@@ -2,6 +2,8 @@
 // Employee-submitted schedule of classes + workload, per semester+SY.
 // Header (name/level/rank/rate) is auto from the profile — employee
 // only encodes the schedule and (for Elementary/Non-Teaching) absences.
+// Finance may change the teacher's rank in the TL form (rate follows
+// the rank table); the employee side stays read-only.
 // Finance can view/edit all records. Formula parameters (workDays,
 // hoursPerWorkload) live in Formula Management.
 
@@ -338,7 +340,9 @@ function tlFormMarkup(pfx) {
         '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px 16px">' +
           '<div class="fg"><label class="fl">Name</label><input class="fi" id="' + pfx + 'Name" readonly placeholder="—"/></div>' +
           '<div class="fg"><label class="fl">Level</label><input class="fi" id="' + pfx + 'Level" readonly placeholder="—"/></div>' +
-          '<div class="fg"><label class="fl">Rank</label><input class="fi" id="' + pfx + 'Rank" readonly placeholder="—"/></div>' +
+          (pfx === 'finTl'
+            ? '<div class="fg"><label class="fl">Rank</label><select class="fi" id="' + pfx + 'Rank" onchange="tlRankChange()"></select></div>'
+            : '<div class="fg"><label class="fl">Rank</label><input class="fi" id="' + pfx + 'Rank" readonly placeholder="—"/></div>') +
           '<div class="fg"><label class="fl">Rate</label><input class="fi" id="' + pfx + 'Rate" readonly placeholder="—"/></div>' +
           '<div class="fg"><label class="fl">School Year</label><input class="fi" id="' + pfx + 'SchoolYear" placeholder="2026-2027" onchange="tlSyChange(\'' + pfx + '\')"/></div>' +
         '</div>' +
@@ -448,8 +452,16 @@ function tlRenderForm(pfx, empId, sem) {
     const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
     set(pfx + 'Name', emp.first + ' ' + emp.last);
     set(pfx + 'Level', level);
-    set(pfx + 'Rank', isNT ? rank : (rank + (emp.rateCustom ? ' (custom rate)' : '')));
-    set(pfx + 'Rate', fmt(r) + ' ' + tlUnitOf(emp));
+    if (pfx === 'finTl') {
+      const rankSel = document.getElementById(pfx + 'Rank');
+      if (rankSel) {
+        if (isNT) { rankSel.innerHTML = ''; rankSel.disabled = true; }
+        else { rankSel.disabled = false; fillRankSelect(level, emp.rankId, pfx + 'Rank'); }
+      }
+    } else {
+      set(pfx + 'Rank', isNT ? rank : (rank + (emp.rateCustom ? ' (custom rate)' : '')));
+    }
+    set(pfx + 'Rate', fmt(r) + ' ' + tlUnitOf(emp) + (emp.rateCustom ? ' (custom rate)' : ''));
     set(pfx + 'SchoolYear', ctx.sy);
 
     // record for emp+sem+sy
@@ -542,6 +554,26 @@ function tlEmployeeChange(empId) {
   const ctx = tlCtx.finTl;
   ctx.empId = parseInt(empId) || ctx.empId;
   tlRenderForm('finTl', ctx.empId, ctx.sem);
+}
+
+function tlRankChange() {
+  if (!loggedInUser || (loggedInUser.role !== 'finance' && loggedInUser.role !== 'admin')) return;
+  const ctx = tlCtx && tlCtx.finTl;
+  if (!ctx) return;
+  const emp = users.find(u => u.id === ctx.empId);
+  if (!emp) return;
+  const sel = document.getElementById('finTlRank');
+  if (!sel) return;
+  const id = parseInt(sel.value) || 0;
+  const r = (id && typeof rankById === 'function') ? rankById(id) : null;
+  emp.rankId = id;
+  emp.rankName = r ? r.rank : '';
+  if (r) { emp.rateCustom = false; emp.hourlyRate = parseFloat(r.rate) || 0; }
+  const rateEl = document.getElementById('finTlRate');
+  if (rateEl) rateEl.value = fmt(tlRateOf(emp)) + ' ' + tlUnitOf(emp) + (emp.rateCustom ? ' (custom rate)' : '');
+  if (typeof renderFinTeachingLoads === 'function') renderFinTeachingLoads();
+  saveDemo();
+  showToast('✅', r ? ('Rank updated — ' + r.rank + ' · ' + fmt(tlRateOf(emp)) + ' ' + tlUnitOf(emp)) : 'Rank cleared');
 }
 
 function tlOpenFinanceForm(empId, sem) {

@@ -94,8 +94,8 @@ function ranksByDept(dept) {
 }
 
 // ── Rank select helper (for user modal) ───────────────────────
-function fillRankSelect(schoolLevel, selectedId) {
-  const sel = document.getElementById('uRank');
+function fillRankSelect(schoolLevel, selectedId, selId) {
+  const sel = document.getElementById(selId || 'uRank');
   if (!sel) return;
   const ranks = ranksByDept(schoolLevel);
   const unit = rateUnit(schoolLevel);
