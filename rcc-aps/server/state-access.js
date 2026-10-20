@@ -13,6 +13,13 @@ function visibleState(state, actor) {
   const result = structuredClone(state);
   result.auth = {}; // Passwords and hashes never leave the server.
   result.profiles = state.profiles?.[actor.id] ? { [actor.id]: state.profiles[actor.id] } : {};
+  if (actor.role === 'admin') {
+    for (const user of state.users) {
+      if (user.id !== actor.id && state.profiles?.[user.id]?.photo) {
+        result.profiles[user.id] = { photo: state.profiles[user.id].photo };
+      }
+    }
+  }
   if (actor.role === 'finance') return result;
   result.users = actor.role === 'admin'
     ? state.users.map(user => user.id === actor.id ? user : pick(user, [...metadata,'rankId','rankName']))

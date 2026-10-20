@@ -1,6 +1,14 @@
 // Profile photos belong to the signed-in account and are saved immediately.
 let profilePhotoBusy = false;
 
+function userPhotoMarkup(emp) {
+  const photo = PROFILES[emp.id]?.photo || '';
+  if (!/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(photo)) {
+    return esc(((emp.first[0] || '') + (emp.last[0] || '')).toUpperCase());
+  }
+  return `<img src="${photo}" alt="${esc(displayName(emp))} profile photo" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit">`;
+}
+
 function chooseProfilePhoto() {
   if (!loggedInUser || profilePhotoBusy) return;
   const input = document.getElementById('profilePhotoInput');

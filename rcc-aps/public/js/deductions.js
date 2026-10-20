@@ -613,7 +613,7 @@ function renderUserTable() {
   tbody.innerHTML = filtered.map(u=>`
     <tr>
       <td><div style="display:flex;align-items:center;gap:10px">
-        <div style="width:34px;height:34px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${initials(u.first,u.last)}</div>
+        <div style="width:34px;height:34px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${userPhotoMarkup(u)}</div>
         <div><div style="font-weight:600">${esc(displayName(u))} <span class="badge ${EMP_CLASS[u.classification||'Non-Teaching']?.badge||'b-gray'}" style="margin-left:6px;font-size:10px">${u.classification||'Non-Teaching'}</span></div><div style="font-size:11px;color:var(--text-muted)">#USR-00${u.id}</div></div>
       </div></td>
       <td>${esc(u.email)}</td>
@@ -896,7 +896,7 @@ function viewUser(id) {
   viewCurrentUserId = id;
   document.getElementById('viewUserBody').innerHTML = `
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
-      <div style="width:56px;height:56px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700">${initials(u.first,u.last)}</div>
+      <div style="width:56px;height:56px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700">${userPhotoMarkup(u)}</div>
       <div><div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--maroon-dark)">${esc(displayName(u))}</div><div style="font-size:12px;color:var(--text-muted)">#USR-00${u.id} &nbsp;·&nbsp; Added ${u.date}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">

@@ -81,6 +81,7 @@ async function run() {
   assert.deepEqual(Object.keys(employee.profiles),['3']);
   assert.equal((await request('/api/hris/sync',tokens.employee,{stateRevision:employee.stateRevision})).status,403);
   const admin=(await request('/api/data',tokens.admin)).data;
+  assert.deepEqual(admin.profiles[3],{photo:'data:image/jpeg;base64,AQID'});
   assert.equal(admin.users.find(user=>user.id===3).salary,undefined);
   assert.equal(admin.users.find(user=>user.id===3).hourlyRate,undefined);
   assert.equal(admin.payrollRecords.length,0);

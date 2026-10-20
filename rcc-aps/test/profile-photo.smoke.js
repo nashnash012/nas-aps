@@ -6,6 +6,13 @@ let saved=0;const messages=[],draws=[],revoked=[];
 class TestImage {constructor(){this.naturalWidth=800;this.naturalHeight=400;}set src(value){queueMicrotask(()=>this.onload());}}
 const ctx=vm.createContext({loggedInUser:{id:3},users:[{id:3,first:'Paolo',last:'Mendoza'},{id:4,first:'Ana',last:'Reyes'}],PROFILES:{3:{empPhone:'0917',empAddr:'City'},4:{photo:'data:image/jpeg;base64,BAUG'}},document:{getElementById:id=>elements[id],querySelectorAll:()=>[],createElement:tag=>tag==='canvas'?{getContext:()=>({fillRect(){},drawImage(...args){draws.push(args);}}),toDataURL:()=> 'data:image/jpeg;base64,AQID'}:{style:{}}},Image:TestImage,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL:value=>revoked.push(value)},displayName:u=>u.first+' '+u.last,saveDemo:async()=>{saved++;return true;},showToast:(...message)=>messages.push(message),queueMicrotask});
 vm.runInContext(fs.readFileSync(__dirname+'/../public/js/profile-photo.js','utf8'),ctx);
+ctx.esc = value => String(value).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
+assert.match(vm.runInContext('userPhotoMarkup(users[1])',ctx), /src="data:image\/jpeg;base64,BAUG"/);
+ctx.PROFILES[4].photo='" onerror="alert(1)';
+assert.equal(vm.runInContext('userPhotoMarkup(users[1])',ctx),'AR');
+ctx.PROFILES[4].photo='data:image/jpeg;base64,BAUG';
+const directorySource=fs.readFileSync(__dirname+'/../public/js/deductions.js','utf8');
+assert.equal((directorySource.match(/\$\{userPhotoMarkup\(u\)\}/g)||[]).length,2);
 (async()=>{
  vm.runInContext('chooseProfilePhoto()',ctx);assert.equal(input.clicked,true);
  input.files=[{type:'image/jpeg',size:1000}];

@@ -572,7 +572,10 @@ function showAdmPage(id, btn) {
   const bc = document.getElementById('admBreadcrumb');
   if (bc) bc.textContent = labels[id] || 'Dashboard';
   if (id === 'admDashboard') { renderIdentity(); updateAdminStats(); renderAdminRecentUsers(); }
-  if (id === 'admUsers') renderUserTable();
+  if (id === 'admUsers') {
+    renderUserTable();
+    if (!stateSavePending) void syncDemo();
+  }
   if (id === 'admDeduction') renderAdmDedTables();
   if (id === 'admRanks') { if (typeof renderAdmRankTable === 'function') renderAdmRankTable(); }
   if (id === 'admMyPayslip') renderAdmPayslipList();
