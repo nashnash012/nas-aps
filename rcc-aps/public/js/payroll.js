@@ -604,6 +604,7 @@ function syncCalcTabUI() {
   const attLabel = document.getElementById('calcAttLabel');
   const explRow = document.getElementById('calcExplanationRow');
   const rateHdr = document.getElementById('calcRateHdr');
+  const qtyHdr = document.getElementById('calcQtyHdr');
   const grossWrap = document.getElementById('calcGrossLabel');
   // Only the Absences field is NT/Elem-only — the row stays visible so
   // Cash Advance works for every Payroll Group (incl. HS/College/Grad).
@@ -611,6 +612,7 @@ function syncCalcTabUI() {
   if (attLabel) attLabel.textContent = (isNT || isElem) ? 'Absences (days, ÷' + WORK_DAYS + ')' : 'N/A';
   if (explRow) explRow.style.display = isExpl ? 'block' : 'none';
   if (rateHdr) rateHdr.textContent = group === 'High School' ? 'Rate per Workload (₱)' : 'Rate per Hour (₱)';
+  if (qtyHdr) qtyHdr.textContent = group === 'High School' ? 'Qty (Workloads)' : 'Qty (Hrs/Month)';
   if (grossWrap) {
     grossWrap.style.display = (isNT || isElem) ? '' : 'none';
     const grossLbl = document.getElementById('calcGrossFieldLabel');
@@ -714,13 +716,16 @@ function latestTeachingLoads(empId) {
     semOrder(b.semester) - semOrder(a.semester) ||
     (b.id || 0) - (a.id || 0))[0];
   const weeks = ((typeof WORK_DAYS !== 'undefined' && WORK_DAYS) ? WORK_DAYS : 22) / 5;
+  const hpw = ((typeof HOURS_PER_WORKLOAD !== 'undefined' && HOURS_PER_WORKLOAD) ? HOURS_PER_WORKLOAD : 3);
   return teachingLoadClasses
     .filter(c => c.recordId === latest.id)
     .map(c => ({
       subject: c.subject || '',
       level: c.level || '',
       days: c.days || '',
-      qty: Math.round((parseFloat(c.hoursPerWeek) || 0) * weeks * 2) / 2
+      qty: Math.round((parseFloat(c.hoursPerWeek) || 0) * weeks * 2) / 2,
+      // Workloads per month — what Finance encodes on the High School tab.
+      wlQty: Math.round(((parseFloat(c.hoursPerWeek) || 0) * weeks / hpw) * 2) / 2
     }));
 }
 
@@ -758,9 +763,10 @@ function loadEmployeeData() {
   const hasData = periodHasData(emp.id, monthNum, year);
   if (isExplTab) {
     // High School / College + Graduate: pre-fill the EXPLANATION
-    // editor from the employee's latest Teaching Load record. Subject,
-    // days and hrs/month come from the load schedule; rate is auto-filled
-    // from the rank table.
+    // editor from the employee's latest Teaching Load record. Subject and
+    // days come from the load schedule; qty is hrs/month for College/Grad
+    // but workloads/month for High School; rate is auto-filled from the
+    // rank table (per hour / per workload respectively).
     const tbody = document.getElementById('calcSubjectBody');
     if (tbody) tbody.innerHTML = '';
     const rate = teacherRate(emp);
@@ -772,7 +778,7 @@ function loadEmployeeData() {
         const ranks = ranksByDept(l.level);
         if (ranks && ranks.length) rowRate = parseFloat(ranks[0].rate) || rowRate;
       }
-      addCalcSubject({ subject: l.subject || '', level: l.level || '', days: l.days || '', qty: l.qty || 0, rate: rowRate });
+      addCalcSubject({ subject: l.subject || '', level: l.level || '', days: l.days || '', qty: (group === 'High School' ? l.wlQty : l.qty) || 0, rate: rowRate });
     });
     salEl.value = rate || '';
     attEl.value = '';
@@ -961,7 +967,8 @@ function computePayroll() {
   const isExplTab = group === 'High School' || group === 'College / Graduate';
   if (isExplTab) {
     // Gross comes from the EXPLANATION editor rows.
-    // High School: 3 hours = 1 workload, paid at teacherRate per workload.
+    // High School: qty IS workloads (hrs/month ÷ HOURS_PER_WORKLOAD at
+    // prefill time), paid at the rank table's per-workload rate — qty × rate.
     // College / Graduate: paid at teacherRate per hour.
     const R = teacherRate(emp);
     subjectBreakdown = [];
@@ -979,23 +986,15 @@ function computePayroll() {
       const subject = isIncr ? 'Increment - S.Y' : (nameEl ? nameEl.value : '');
       const days = isIncr ? '' : (daysEl ? daysEl.value : '');
       const level = lvEl ? (lvEl.value || '') : '';
-      let amount;
-      if (!isIncr && group === 'High School') {
-        // Per-hour rate = per-workload rate ÷ hours-per-workload
-        const wlRate = parseFloat((rate / HOURS_PER_WORKLOAD).toFixed(2));
-        amount = parseFloat((qty * wlRate).toFixed(2));
-        subjectBreakdown.push({ type:'subject', subject, days, level, qty, rate: wlRate, amount });
-      } else {
-        amount = parseFloat((qty * rate).toFixed(2));
-        subjectBreakdown.push({ type: isIncr ? 'increment' : 'subject', subject, days, level, qty, rate, amount });
-      }
+      const amount = parseFloat((qty * rate).toFixed(2));
+      subjectBreakdown.push({ type: isIncr ? 'increment' : 'subject', subject, days, level, qty, rate, amount });
       subjGross += amount;
       totalQty += qty;
     });
     gross = parseFloat(subjGross.toFixed(2));
     const Rfmt = R.toLocaleString('en-PH',{minimumFractionDigits:2});
     meta = group === 'High School'
-      ? `${totalQty} hrs ÷ ${HOURS_PER_WORKLOAD} = ${totalQty/HOURS_PER_WORKLOAD} workload(s) × ₱${Rfmt} = ${fmt(gross)}`
+      ? `${totalQty} workload(s) × ₱${Rfmt} = ${fmt(gross)}`
       : `${totalQty} hrs × ₱${Rfmt} = ${fmt(gross)}`;
   } else if (isTeaching) {
     // Elementary: monthly rate with absences deducted (÷ WORK_DAYS).
@@ -1059,9 +1058,9 @@ function computePayroll() {
       const lvlTag = (!isIncr && b.level) ? ' <span style="display:inline-block;padding:1px 7px;border-radius:10px;background:var(--gold-pale);color:var(--maroon-dark);font-size:11px;font-weight:700;border:1px solid var(--gold)">' + esc(b.level) + '</span>' : '';
       const label = (isIncr ? '📈 Increment - S.Y' : '📚 ' + esc(b.subject || '')) + lvlTag;
       const qtyLabel = (group === 'High School' && !isIncr)
-        ? (b.qty / HOURS_PER_WORKLOAD) + ' workload(s)' + (b.days ? ' · ' + esc(b.days) : '')
+        ? b.qty + ' workload(s)' + (b.days ? ' · ' + esc(b.days) : '')
         : b.qty + ' hrs' + (b.days && !isIncr ? ' · ' + esc(b.days) : '');
-      earningsHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">' + label + ' — ' + qtyLabel + ' × ₱' + fmt(b.rate) + '</span><span style="font-weight:600">+' + fmt(b.amount) + '</span></div>';
+      earningsHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">' + label + ' — ' + qtyLabel + ' × ' + fmt(b.rate) + '</span><span style="font-weight:600">+' + fmt(b.amount) + '</span></div>';
     });
     earningsHtml += '<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F5F0EA;font-size:13.5px"><span style="color:var(--text-muted)">Gross from Subjects</span><span style="font-weight:600">' + fmt(gross) + '</span></div>';
   } else {

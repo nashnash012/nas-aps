@@ -120,6 +120,8 @@ if (fnMatch) {
   eq('TL prefill days kept', rows[0] && rows[0].days, 'MWF');
   eq('TL prefill qty 3h/wk×4.4wk', rows[0] && rows[0].qty, 13);
   eq('TL prefill qty 1.5h/wk×4.4wk', rows[1] && rows[1].qty, 6.5);
+  eq('TL prefill wlQty 13.2h÷3', rows[0] && rows[0].wlQty, 4.5);
+  eq('TL prefill wlQty 6.6h÷3', rows[1] && rows[1].wlQty, 2);
   eq('TL prefill carries level (College)', rows[0] && rows[0].level, 'College');
   eq('TL prefill carries level (Grad)', rows[1] && rows[1].level, 'Graduate School');
   eq('TL prefill no record -> []', latestTeachingLoads(999).length, 0);
