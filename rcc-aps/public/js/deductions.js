@@ -855,6 +855,7 @@ async function saveUser() {
   err.classList.remove('show');
   if (!first||!last) { err.textContent='Please enter first and last name.'; err.classList.add('show'); return; }
   if (!email||!email.includes('@')) { err.textContent='Please enter a valid email address.'; err.classList.add('show'); return; }
+  if (!/^[^\s@]+@rcc\.edu\.ph$/i.test(email)) { err.textContent='Only @rcc.edu.ph school emails can be registered.'; err.classList.add('show'); return; }
   if (!editingUserId&&!pass) { err.textContent='Please set an initial password.'; err.classList.add('show'); return; }
   if (!hidePay && (!salary||salary<=0)) { err.textContent='Please enter a valid monthly basic salary (required for all personnel — benefits basis).'; err.classList.add('show'); return; }
   if (!hidePay && classification==='Teaching' && (!hourlyRate||hourlyRate<=0)) { err.textContent='Teaching personnel require a valid hourly rate (pay = rate × hours worked).'; err.classList.add('show'); return; }

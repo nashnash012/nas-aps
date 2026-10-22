@@ -49,12 +49,20 @@ async function handleLogin() {
     document.getElementById('errText').textContent='Please enter your email and password.';
     err.classList.add('show'); return;
   }
+  if (!/^[^\s@]+@rcc\.edu\.ph$/i.test(email)) {
+    document.getElementById('errText').textContent = 'Use your @rcc.edu.ph school email.';
+    err.classList.add('show'); return;
+  }
   const res = await checkLogin(email, pass);
   if (!res.ok) {
     document.getElementById('errText').textContent = res.msg;
     err.classList.add('show'); return;
   }
-  const u = res.user;
+  await completeLogin(res.user);
+}
+
+async function completeLogin(u) {
+  const err = document.getElementById('errBox');
   loggedInUser = { id: u.id, email: u.email, role: u.role, label: u.label, icon: u.role === 'admin' ? '🔧' : u.role === 'finance' ? '💼' : '👤', page: u.page, status: u.status };
   if (!await syncDemo()) {
     clearAuthToken(); loggedInUser = null;
@@ -91,6 +99,8 @@ async function handleLogin() {
 }
 
 function logout() {
+  if (window.google?.accounts?.id) google.accounts.id.disableAutoSelect();
+  if (typeof initGoogleSignIn === 'function') void initGoogleSignIn();
   if (typeof closeSidebar==='function') closeSidebar();
   clearAuthToken();
   localStorage.removeItem(DEMO_KEY);

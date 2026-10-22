@@ -1,4 +1,5 @@
 'use strict';
+const { isSchoolEmail } = require('./school-identity');
 // HRIS credentials are consumed only on the server, never sent to the browser.
 function hrisSubmission(current, data, actor) {
   const submitted = { stateRevision:current.stateRevision, users:structuredClone(current.users), auth:{}, leaveTypes:structuredClone(current.leaveTypes), leaveRecords:structuredClone(current.leaveRecords), attendance:structuredClone(current.attendance) };
@@ -6,6 +7,7 @@ function hrisSubmission(current, data, actor) {
   let nextUser = current.nextUserId, nextLeave = current.nextLeaveRecordId, nextType = current.nextLeaveTypeId;
   for (const entry of data.employees || []) {
     const email = String(entry.email || '').toLowerCase();
+    if (!isSchoolEmail(email)) { counts.skipped++; continue; }
     let user = submitted.users.find(user => user.email.toLowerCase() === email);
     if (actor.role === 'admin') {
       if (!user) {

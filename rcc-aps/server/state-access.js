@@ -1,5 +1,6 @@
 'use strict';
 const metadata = ['id','first','last','email','role','status','date','classification','department','hireDate','endDate','schoolLevel'];
+const { isSchoolEmail } = require('./school-identity');
 const compensation = ['salary','hourlyRate','absenceDays','hoursWorked','rankId','rankName','rateCustom'];
 const financeKeys = ['cashAdvances','bonusTypes','bonusPayouts','deductionCategories','payrollRecords','sssTable','philData','pagData','birData','dedMeta','bonusExemptionLimit','workDays','leaveTypes','leaveRecords','attendance','teacherRanks','hoursPerWorkload','teachingLoadRecords','teachingLoadClasses'];
 const ownRecords = (rows, id) => (rows || []).filter(row => row.empId === id);
@@ -62,6 +63,7 @@ async function mergeState(current, submitted, actor) {
       const patch = pick(incoming,metadata);
       if (!['Employee','Finance Officer','System Admin'].includes(patch.role) || !['Active','Inactive'].includes(patch.status)) throw httpError('Invalid account role or status.');
       if (!patch.first || !patch.last || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(patch.email || '')) throw httpError('Invalid account details.');
+      if (!isSchoolEmail(patch.email)) throw httpError('Only @rcc.edu.ph school emails can be registered.');
       if (existing) Object.assign(existing,patch);
       else state.users.push({ ...patch, salary:0, hourlyRate:0, rankId:0, rankName:'', rateCustom:false, hoursWorked:0, absenceDays:0 });
       const originalAuth = Object.values(current.auth).find(entry => entry.id === incoming.id);

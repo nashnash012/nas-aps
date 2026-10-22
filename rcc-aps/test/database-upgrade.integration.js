@@ -42,7 +42,7 @@ async function run() {
   }
   const password = 'test-only-secure-password';
   const hash = await require('bcryptjs').hash(password,10);
-  const users = ['admin','finance','employee'].map((role,index) => ({id:index+1,first:role,last:'Test',email:role+'@test.local',role:['System Admin','Finance Officer','Employee'][index],status:'Active',classification:index===2?'Teaching':'Non-Teaching',schoolLevel:index===2?'College':'',department:'CCS',salary:20000,hourlyRate:index===2?190:0,rankId:index===2?3:0,hireDate:'2025-06-01',date:'Oct 20, 2026'}));
+  const users = ['admin','finance','employee'].map((role,index) => ({id:index+1,first:role,last:'Test',email:role+'@rcc.edu.ph',role:['System Admin','Finance Officer','Employee'][index],status:'Active',classification:index===2?'Teaching':'Non-Teaching',schoolLevel:index===2?'College':'',department:'CCS',salary:20000,hourlyRate:index===2?190:0,rankId:index===2?3:0,hireDate:'2025-06-01',date:'Oct 20, 2026'}));
   const auth = Object.fromEntries(users.map((user,index)=>[user.id,{id:user.id,email:user.email,role:['admin','finance','employee'][index],page:['adminPage','financePage','empPage'][index],label:user.role,status:'Active',pass:hash}]));
   await db.persistState({users,auth,teacherRanks:[{id:3,department:'College',rank:'Instructor 1',rate:190}],profiles:{3:{empPhone:'0917',empAddr:'City',photo:'data:image/jpeg;base64,AQID'}},leaveTypes:[{id:1,name:'Unpaid',isPaid:false}],leaveRecords:[{id:1,empId:3,typeId:1,startDate:'2026-10-20',endDate:'2026-10-20',days:0.5}],workDays:22,hoursPerWorkload:3,payrollRecords:[{empId:3,name:'employee Test',month:10,year:2026,period:'October 2026',gross:20000,net:19000,date:'Oct 20, 2026',salaryBase:20000,absenceWorkDays:26,absenceDays:0.5,teachingSemester:'2nd',teachingSchoolYear:'2026-2027',customDeds:[{name:'PERAA',amount:500}],bonuses:Array.from({length:6},(_,index)=>({name:'Long bonus description '+index+' '.repeat(50),amount:100}))}]});
   const state = await db.assembleState();
@@ -73,7 +73,7 @@ async function run() {
   assert.equal((await request('/api/hris/sync',null,{stateRevision:0})).status,401);
   const tokens={};
   for (const role of ['admin','finance','employee']) {
-    const login=await request('/api/auth/login',null,{email:role+'@test.local',password});
+    const login=await request('/api/auth/login',null,{email:role+'@rcc.edu.ph',password});
     assert.equal(login.status,200);tokens[role]=login.data.token;
   }
   const employee=(await request('/api/data',tokens.employee)).data;
@@ -109,7 +109,7 @@ async function run() {
   const savedAdmin=await request('/api/data',tokens.admin,freshAdmin);assert.equal(savedAdmin.status,200);
   const afterAdmin=await db.assembleState();assert.equal(afterAdmin.auth[3].pass,originalHash);assert.equal(afterAdmin.users.find(user=>user.id===3).salary,afterConcurrent.users.find(user=>user.id===3).salary);
   const newAdmin=(await request('/api/data',tokens.admin)).data;
-  newAdmin.users.push({...users[2],id:4,email:'new@test.local',first:'New',salary:99999});
+  newAdmin.users.push({...users[2],id:4,email:'new@rcc.edu.ph',first:'New',salary:99999});
   newAdmin.auth={4:{id:4,pass:password}};
   assert.equal((await request('/api/data',tokens.admin,newAdmin)).status,200);
   const afterNew=await db.assembleState();assert.equal(afterNew.users.find(user=>user.id===4).salary,0);assert.ok(await require('bcryptjs').compare(password,afterNew.auth[4].pass));
