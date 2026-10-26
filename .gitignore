@@ -12,3 +12,5 @@ Thumbs.db
 
 # Temp / backups
 RccAPS_COPY.html
+.vercel
+.env*
