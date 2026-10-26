@@ -11,12 +11,16 @@ async function init() {
 
   // Step 1: Connect without selecting a database
   const conn = await mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    charset: 'utf8mb4',
-    dateStrings: true
-  });
+  host: process.env.DB_HOST || 'localhost',
+  port: Number(process.env.DB_PORT || 3306),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  charset: 'utf8mb4',
+  dateStrings: true,
+  ...(process.env.TIDB_ENABLE_SSL === 'true'
+    ? { ssl: { minVersion: 'TLSv1.2' } }
+    : {})
+});
 
   try {
     // Step 2: Create database if not exists
@@ -33,12 +37,17 @@ async function init() {
   if (!/^[A-Za-z0-9_]+$/.test(DB_NAME)) throw new Error('Invalid database name.');
   const schema = fs.readFileSync(schemaPath, 'utf8').replace(/\brcc_aps\b/g, DB_NAME);
   const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: DB_NAME,
-    charset: 'utf8mb4'
-  });
+  host: process.env.DB_HOST || 'localhost',
+  port: Number(process.env.DB_PORT || 3306),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: DB_NAME,
+  charset: 'utf8mb4',
+  dateStrings: true,
+  ...(process.env.TIDB_ENABLE_SSL === 'true'
+    ? { ssl: { minVersion: 'TLSv1.2' } }
+    : {})
+});
   const poolConn = await pool.getConnection();
 
   try {
