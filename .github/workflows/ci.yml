@@ -1,0 +1,56 @@
+name: RCC-APS CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'deployment/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  smoke-tests:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: rcc-aps
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rcc-aps/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run smoke tests
+        run: |
+          set -e
+          for f in \
+            test/admin-user-pay-visibility.smoke.js \
+            test/frontend-state.smoke.js \
+            test/google-sso.smoke.js \
+            test/incremental-state.smoke.js \
+            test/payroll-calendar-hours.smoke.js \
+            test/payroll-rank-sync.smoke.js \
+            test/payroll-workdays.smoke.js \
+            test/payslip-print.smoke.js \
+            test/payslip-view.smoke.js \
+            test/peraa.smoke.js \
+            test/profile-photo.smoke.js \
+            test/report-export.smoke.js \
+            test/teachingload.smoke.js
+          do
+            echo "::group::Running $f"
+            node "$f"
+            echo "PASS: $f"
+            echo "::endgroup::"
+          done

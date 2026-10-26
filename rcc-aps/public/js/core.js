@@ -5,6 +5,8 @@ function loadDemo() {
   try { const raw = localStorage.getItem(DEMO_KEY); return raw ? JSON.parse(raw) : null; } catch(e){ return null; }
 }
 const _savedDemo = loadDemo();
+let serverStateRevision = Number.isInteger(_savedDemo?.stateRevision) ? _savedDemo.stateRevision : null;
+let stateSavePending = false;
 // ── PER-USER PROFILE STORAGE ─────────────────────────────────
 // Profiles are keyed by the logged-in user's id so each account keeps its
 // own phone/address instead of one global blob shared by everyone.
@@ -19,68 +21,95 @@ function currentUid() {
   return (typeof loggedInUser !== 'undefined' && loggedInUser && loggedInUser.id) || 0;
 }
 function saveDemo() {
-  try {
-    const uid = currentUid();
-    if (uid) {
-      const pp = document.getElementById('empPhone');
-      const pa = document.getElementById('empAddr');
-      if (pp && pa && (pp.value.trim() || pa.value.trim())) {
-        PROFILES[uid] = { empPhone: pp.value, empAddr: pa.value };
+  return new Promise((resolve) => {
+    try {
+      if (stateSavePending) { showToast('⚠️','Please wait for the current save to finish.'); resolve(false); return; }
+      const uid = currentUid();
+      if (uid) {
+        const pp = document.getElementById('empPhone');
+        const pa = document.getElementById('empAddr');
+        if (pp && pa && (pp.value.trim() || pa.value.trim())) {
+          PROFILES[uid] = { ...(PROFILES[uid] || {}), empPhone: pp.value, empAddr: pa.value };
+        }
       }
+      const state = {
+        stateRevision: serverStateRevision,
+        users, nextUserId, cashAdvances, bonusTypes, nextBonusId, auth: USERS_AUTH,
+        deductionCategories, nextDedCatId, payrollRecords, bonusPayouts,
+        sssTable, philData, pagData, birData, dedMeta, bonusExemptionLimit: BONUS_EXEMPTION_LIMIT,
+        workDays: WORK_DAYS,
+        leaveTypes: (typeof LEAVE_TYPES !== 'undefined') ? LEAVE_TYPES : [],
+        nextLeaveTypeId: (typeof NEXT_LEAVE_TYPE_ID !== 'undefined') ? NEXT_LEAVE_TYPE_ID : 1,
+        leaveRecords: (typeof LEAVE_RECORDS !== 'undefined') ? LEAVE_RECORDS : [],
+        nextLeaveRecordId: (typeof nextLeaveRecordId !== 'undefined') ? nextLeaveRecordId : 1,
+        attendance: (typeof ATTENDANCE !== 'undefined') ? ATTENDANCE : [],
+        teacherRanks: (typeof teacherRanks !== 'undefined') ? teacherRanks : [],
+        nextRankId: (typeof nextRankId !== 'undefined') ? nextRankId : 1,
+        teachingLoadRecords: (typeof teachingLoadRecords !== 'undefined') ? teachingLoadRecords : [],
+        teachingLoadClasses: (typeof teachingLoadClasses !== 'undefined') ? teachingLoadClasses : [],
+        nextTeachingLoadId: (typeof nextTeachingLoadId !== 'undefined') ? nextTeachingLoadId : 1,
+        nextTeachingLoadClassId: (typeof nextTeachingLoadClassId !== 'undefined') ? nextTeachingLoadClassId : 1,
+        hoursPerWorkload: (typeof HOURS_PER_WORKLOAD !== 'undefined') ? HOURS_PER_WORKLOAD : 3,
+        profiles: PROFILES,
+        savedAt: new Date().toISOString()
+      };
+      stateSavePending = true;
+      localStorage.setItem(DEMO_KEY, JSON.stringify({ ...state, auth:{} }));
+      pushToServer(state).then(saved => {
+        stateSavePending = false;
+        resolve(saved);
+      });
+    } catch(e){
+      stateSavePending = false;
+      resolve(false);
     }
-    const state = {
-      users, nextUserId, cashAdvances, bonusTypes, nextBonusId, auth: USERS_AUTH,
-      deductionCategories, nextDedCatId, payrollRecords, bonusPayouts,
-      sssTable, philData, pagData, birData, dedMeta, bonusExemptionLimit: BONUS_EXEMPTION_LIMIT,
-      workDays: WORK_DAYS,
-      profiles: PROFILES,
-      savedAt: new Date().toISOString()
-    };
-    localStorage.setItem(DEMO_KEY, JSON.stringify(state));
-    pushToServer(state);
-  } catch(e){
-    // Surface storage failures (e.g. quota exceeded) instead of failing silently.
-    if (typeof showToast === 'function') showToast('⚠️', 'Save failed locally: ' + ((e && e.message) || e));
-  }
-}
-function resetDemo() {
-  localStorage.removeItem(DEMO_KEY);
-  location.reload();
+  });
 }
 
-function pushToServer(state) {
+async function pushToServer(state) {
+  const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+  if (!token) return false;
   try {
-    fetch('/api/data', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(state) }).catch(() => {});
-  } catch(e){}
+    const response = await fetch('/api/data', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer ' + token}, body:JSON.stringify(state)
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      if (response.status === 401) clearAuthToken();
+      if (response.status !== 401) await syncDemo();
+      showToast('⚠️',result.error || 'Save failed. Please try again.');
+      return false;
+    }
+    if (result.state) {
+      localStorage.setItem(DEMO_KEY,JSON.stringify(result.state));
+      applyServerData(result.state);
+    }
+    return true;
+  } catch (error) {
+    showToast('⚠️','The server could not save your changes. Check the connection and retry.');
+    return false;
+  }
 }
-function syncDemo() {
+async function syncDemo() {
+  const token = (typeof getAuthToken === 'function') ? getAuthToken() : null;
+  if (!token) return false;
   try {
-    fetch('/api/data')
-      .then(r => { if (!r.ok) throw new Error('server offline'); return r.json(); })
-      .then(d => {
-        if (!d || !d.users || !d.users.length) return;
-        const localRaw = localStorage.getItem(DEMO_KEY);
-        if (!localRaw) {
-          localStorage.setItem(DEMO_KEY, JSON.stringify(d));
-          location.reload();
-          return;
-        }
-        // Timestamp reconciliation: whichever copy was saved LAST wins, so a
-        // browser holding a stale cache can no longer silently overwrite
-        // newer rate edits made on another machine.
-        let local = null;
-        try { local = JSON.parse(localRaw); } catch(e) {}
-        const serverTime = Date.parse(d.savedAt) || 0;
-        const localTime  = Date.parse(local && local.savedAt) || 0;
-        if (serverTime > localTime) {
-          localStorage.setItem(DEMO_KEY, JSON.stringify(d));
-          location.reload();
-        } else {
-          pushToServer(local);
-        }
-      })
-      .catch(() => {});
-  } catch(e){}
+    const response = await fetch('/api/data', {headers:{'Authorization':'Bearer ' + token},cache:'no-store'});
+    if (response.status === 401) { clearAuthToken(); return false; }
+    if (!response.ok) return false;
+    const state = await response.json();
+    if (!state || !Array.isArray(state.users) || !state.users.length) return false;
+    localStorage.setItem(DEMO_KEY,JSON.stringify(state));
+    applyServerData(state);
+    refreshVisiblePage();
+    return true;
+  } catch (error) { return false; }
+}
+function refreshVisiblePage() {
+  if (!(typeof loggedInUser !== 'undefined' && loggedInUser && loggedInUser.page)) return;
+  if (typeof initPage !== 'function') return;
+  const el = document.getElementById(loggedInUser.page);
+  if (el && el.classList.contains('show')) initPage(loggedInUser.page);
 }
 document.addEventListener('DOMContentLoaded', syncDemo);
 
@@ -89,24 +118,6 @@ const ROLE_ICON = {'System Admin':'🔧','Finance Officer':'💼','Employee':'�
 const ROLE_KEY  = {'System Admin':'admin','Finance Officer':'finance','Employee':'employee'};
 
 const USERS_AUTH = {};
-function rebuildAuthDefaults() {
-  USERS_AUTH['1'] = {id:1, email:'admin@rcc.edu.ph',    pass:'admin123',    label:'System Admin',   icon:'🔧', page:'adminPage',    role:'admin',    status:'Active'};
-  USERS_AUTH['2'] = {id:2, email:'finance@rcc.edu.ph',  pass:'finance123',  label:'Finance Officer',icon:'💼', page:'financePage', role:'finance',  status:'Active'};
-  USERS_AUTH['3'] = {id:3, email:'employee@rcc.edu.ph', pass:'employee123', label:'Employee',      icon:'👤', page:'empPage',     role:'employee', status:'Active'};
-}
-rebuildAuthDefaults();
-if (_savedDemo && _savedDemo.auth) {
-  const byEmail = {};
-  Object.values(USERS_AUTH).forEach(a => byEmail[a.email] = a);
-  Object.keys(_savedDemo.auth).forEach(k => {
-    const e = _savedDemo.auth[k];
-    if (!e) return;
-    if (e.id) { USERS_AUTH[k] = e; return; }                  // new id-keyed format: copy as-is
-    const target = byEmail[(e.email || '').toLowerCase()];    // legacy role-keyed format: migrate password
-    if (target) target.pass = e.pass;
-  });
-}
-
 function ensureAuth(u, pass) {
   let entry = Object.values(USERS_AUTH).find(a => a.id === u.id);
   if (!entry) { entry = { id: u.id }; USERS_AUTH['u' + u.id] = entry; }
@@ -127,7 +138,7 @@ function removeAuth(userId) {
 function restoreProfileFields() {
   const pp = document.getElementById('empPhone');
   const pa = document.getElementById('empAddr');
-  if (!pp || !pa) return;
+  if (!pp || !pa) return; 
   const p = PROFILES[currentUid()] || {};
   pp.value = p.empPhone || '';
   pa.value = p.empAddr || '';

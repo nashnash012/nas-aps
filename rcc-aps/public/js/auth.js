@@ -2,29 +2,35 @@
 let loggedInUser = null; // current authenticated USERS_AUTH entry
 let loginFails = 0, lockUntil = 0;
 
-// Pure-ish credential check with basic brute-force throttling
-// (demo-grade: 5 failed attempts lock attempts for 30 seconds).
-function checkLogin(email, pass) {
+const JWT_KEY = 'rcc_aps_jwt_token';
+function getAuthToken() { return localStorage.getItem(JWT_KEY); }
+function setAuthToken(token) { localStorage.setItem(JWT_KEY, token); }
+function clearAuthToken() { localStorage.removeItem(JWT_KEY); localStorage.removeItem(DEMO_KEY); }
+
+// Server-side login via /api/auth/login
+async function checkLogin(email, pass) {
   const now = Date.now();
   if (now < lockUntil) {
     return { ok:false, msg:'Too many failed attempts. Try again in ' + Math.ceil((lockUntil - now)/1000) + 's.' };
   }
-  const u = Object.values(USERS_AUTH).find(x => x.email === email);
-  if (!u) {
-    loginFails++;
-    if (loginFails >= 5) { lockUntil = Date.now() + 30000; loginFails = 0; return { ok:false, msg:'Too many failed attempts. Locked for 30 seconds.' }; }
-    return { ok:false, msg:'Invalid email or password. Please try again.' };
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pass })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      loginFails++;
+      if (loginFails >= 5) { lockUntil = Date.now() + 30000; loginFails = 0; return { ok:false, msg:'Too many failed attempts. Locked for 30 seconds.' }; }
+      return { ok:false, msg: data.error || 'Invalid email or password. Please try again.' };
+    }
+    loginFails = 0;
+    setAuthToken(data.token);
+    return { ok:true, user: data.user, token: data.token };
+  } catch(e) {
+    return { ok:false, msg:'Cannot reach server. Please check your connection.' };
   }
-  if (u.status === 'Inactive') {
-    return { ok:false, msg:'This account is deactivated. Please contact the System Admin.' };
-  }
-  if (pass !== u.pass) {
-    loginFails++;
-    if (loginFails >= 5) { lockUntil = Date.now() + 30000; loginFails = 0; return { ok:false, msg:'Too many failed attempts. Locked for 30 seconds.' }; }
-    return { ok:false, msg:'Invalid email or password. Please try again.' };
-  }
-  loginFails = 0;
-  return { ok:true, user:u };
 }
 
 function togglePass() {
@@ -34,7 +40,7 @@ function togglePass() {
   e.textContent = p.type==='password' ? '👁' : '🙈';
 }
 
-function handleLogin() {
+async function handleLogin() {
   const email = document.getElementById('emailInp').value.trim().toLowerCase();
   const pass  = document.getElementById('passInp').value.trim();
   const err   = document.getElementById('errBox');
@@ -43,14 +49,27 @@ function handleLogin() {
     document.getElementById('errText').textContent='Please enter your email and password.';
     err.classList.add('show'); return;
   }
-  const res = checkLogin(email, pass);
+  if (!/^[^\s@]+@rcc\.edu\.ph$/i.test(email)) {
+    document.getElementById('errText').textContent = 'Use your @rcc.edu.ph school email.';
+    err.classList.add('show'); return;
+  }
+  const res = await checkLogin(email, pass);
   if (!res.ok) {
     document.getElementById('errText').textContent = res.msg;
     err.classList.add('show'); return;
   }
-  const u = res.user;
-  loggedInUser = u;
-  // Loading state
+  await completeLogin(res.user);
+}
+
+async function completeLogin(u) {
+  const err = document.getElementById('errBox');
+  loggedInUser = { id: u.id, email: u.email, role: u.role, label: u.label, icon: u.role === 'admin' ? '🔧' : u.role === 'finance' ? '💼' : '👤', page: u.page, status: u.status };
+  if (!await syncDemo()) {
+    clearAuthToken(); loggedInUser = null;
+    document.getElementById('errText').textContent = 'Unable to load your account records. Please try logging in again.';
+    err.classList.add('show'); return;
+  }
+  populateProfilePages();
   const btn = document.getElementById('loginBtn');
   btn.disabled = true;
   document.getElementById('btnText').textContent = 'Signing in...';
@@ -80,7 +99,12 @@ function handleLogin() {
 }
 
 function logout() {
+  if (window.google?.accounts?.id) google.accounts.id.disableAutoSelect();
+  if (typeof initGoogleSignIn === 'function') void initGoogleSignIn();
   if (typeof closeSidebar==='function') closeSidebar();
+  clearAuthToken();
+  localStorage.removeItem(DEMO_KEY);
+  loggedInUser = null;
   document.querySelectorAll('.dashboard-page').forEach(p=>p.classList.remove('show'));
   const lp = document.getElementById('loginPage');
   lp.style.display = 'flex';
@@ -97,32 +121,41 @@ function logout() {
 }
 
 // ── EMPLOYEE PROFILE & PASSWORD ──────────────────────────────
-function saveProfile() {
+async function saveProfile() {
   const phone = document.getElementById('empPhone').value.trim();
   const addr  = document.getElementById('empAddr').value.trim();
   if (!phone) { showToast('⚠️','Please enter your phone number.'); return; }
   if (!addr)  { showToast('⚠️','Please enter your home address.'); return; }
-  saveDemo();
+  if (!await saveDemo()) return;
   showToast('✅','Profile updated successfully!');
 }
 
-function changePassword() {
+async function changePassword() {
   const cur = document.getElementById('pwCurrent').value;
   const nw  = document.getElementById('pwNew').value;
   const cf  = document.getElementById('pwConfirm').value;
   const err = document.getElementById('pwError');
   if (!loggedInUser) { err.textContent = 'Session expired. Please log in again.'; err.classList.add('show'); return; }
   if (!cur || !nw || !cf) { err.textContent = 'Please fill in all fields.'; err.classList.add('show'); return; }
-  if (nw.length < 8)      { err.textContent = 'New password must be at least 8 characters long.'; err.classList.add('show'); return; }
+  if (nw.length < 6)      { err.textContent = 'New password must be at least 6 characters long.'; err.classList.add('show'); return; }
   if (nw !== cf)          { err.textContent = 'New password and confirmation do not match.'; err.classList.add('show'); return; }
-  if (cur !== loggedInUser.pass) { err.textContent = 'Current password is incorrect.'; err.classList.add('show'); return; }
-  loggedInUser.pass = nw;
-  err.classList.remove('show');
-  document.getElementById('pwCurrent').value = '';
-  document.getElementById('pwNew').value = '';
-  document.getElementById('pwConfirm').value = '';
-  saveDemo();
-  showToast('✅','Password changed successfully!');
+  try {
+    const res = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (getAuthToken() || '') },
+      body: JSON.stringify({ currentPassword: cur, newPassword: nw })
+    });
+    const data = await res.json();
+    if (!res.ok) { err.textContent = data.error || 'Failed to change password.'; err.classList.add('show'); return; }
+    err.classList.remove('show');
+    document.getElementById('pwCurrent').value = '';
+    document.getElementById('pwNew').value = '';
+    document.getElementById('pwConfirm').value = '';
+    showToast('✅','Password changed successfully!');
+    await syncDemo();
+  } catch(e) {
+    err.textContent = 'Cannot reach server. Please check your connection.'; err.classList.add('show');
+  }
 }
 
 document.addEventListener('keydown', e => {
@@ -132,12 +165,87 @@ document.addEventListener('keydown', e => {
   if (lp && lp.style.display !== 'none') handleLogin();
 });
 
-// ── PAGE NAVIGATION ───────────────────────────────────────────
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good Morning' : h < 18 ? 'Good Afternoon' : 'Good Evening';
+}
+
+function renderIdentity() {
+  if (!loggedInUser) return;
+  const emp = users.find(u => u.id === loggedInUser.id);
+  if (!emp) return;
+  const el = id => document.getElementById(id);
+  const setTxt = (id, v) => { const e = el(id); if (e) e.textContent = v; };
+  const initials = ((emp.first[0] || '') + (emp.last[0] || '')).toUpperCase();
+  const fullName = displayName(emp);
+  setTxt('empAvatar', initials);
+  setTxt('empTbName', fullName);
+  setTxt('finAvatar', initials);
+  setTxt('finTbName', fullName);
+  setTxt('admAvatar', initials);
+  setTxt('admTbName', fullName);
+  setTxt('empHeroTag', '🌅 ' + greeting());
+  setTxt('finHeroName', `${greeting()}, ${emp.first}! 👋`);
+  setTxt('admHeroName', `${greeting()}, ${emp.first}! 👋`);
+  if (typeof refreshEmpTlNav === 'function') refreshEmpTlNav();
+  renderProfilePhotos(emp);
+}
+
+function populateProfilePages() {
+  if (!loggedInUser) return;
+  const emp = users.find(u => u.id === loggedInUser.id);
+  if (!emp) return;
+  renderIdentity();
+  const el = id => document.getElementById(id);
+  const setVal = (id, v) => { const e = el(id); if (e) e.value = v; };
+  const setTxt = (id, v) => { const e = el(id); if (e) e.textContent = v; };
+  const initials = ((emp.first[0] || '') + (emp.last[0] || '')).toUpperCase();
+  const fullName = displayName(emp);
+  const roleLabel = emp.role || 'Employee';
+  const statusBadge = emp.status === 'Active'
+    ? '<span class="badge b-green">● Active</span>'
+    : '<span class="badge b-gray">● Inactive</span>';
+
+  setTxt('empProfAvatar', initials);
+  setTxt('empProfName', fullName);
+  setTxt('empProfRole', roleLabel);
+  const st = el('empProfStatus'); if (st) st.innerHTML = statusBadge;
+  setTxt('empProfId', '#USR-00' + emp.id);
+  setVal('empProfFirst', emp.first);
+  setVal('empProfLast', emp.last);
+  setVal('empProfEmail', emp.email);
+  setVal('empProfDept', emp.department || '');
+  setTxt('finProfAvatar', initials);
+  setTxt('finProfName', fullName);
+  setTxt('finProfRole', roleLabel);
+  setVal('finProfFirst', emp.first);
+  setVal('finProfLast', emp.last);
+  setVal('finProfEmail', emp.email);
+  setVal('finProfPhone', (PROFILES[loggedInUser.id] && PROFILES[loggedInUser.id].empPhone) || '');
+  setVal('finProfAddr', (PROFILES[loggedInUser.id] && PROFILES[loggedInUser.id].empAddr) || '');
+  setVal('finProfDept', emp.department || '');
+  setVal('finProfEmergName', '');
+  setVal('finProfEmergPhone', '');
+  setTxt('admProfAvatar', initials);
+  setTxt('admProfName', fullName);
+  setTxt('admProfRole', roleLabel);
+  setVal('admProfFirst', emp.first);
+  setVal('admProfLast', emp.last);
+  setVal('admProfEmail', emp.email);
+  setVal('admProfPhone', (PROFILES[loggedInUser.id] && PROFILES[loggedInUser.id].empPhone) || '');
+  setVal('admProfAddr', (PROFILES[loggedInUser.id] && PROFILES[loggedInUser.id].empAddr) || '');
+  setVal('admProfDept', emp.department || '');
+  setVal('admProfEmergName', '');
+  setVal('admProfEmergPhone', '');
+  renderProfilePhotos(emp);
+}
+
 function initPage(page) {
+  populateProfilePages();
   restoreProfileFields();
   setTopbarDates();
   if (page === 'empPage')     { renderEmpDashboard(); renderPayslipList(); }
-  if (page === 'financePage') { updateFinStats(); renderFinRecentActivity(); populateCalcEmployees(); renderPayrollSummary(); renderBonusModule(); renderAnalytics(); }
+  if (page === 'financePage') { if (typeof setDefaultPayPeriod === 'function') setDefaultPayPeriod(); updateFinStats(); renderFinRecentActivity(); populateCalcEmployees(); renderPayrollSummary(); renderBonusModule(); renderAnalytics(); }
   if (page === 'adminPage')   { updateAdminStats(); renderAdminRecentUsers(); renderUserTable(); }
 }
 function setTopbarDates() {
@@ -256,7 +364,7 @@ function renderEmpDashboard() {
   set('empStatNext', nextLabel);
 
   const avatar = el('empAvatar');
-  if (avatar) avatar.textContent = (emp.first[0] || '') + (emp.last[0] || '');
+  if (avatar) renderProfilePhotos(emp);
   const tbName = el('empTbName');
   if (tbName) tbName.textContent = displayName(emp);
 
@@ -291,85 +399,91 @@ function viewPayslipDetail(period, empId) {
   const sss = parseFloat(rec.sss)||0, phil = parseFloat(rec.phil)||0, pag = parseFloat(rec.pag)||0, bir = parseFloat(rec.bir)||0, cash = parseFloat(rec.cash)||0;
   const customDeds = Array.isArray(rec.customDeds) ? rec.customDeds : [];
   const customTotal = customDeds.reduce((s, x) => s + (parseFloat(x.amount) || 0), 0);
+  const peraa = customDeds.filter(x => String(x.name).trim().toUpperCase() === 'PERAA')
+    .reduce((sum, x) => sum + (parseFloat(x.amount) || 0), 0);
+  const otherCustom = customDeds.filter(x => String(x.name).trim().toUpperCase() !== 'PERAA');
   const totalDed  = sss + phil + pag + bir + cash + thirteenTax + customTotal;
   const totalGross = grossTaxable + deMinimis + thirteenth;
-  const earningLabel = emp.classification === 'Teaching'
-    ? `${emp.hoursWorked||0} hrs × ₱${(parseFloat(emp.hourlyRate)||0).toFixed(2)}`
-    : 'Monthly Base Salary';
   const isDec = monthNum === 12;
+  const page = ROLE_PAGE[emp.role] || 'empPage';
 
-  const docId = empId === 3 ? 'psDoc' : empId === 2 ? 'finPsDoc' : 'admPsDoc';
+  const breakdown = Array.isArray(rec.subjectBreakdown) ? rec.subjectBreakdown : [];
+  const subjLines = breakdown.filter(b => b.type !== 'increment');
+  const incrLine = breakdown.find(b => b.type === 'increment');
+  const isTeaching = emp.classification === 'Teaching';
+  const isMonthly = isTeaching && emp.schoolLevel === 'Elementary';
+  const isNonTeach = emp.classification === 'Non-Teaching';
+
+  const docId = page === 'empPage' ? 'psDoc' : page === 'financePage' ? 'finPsDoc' : 'admPsDoc';
+  const netPay = parseFloat(rec.net) || 0;
+  const dateStr = (rec.date || '').slice(0, 11);
+
+  const qtyLabel = emp.schoolLevel === 'High School' ? 'Workloads' : 'Hours';
+  const otherAmount = otherCustom.reduce((sum, x) => sum + (parseFloat(x.amount) || 0), 0);
+  const number = value => Number(value || 0).toLocaleString('en-PH', { maximumFractionDigits: 4 });
+  const blankDeductions = '<td></td>'.repeat(8);
+  const earningRow = (label, amount, qty = '', rate = '', dept = '') =>
+    '<tr><td class="ps-text">' + esc(label) + '</td><td class="ps-text">' + esc(dept) + '</td><td>' + qty + '</td><td>' + rate + '</td><td>' + fmt(amount) + '</td>' + blankDeductions + '</tr>';
+  const subjectRows = breakdown.map(b => earningRow(
+    b.type === 'increment' ? 'Increment - S.Y' : (b.subject || 'Subject'),
+    parseFloat(b.amount) || 0, number(b.qty), fmt(parseFloat(b.rate) || 0), b.deptCode || ''
+  )).join('');
+  const baseRow = subjectRows || earningRow(isTeaching ? (isMonthly ? 'Monthly salary after absences' : 'Teaching earnings') : 'Monthly salary after absences', grossTaxable);
+  const customNotes = otherCustom.map(x => esc(x.name || 'Other deduction') + ': ' + fmt(parseFloat(x.amount) || 0)).join(' · ');
+  const bonusRows = recBonuses.map(b => earningRow(b.name || 'Bonus', parseFloat(b.amount) || 0)).join('');
+  const hasBonusDetails = recBonuses.length > 0;
   document.getElementById(docId).innerHTML = `
-    <div style="text-align:center;margin-bottom:24px;padding-bottom:24px;border-bottom:2px solid var(--maroon-dark)">
-      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:var(--maroon-dark)">Republic Central Colleges</div>
-      <div style="font-size:13px;color:var(--text-muted);margin-top:4px">Automated Payroll System — Official Payslip</div>
-      <div style="font-size:13px;color:var(--text-muted)">Period: ${period}${isDec?' <span class="badge b-gold" style="margin-left:4px">🎁 incl. 13th Month</span>':''}</div>
-    </div>
-    <div style="margin-bottom:20px">
-      <div style="font-weight:700;font-size:13px;color:var(--maroon-dark);margin-bottom:12px">Employee Information</div>
-      ${[['Name', esc(displayName(emp))],['Employee ID', '#USR-00' + emp.id],['Position', esc(emp.role)],['Classification', emp.classification || 'Non-Teaching'],['Department', esc(emp.department || '—')]].map(([l,v])=>`
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-          <span style="color:var(--text-muted)">${l}</span><span style="font-weight:600">${v}</span>
-        </div>`).join('')}
-    </div>
-    <div style="margin-bottom:20px">
-      <div style="font-weight:700;font-size:13px;color:var(--maroon-dark);margin-bottom:12px">Earnings</div>
-      <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-        <span style="color:var(--text-muted)">${earningLabel}</span><span style="font-weight:600">${fmt(grossTaxable)}</span>
+    <article class="ps-sheet">
+      <header class="ps-brand">
+        <div><div class="ps-school">REPUBLIC CENTRAL COLLEGES</div><div>Angeles City</div></div>
+        <div class="ps-period"><strong>PAYSLIP</strong><div>${esc(period)}</div></div>
+      </header>
+      <div class="ps-employee">
+        <div><span>EMPLOYEE</span><strong>${esc(displayName(emp))}</strong></div>
+        <div><span>DEPARTMENT</span><strong>${esc(emp.department || '—')}</strong><div>${esc(emp.schoolLevel || emp.classification || '')}</div></div>
+        <div><span>RELEASE DATE</span><strong>${esc(rec.date || '—')}</strong></div>
       </div>
-      ${recBonuses.length ? recBonuses.map(b=>`
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-          <span style="color:var(--text-muted)">🎁 ${esc(b.name)} <span style="font-size:10px;color:${b.deMinimis?'#2E7D32':'var(--text-muted)'}">— ${b.deMinimis?'de minimis (tax-exempt)':'taxable bonus'}</span></span><span style="font-weight:600">+${fmt(b.amount)}</span>
-        </div>`).join('')
-       : (deMinimis>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-        <span style="color:var(--text-muted)">De Minimis Benefits</span><span style="font-weight:600">${fmt(deMinimis)}</span>
-      </div>`:'')}
-      ${exempt13>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-        <span style="color:var(--text-muted)">🎁 13th Month Pay (RA 8515) <span style="font-size:10px;color:#2E7D32">— exempt (≤${fmt(BONUS_EXEMPTION_LIMIT)}/yr)</span></span><span style="font-weight:700;color:var(--maroon-dark)">${fmt(exempt13)}</span>
-      </div>`:''}
-      ${taxable13>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-        <span style="color:var(--text-muted)">⚠️ 13th Month excess <span style="font-size:10px;color:#C62828">— taxable (over ${fmt(BONUS_EXEMPTION_LIMIT)})</span></span><span style="font-weight:700;color:#C62828">${fmt(taxable13)}</span>
-      </div>`:''}
-      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700;color:var(--maroon-dark)">
-        <span>Total Earnings</span><span>${fmt(totalGross)}</span>
+      <table class="ps-pay-table">
+        <colgroup><col style="width:17%"/><col style="width:8%"/><col style="width:5%"/><col style="width:7%"/><col style="width:8%"/><col style="width:6%"/><col style="width:6%"/><col style="width:6%"/><col style="width:6%"/><col style="width:7%"/><col style="width:7%"/><col style="width:7%"/><col style="width:10%"/></colgroup>
+        <thead>
+          <tr><th colspan="4">EXPLANATION</th><th rowspan="2">EARNINGS</th><th colspan="7">DEDUCTIONS</th><th rowspan="2">NET PAY</th></tr>
+          <tr><th class="ps-text">Description</th><th>Dept</th><th>${qtyLabel}</th><th>Rate</th><th>SSS</th><th>PhilHealth</th><th>Pag-IBIG</th><th>PERAA</th><th>W/Tax</th><th>Cash Adv.</th><th>Other</th></tr>
+        </thead>
+        <tbody>
+          ${baseRow}
+          ${subjectRows ? bonusRows : ''}
+          ${deMinimis > 0 && (!hasBonusDetails || !subjectRows) ? earningRow('De Minimis Benefits', deMinimis) : ''}
+          ${thirteenth > 0 ? earningRow('13th Month Pay', thirteenth) : ''}
+          <tr class="ps-deduction-row"><td class="ps-text" colspan="5">Employee deductions</td><td>${fmt(sss)}</td><td>${fmt(phil)}</td><td>${fmt(pag)}</td><td>${fmt(peraa)}</td><td>${fmt(bir + thirteenTax)}</td><td>${fmt(cash)}</td><td>${fmt(otherAmount)}</td><td></td></tr>
+        </tbody>
+        <tfoot><tr><th class="ps-text" colspan="4">TOTAL</th><td>${fmt(totalGross)}</td><td>${fmt(sss)}</td><td>${fmt(phil)}</td><td>${fmt(pag)}</td><td>${fmt(peraa)}</td><td>${fmt(bir + thirteenTax)}</td><td>${fmt(cash)}</td><td>${fmt(otherAmount)}</td><td class="ps-net">${fmt(netPay)}</td></tr></tfoot>
+      </table>
+      <div class="ps-notes">
+        ${emp.rankName ? '<div>Rank: ' + esc(emp.rankName) + '</div>' : ''}
+        ${rec.payNote ? '<div>Pay note: ' + esc(rec.payNote) + '</div>' : ''}
+        ${customNotes ? '<div>Other deductions: ' + customNotes + '</div>' : ''}
+        <div>Total deductions: <strong>${fmt(totalDed)}</strong></div>
       </div>
-    </div>
-    <div style="margin-bottom:20px">
-      <div style="font-weight:700;font-size:13px;color:var(--maroon-dark);margin-bottom:12px">Deductions</div>
-      ${[['SSS Contribution',sss],['PhilHealth Premium',phil],['Pag-IBIG Contribution',pag],['BIR Withholding Tax',bir],['Cash Advance',cash]].map(([l,v])=>`
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-          <span style="color:var(--text-muted)">${l}</span><span>${fmt(v)}</span>
-        </div>`).join('')}
-      ${customDeds.map(x=>`
-        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px">
-          <span style="color:var(--text-muted)">📌 ${esc(x.name)}</span><span>${fmt(x.amount)}</span>
-        </div>`).join('')}
-      ${thirteenTax>0 ? `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #F0EBE3;font-size:13px;background:#FFF8E1">
-        <span style="color:#8D6E63">🧾 13th Month Excess Tax <span style="font-size:10px;color:#8D6E63">(over ${fmt(BONUS_EXEMPTION_LIMIT)} exemption — withheld from 13th Month Pay)</span></span><span style="font-weight:700;color:#C62828">${fmt(thirteenTax)}</span>
-      </div>`:''}
-      <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px;font-weight:700;color:#C62828">
-        <span>Total Deductions</span><span>${fmt(totalDed)}</span>
-      </div>
-    </div>
-    <div style="background:linear-gradient(135deg,var(--maroon-dark),var(--maroon));border-radius:12px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
-      <span style="font-weight:700;color:#fff;letter-spacing:1px">NET PAY</span>
-      <span style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#fff">${fmt(rec.net)}</span>
-    </div>
-    <div style="text-align:center;font-size:11px;color:#AAA">This is a computer-generated payslip. No signature required.</div>
+      <section class="ps-office">
+        <div class="ps-office-details"><h4>OFFICE COPY</h4><dl><dt>Employee</dt><dd>${esc(displayName(emp))}</dd><dt>Payroll period</dt><dd>${esc(period)}</dd><dt>Amount received</dt><dd><strong>${fmt(netPay)}</strong></dd></dl></div>
+        <div class="ps-receipt"><h4>PAY RECEIPT</h4><p>Received from Republic Central Colleges the amount shown above as payment for the payroll period indicated.</p><div class="ps-signatures"><div>Employee signature</div><div>Date received</div></div></div>
+      </section>
+      <div class="ps-retain">Keep this statement as your personal record of earnings and deductions.</div>
+    </article>
   `;
 
   // Show detail page based on role
-  if (empId === 3) {
+  if (page === 'empPage') {
     document.getElementById('empPayslip').style.display='none';
     document.getElementById('payslipDetailPage').style.display='block';
     document.getElementById('psBackBtn').onclick = ()=>{
       document.getElementById('payslipDetailPage').style.display='none';
       document.getElementById('empPayslip').style.display='block';
     };
-  } else if (empId === 2) {
+  } else if (page === 'financePage') {
     document.getElementById('finMyPayslip').style.display='none';
     document.getElementById('finPayslipDetail').style.display='block';
-  } else if (empId === 1) {
+  } else {
     document.getElementById('admMyPayslip').style.display='none';
     document.getElementById('admPayslipDetail').style.display='block';
   }
@@ -384,25 +498,30 @@ function printPayslip() {
   }[active && active.id];
   const doc = cfg ? document.getElementById(cfg) : null;
   if (!doc || !doc.innerHTML.trim()) { showToast('⚠️','No payslip to download.'); return; }
-  const period = (doc.innerHTML.match(/Period:\s*([A-Za-z]+\s+\d{4})/) || [])[1] || '';
-  const name   = (doc.innerHTML.match(/Name<\/span><span style="font-weight:600">([^<]+)<\/span>/) || [])[1] || '';
-  const base   = `Payslip_${name.trim().replace(/\s+/g,'_')}_${period.replace(/\s+/g,'')}`;
+  const period = doc.querySelector('.ps-period div')?.textContent.trim() || 'Payroll';
+  const name = doc.querySelector('.ps-employee strong')?.textContent.trim() || 'Employee';
+  const base = `Payslip_${name}_${period}`.replace(/[<>:"/\\|?*]/g, '').replace(/\s+/g, '_');
   const oldTitle = document.title;
-  document.title = base + '.pdf';
+  document.title = base;
   const old = document.getElementById('printOverlay');
   if (old) old.remove();
   const overlay = document.createElement('div');
   overlay.id = 'printOverlay';
   overlay.innerHTML = doc.innerHTML;
   document.body.appendChild(overlay);
-  window.print();
-  setTimeout(()=>{ if (overlay.parentNode) overlay.parentNode.removeChild(overlay); document.title = oldTitle; }, 1500);
+  const cleanup = () => {
+    overlay.remove();
+    document.title = oldTitle;
+    window.removeEventListener('afterprint', cleanup);
+  };
+  window.addEventListener('afterprint', cleanup);
+  try { window.print(); } catch (error) { cleanup(); throw error; }
 }
 
 function showFinPage(id, btn) {
   if (typeof closeSidebar==='function') closeSidebar();
   ['finDashboard','finAnalytics','finBonus','finPayroll','finReports','finGovReport','finPayrollReport','finDeduction','finMyPayslip','finPayslipDetail','finMyProfile','finChangePassword',
-   'finDedSSS','finDedPhilHealth','finDedPagIBIG','finDedBIR'].forEach(x=>{
+   'finDedSSS','finDedPhilHealth','finDedPagIBIG','finDedBIR','finRanks','finTeachingLoad','finFormula'].forEach(x=>{
     const el = document.getElementById(x);
     if (el) el.style.display = 'none';
   });
@@ -410,14 +529,22 @@ function showFinPage(id, btn) {
   if (target) target.style.display = 'block';
   document.querySelectorAll('#financePage .nav-item').forEach(b=>b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const labels = {finDashboard:'Dashboard',finAnalytics:'Analytics',finBonus:'Bonus Management',finPayroll:'Payroll Calculation',finReports:'Reports',finGovReport:'Reports',finPayrollReport:'Reports',finDeduction:'Deduction Tables',finMyPayslip:'My Payslip',finMyProfile:'My Profile',finChangePassword:'Change Password'};
+  const labels = {finDashboard:'Dashboard',finAnalytics:'Analytics',finBonus:'Bonus Management',finPayroll:'Payroll Calculation',finReports:'Reports',finGovReport:'Reports',finPayrollReport:'Reports',finDeduction:'Deduction Tables',finMyPayslip:'My Payslip',finMyProfile:'My Profile',finChangePassword:'Change Password',finRanks:'Faculty Rank Tables',finTeachingLoad:'Teaching Loads',finFormula:'Formula Management'};
   const bc = document.getElementById('finBreadcrumb');
   if (bc) bc.textContent = labels[id] || 'Dashboard';
-  if (id === 'finDashboard') { updateFinStats(); renderFinRecentActivity(); }
+  if (id === 'finDashboard') { renderIdentity(); updateFinStats(); renderFinRecentActivity(); }
   if (id === 'finAnalytics') renderAnalytics();
   if (id === 'finBonus') renderBonusModule();
-  if (id === 'finPayroll') { populateCalcEmployees(); renderPayrollSummary(); }
-  if (id === 'finDeduction') { renderDeductionCategories(); renderDedBanner(); renderWorkDaysSetting(); }
+  if (id === 'finPayroll') { if (typeof checkBonusDates==='function') checkBonusDates(); populateCalcEmployees(); renderPayrollSummary(); }
+  if (id === 'finDeduction') { renderDeductionCategories(); renderLeaveTypes(); renderLeaveRecords(); renderAttendance(); renderDedBanner(); renderWorkDaysSetting(); }
+  if (id === 'finRanks') { if (typeof renderRankTable === 'function') renderRankTable(); }
+  if (id === 'finTeachingLoad') {
+    if (typeof renderFinTeachingLoads === 'function') renderFinTeachingLoads();
+    if (typeof tlCloseFinanceForm === 'function') tlCloseFinanceForm();
+  }
+  if (id === 'finFormula') {
+    if (typeof renderFormulaManagement === 'function') renderFormulaManagement();
+  }
   if (id === 'finMyPayslip') renderFinPayslipList();
   if (id === 'finPayrollReport') {
     document.getElementById('reportOutput').style.display = 'none';
@@ -426,7 +553,7 @@ function showFinPage(id, btn) {
 
 function showEmpPage(id, btn) {
   if (typeof closeSidebar==='function') closeSidebar();
-  ['empDashboard','empPayslip','empProfile','empPassword','payslipDetailPage'].forEach(x=>{
+  ['empDashboard','empPayslip','empProfile','empPassword','payslipDetailPage','empTeachingLoad'].forEach(x=>{
     const el = document.getElementById(x);
     if (el) el.style.display = 'none';
   });
@@ -435,11 +562,15 @@ function showEmpPage(id, btn) {
   document.querySelectorAll('#empPage .nav-item').forEach(b=>b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   if (id === 'empPayslip') renderPayslipList();
+  if (id === 'empDashboard') { renderIdentity(); renderEmpDashboard(); }
+  if (id === 'empTeachingLoad') {
+    if (typeof tlRenderForm === 'function') tlRenderForm('tl', loggedInUser ? loggedInUser.id : null, null);
+  }
 }
 
 function showAdmPage(id, btn) {
   if (typeof closeSidebar==='function') closeSidebar();
-  ['admDashboard','admUsers','admDeduction','admMyPayslip','admPayslipDetail','admMyProfile','admChangePassword'].forEach(x=>{
+  ['admDashboard','admUsers','admDeduction','admMyPayslip','admPayslipDetail','admMyProfile','admChangePassword','admRanks'].forEach(x=>{
     const el = document.getElementById(x);
     if (el) el.style.display = 'none';
   });
@@ -447,11 +578,17 @@ function showAdmPage(id, btn) {
   if (target) target.style.display = 'block';
   document.querySelectorAll('#adminPage .nav-item').forEach(b=>b.classList.remove('active'));
   if (btn) btn.classList.add('active');
-  const labels = {admDashboard:'Dashboard',admUsers:'User Management',admDeduction:'Deduction Tables',admMyPayslip:'My Payslip',admMyProfile:'My Profile',admChangePassword:'Change Password'};
+  const labels = {admDashboard:'Dashboard',admUsers:'User Management',admDeduction:'Deduction Tables',admMyPayslip:'My Payslip',admMyProfile:'My Profile',admChangePassword:'Change Password',admRanks:'Faculty Rank Tables'};
   const bc = document.getElementById('admBreadcrumb');
   if (bc) bc.textContent = labels[id] || 'Dashboard';
-  if (id === 'admDashboard') { updateAdminStats(); renderAdminRecentUsers(); }
-  if (id === 'admUsers') renderUserTable();
+  if (id === 'admDashboard') { renderIdentity(); updateAdminStats(); renderAdminRecentUsers(); }
+  if (id === 'admUsers') {
+    renderUserTable();
+    if (!stateSavePending) void syncDemo();
+  }
   if (id === 'admDeduction') renderAdmDedTables();
+  if (id === 'admRanks') { if (typeof renderAdmRankTable === 'function') renderAdmRankTable(); }
   if (id === 'admMyPayslip') renderAdmPayslipList();
 }
+
+setInterval(() => { if (loggedInUser) renderIdentity(); }, 60000);

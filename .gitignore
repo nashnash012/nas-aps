@@ -9,6 +9,7 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+nul
 
 # Temp / backups
 RccAPS_COPY.html

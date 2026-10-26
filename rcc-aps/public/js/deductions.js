@@ -41,6 +41,16 @@ function renderDeductionCategories() {
     </div>`).join('');
 }
 
+function openPeraaDeduction() {
+  const existing = deductionCategories.find(c => String(c.name).trim().toUpperCase() === 'PERAA');
+  if (existing) { editDeductionCategory(existing.id); return; }
+  openAddDeductionCategory();
+  document.getElementById('dedCatModalTitle').textContent = 'Configure PERAA Contribution';
+  document.getElementById('dedCatName').value = 'PERAA';
+  document.getElementById('dedCatAmount').value = '0';
+  document.getElementById('dedCatDesc').value = 'Private Education Retirement Annuity Association — employee retirement contribution';
+}
+
 function openAddDeductionCategory() {
   document.getElementById('dedCatModalTitle').textContent = 'Add Deduction Category';
   document.getElementById('dedCatName').value   = '';
@@ -68,18 +78,26 @@ function editDeductionCategory(id) {
   document.getElementById('dedCatModal').dataset.editId = id;
 }
 
-function saveDeductionCategory() {
+async function saveDeductionCategory() {
   const name   = document.getElementById('dedCatName').value.trim();
   const type   = document.getElementById('dedCatType').value;
-  const amount = parseFloat(document.getElementById('dedCatAmount').value) || 0;
+  const amount = Number(document.getElementById('dedCatAmount').value);
   const desc   = document.getElementById('dedCatDesc').value.trim();
   const status = document.getElementById('dedCatStatus').value;
   const err    = document.getElementById('dedCatErr');
   err.style.display = 'none';
 
   if (!name) { err.textContent='Please enter a category name.'; err.style.display='block'; return; }
+  if (!Number.isFinite(amount) || amount < 0 || (type === 'percent' && amount > 100)) {
+    err.textContent = 'Enter a non-negative amount, or a percentage between 0 and 100.';
+    err.style.display = 'block'; return;
+  }
 
   const editId = document.getElementById('dedCatModal').dataset.editId;
+  if (deductionCategories.some(c => String(c.name).trim().toLowerCase() === name.toLowerCase() && c.id !== parseInt(editId))) {
+    err.textContent = 'A deduction category with this name already exists.';
+    err.style.display = 'block'; return;
+  }
   if (editId) {
     const c = deductionCategories.find(x=>x.id===parseInt(editId));
     if (c) { c.name=name; c.type=type; c.amount=amount; c.desc=desc; c.status=status; }
@@ -89,7 +107,7 @@ function saveDeductionCategory() {
     showToast('✅', `"${name}" added successfully!`);
   }
   closeModal('dedCatModal');
-  saveDemo();
+  if (!await saveDemo()) return;
   renderDeductionCategories();
 }
 
@@ -111,8 +129,471 @@ document.addEventListener('change', e => {
   }
 });
 
-function exportReport() { showToast('📥','Report exported to PDF/Excel successfully!'); }
 
+
+// ── LEAVE TYPES MANAGEMENT ────────────────────────────────────
+function renderLeaveTypes() {
+  const list = document.getElementById('leaveTypeList');
+  const empty = document.getElementById('leaveTypeEmpty');
+  if (!list) return;
+
+  const types = LEAVE_TYPES;
+  if (!types.length) {
+    list.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+  list.style.display = 'grid';
+  empty.style.display = 'none';
+
+  list.innerHTML = types.map(lt => `
+    <div class="card" style="margin:0">
+      <div class="card-body" style="padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+          <div>
+            <div style="font-weight:700;font-size:15px;color:var(--maroon-dark)">${esc(lt.name)}</div>
+          </div>
+          <span class="badge ${lt.isPaid ? 'b-green' : 'b-red'}" style="flex-shrink:0">● ${lt.isPaid ? 'Paid' : 'Unpaid'}</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px">
+          <div style="background:${lt.isPaid ? '#E8F5E9' : '#FFEBEE'};border:1px solid ${lt.isPaid ? '#A5D6A7' : '#FFCDD2'};border-radius:8px;padding:6px 14px;font-size:13px;font-weight:700;color:${lt.isPaid ? '#2E7D32' : '#C62828'}">
+            ${lt.isPaid ? '✅ Paid — No deduction' : '❌ Unpaid — Deducted from gross'}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="editLeaveType(${lt.id})">✏️ Edit</button>
+          <button class="btn btn-outline btn-sm" style="color:#C62828;border-color:#FFCDD2" onclick="deleteLeaveType(${lt.id})">🗑️ Remove</button>
+        </div>
+      </div>
+    </div>`).join('');
+  renderLeaveRecords();
+}
+
+function openAddLeaveType() {
+  document.getElementById('leaveTypeModalTitle').textContent = 'Add Leave Type';
+  document.getElementById('leaveTypeName').value = '';
+  document.getElementById('leaveTypePaid').value = 'false';
+  document.getElementById('leaveTypeErr').style.display = 'none';
+  document.getElementById('leaveTypeModal').style.display = 'flex';
+  document.getElementById('leaveTypeModal').dataset.editId = '';
+}
+
+function editLeaveType(id) {
+  const lt = LEAVE_TYPES.find(x => x.id === id);
+  if (!lt) return;
+  document.getElementById('leaveTypeModalTitle').textContent = 'Edit Leave Type';
+  document.getElementById('leaveTypeName').value = lt.name;
+  document.getElementById('leaveTypePaid').value = lt.isPaid ? 'true' : 'false';
+  document.getElementById('leaveTypeErr').style.display = 'none';
+  document.getElementById('leaveTypeModal').style.display = 'flex';
+  document.getElementById('leaveTypeModal').dataset.editId = id;
+}
+
+async function saveLeaveType() {
+  const name = document.getElementById('leaveTypeName').value.trim();
+  const isPaid = document.getElementById('leaveTypePaid').value === 'true';
+  const err = document.getElementById('leaveTypeErr');
+  err.style.display = 'none';
+
+  if (!name) { err.textContent = 'Please enter a leave type name.'; err.style.display = 'block'; return; }
+
+  const editId = document.getElementById('leaveTypeModal').dataset.editId;
+  if (editId) {
+    const lt = LEAVE_TYPES.find(x => x.id === parseInt(editId));
+    if (lt) { lt.name = name; lt.isPaid = isPaid; }
+    showToast('✅', `"${name}" updated successfully!`);
+  } else {
+    LEAVE_TYPES.push({ id: NEXT_LEAVE_TYPE_ID++, name, isPaid });
+    showToast('✅', `"${name}" added successfully!`);
+  }
+  closeModal('leaveTypeModal');
+  if (!await saveDemo()) return;
+  renderLeaveTypes();
+}
+
+function deleteLeaveType(id) {
+  const lt = LEAVE_TYPES.find(x => x.id === id);
+  if (!lt) return;
+  if (confirm(`Remove "${lt.name}"? This cannot be undone.`)) {
+    LEAVE_TYPES = LEAVE_TYPES.filter(x => x.id !== id);
+    saveDemo();
+    renderLeaveTypes();
+    showToast('🗑️', `"${lt.name}" removed.`);
+  }
+}
+
+// ── LEAVE RECORDS MANAGEMENT ──────────────────────────────────
+let leaveRecordDaysManuallySet = false;
+
+// Inclusive day count between two ISO date strings (matches payroll.js).
+function computeLeaveDays(start, end) {
+  const s = new Date(start);
+  const e = new Date(end);
+  if (isNaN(s) || isNaN(e) || e < s) return 0;
+  return Math.round((e - s) / (1000 * 60 * 60 * 24)) + 1;
+}
+
+// Recompute the Days field from the chosen start/end dates unless the user
+// explicitly typed a value, and show a live preview of the resulting deduction.
+function updateLeaveRecordDays() {
+  const startEl = document.getElementById('leaveRecordStart');
+  const endEl = document.getElementById('leaveRecordEnd');
+  const daysEl = document.getElementById('leaveRecordDays');
+  if (!startEl || !endEl || !daysEl) return;
+  if (startEl.value && endEl.value && !leaveRecordDaysManuallySet) {
+    daysEl.value = computeLeaveDays(startEl.value, endEl.value) || '';
+  }
+}
+
+function renderLeaveRecords() {
+  const list = document.getElementById('leaveRecordList');
+  const empty = document.getElementById('leaveRecordEmpty');
+  if (!list) return;
+
+  const records = LEAVE_RECORDS;
+  if (!records.length) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+    empty.style.display = 'block';
+    return;
+  }
+
+  // Filter by selected employee
+  const selectedEmpId = parseInt(document.getElementById('leaveRecEmp')?.value) || 0;
+  const filtered = records.filter(rec => {
+    return !selectedEmpId || rec.empId === selectedEmpId;
+  });
+
+  list.style.display = 'table-row-group';
+  empty.style.display = 'none';
+
+  list.innerHTML = filtered.map(rec => {
+    const emp = users.find(u => u.id === rec.empId);
+    const lt = LEAVE_TYPES.find(t => t.id === rec.typeId);
+    const name = emp ? displayName(emp) : ('#USR-' + (rec.empId || '?'));
+    const typeName = lt ? esc(lt.name) : 'Leave Type ' + rec.typeId;
+    const paid = lt ? lt.isPaid : false;
+    return `<tr>
+      <td><strong>${esc(name)}</strong></td>
+      <td>${typeName}</td>
+      <td>${esc(rec.startDate || '—')} → ${esc(rec.endDate || '—')}</td>
+      <td>${rec.days || computeLeaveDays(rec.startDate, rec.endDate)}</td>
+      <td><span class="badge ${paid ? 'b-green' : 'b-red'}">● ${paid ? 'Paid' : 'Unpaid'}</span></td>
+      <td><div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" onclick="editLeaveRecord(${rec.id || rec._rid})">✏️ Edit</button>
+        <button class="btn btn-outline btn-sm" style="color:#C62828;border-color:#FFCDD2" onclick="deleteLeaveRecord(${rec.id || rec._rid})">🗑️ Remove</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+let nextLeaveRecordId = (_savedDemo && _savedDemo.nextLeaveRecordId) || (LEAVE_RECORDS.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1);
+
+// ── LEAVE RECORDS EMPLOYEE FILTER (combobox) ──────────────────
+function leaveRecEmpOptions() {
+  return users.filter(u => u.status === 'Active' && (u.role === 'Employee' || u.role === 'Finance Officer' || u.role === 'System Admin'));
+}
+function getLeaveRecEmpQuery() {
+  return ((document.getElementById('leaveRecEmpSearch') || {}).value || '').toLowerCase().trim();
+}
+function leaveRecEmpMatches(u) {
+  const q = getLeaveRecEmpQuery();
+  if (!q) return true;
+  const name = `${u.first} ${u.last}`.toLowerCase();
+  return name.includes(q) || (u.email || '').toLowerCase().includes(q);
+}
+function renderLeaveRecEmpList(list, show) {
+  const box = document.getElementById('leaveRecEmpList');
+  if (!box) return;
+  const allItem = `<div class="combobox-item" onclick="selectLeaveRecEmp(0)" style="font-weight:600;color:var(--maroon-dark)">📋 All Employees</div>`;
+  box.innerHTML = allItem + (list.length
+    ? list.map(u => `<div class="combobox-item" onclick="selectLeaveRecEmp(${u.id})">${esc(displayName(u))} — ${u.classification}</div>`).join('')
+    : '<div class="combobox-empty">No employee found.</div>');
+  box.classList.toggle('show', show !== false);
+}
+function openLeaveRecEmpList() {
+  renderLeaveRecEmpList(leaveRecEmpOptions().filter(leaveRecEmpMatches));
+}
+function toggleLeaveRecEmpList(e) {
+  if (e) e.stopPropagation();
+  const box = document.getElementById('leaveRecEmpList');
+  if (box && box.classList.contains('show')) closeLeaveRecEmpList();
+  else openLeaveRecEmpList();
+}
+function closeLeaveRecEmpList() {
+  const box = document.getElementById('leaveRecEmpList');
+  if (box) box.classList.remove('show');
+}
+function onLeaveRecEmpInput() {
+  openLeaveRecEmpList();
+}
+function onLeaveRecEmpKey(e) {
+  if (e.key === 'Escape') { closeLeaveRecEmpList(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); openLeaveRecEmpList(); return; }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const item = document.querySelector('#leaveRecEmpList .combobox-item');
+    if (item) item.click();
+  }
+  if (e.key === 'Backspace' && !e.target.value) {
+    selectLeaveRecEmp(0);
+  }
+}
+function selectLeaveRecEmp(id) {
+  document.getElementById('leaveRecEmp').value = id;
+  const inp = document.getElementById('leaveRecEmpSearch');
+  if (id === 0) {
+    inp.value = '';
+    inp.placeholder = 'All Employees';
+  } else {
+    const emp = users.find(u => u.id === id);
+    if (emp) inp.value = displayName(emp);
+  }
+  closeLeaveRecEmpList();
+  renderLeaveRecords();
+}
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('leaveRecEmpWrap');
+  if (wrap && !wrap.contains(e.target)) closeLeaveRecEmpList();
+});
+
+// Render HRIS attendance (read-only, imported via sync). Shows one row per day.
+function renderAttendance() {
+  const list = document.getElementById('attendanceList');
+  const empty = document.getElementById('attendanceEmpty');
+  if (!list) return;
+
+  const records = (ATTENDANCE || []).slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  if (!records.length) {
+    list.innerHTML = '';
+    list.style.display = 'none';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+
+  // Filter by selected employee
+  const selectedEmpId = parseInt(document.getElementById('attEmp')?.value) || 0;
+  const filtered = records.filter(r => {
+    return !selectedEmpId || r.empId === selectedEmpId;
+  });
+
+  if (empty) empty.style.display = 'none';
+  list.style.display = 'table-row-group';
+
+  list.innerHTML = filtered.map(r => {
+    const emp = users.find(u => u.id === r.empId);
+    const name = emp ? displayName(emp) : ('#USR-' + (r.empId || '?'));
+    const inTxt = fmtClock(r.clockInAt);
+    const outTxt = fmtClock(r.clockOutAt);
+    const hrs = r.hours != null ? r.hours : '—';
+    return `<tr>
+      <td><strong>${esc(name)}</strong></td>
+      <td>${esc(r.date || '—')}</td>
+      <td>${inTxt}</td>
+      <td>${outTxt}</td>
+      <td>${hrs} hrs</td>
+    </tr>`;
+  }).join('');
+}
+
+// Format an ISO UTC time into Manila local (UTC+8) HH:MM for display.
+function fmtClock(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  d.setMinutes(d.getMinutes() + 8 * 60); // UTC -> Asia/Manila
+  return String(d.getUTCHours()).padStart(2, '0') + ':' + String(d.getUTCMinutes()).padStart(2, '0');
+}
+
+// ── ATTENDANCE EMPLOYEE FILTER (combobox) ─────────────────────
+function attEmpOptions() {
+  return users.filter(u => u.status === 'Active' && (u.role === 'Employee' || u.role === 'Finance Officer' || u.role === 'System Admin'));
+}
+function getAttEmpQuery() {
+  return ((document.getElementById('attEmpSearch') || {}).value || '').toLowerCase().trim();
+}
+function attEmpMatches(u) {
+  const q = getAttEmpQuery();
+  if (!q) return true;
+  const name = `${u.first} ${u.last}`.toLowerCase();
+  return name.includes(q) || (u.email || '').toLowerCase().includes(q);
+}
+function renderAttEmpList(list, show) {
+  const box = document.getElementById('attEmpList');
+  if (!box) return;
+  const allItem = `<div class="combobox-item" onclick="selectAttEmp(0)" style="font-weight:600;color:var(--maroon-dark)">📋 All Employees</div>`;
+  box.innerHTML = allItem + (list.length
+    ? list.map(u => `<div class="combobox-item" onclick="selectAttEmp(${u.id})">${esc(displayName(u))} — ${u.classification}</div>`).join('')
+    : '<div class="combobox-empty">No employee found.</div>');
+  box.classList.toggle('show', show !== false);
+}
+function openAttEmpList() {
+  renderAttEmpList(attEmpOptions().filter(attEmpMatches));
+}
+function toggleAttEmpList(e) {
+  if (e) e.stopPropagation();
+  const box = document.getElementById('attEmpList');
+  if (box && box.classList.contains('show')) closeAttEmpList();
+  else openAttEmpList();
+}
+function closeAttEmpList() {
+  const box = document.getElementById('attEmpList');
+  if (box) box.classList.remove('show');
+}
+function onAttEmpInput() {
+  openAttEmpList();
+}
+function onAttEmpKey(e) {
+  if (e.key === 'Escape') { closeAttEmpList(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); openAttEmpList(); return; }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const item = document.querySelector('#attEmpList .combobox-item');
+    if (item) item.click();
+  }
+  if (e.key === 'Backspace' && !e.target.value) {
+    selectAttEmp(0);
+  }
+}
+function selectAttEmp(id) {
+  document.getElementById('attEmp').value = id;
+  const inp = document.getElementById('attEmpSearch');
+  if (id === 0) {
+    inp.value = '';
+    inp.placeholder = 'All Employees';
+  } else {
+    const emp = users.find(u => u.id === id);
+    if (emp) inp.value = displayName(emp);
+  }
+  closeAttEmpList();
+  renderAttendance();
+}
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('attEmpWrap');
+  if (wrap && !wrap.contains(e.target)) closeAttEmpList();
+});
+
+function leaveRecordEmpOptions() {
+  return users.filter(u => u.status === 'Active' && (u.role === 'Employee' || u.role === 'Finance Officer' || u.role === 'System Admin'));
+}
+function closeLeaveRecordEmpList() {
+  document.getElementById('leaveRecordEmpList').classList.remove('show');
+  document.getElementById('leaveRecordEmpSearch').setAttribute('aria-expanded', 'false');
+}
+function openLeaveRecordEmpList() {
+  const input = document.getElementById('leaveRecordEmpSearch');
+  const selected = document.getElementById('leaveRecordEmp').value;
+  const query = selected ? '' : input.value.trim().toLowerCase();
+  const list = leaveRecordEmpOptions().filter(u =>
+    displayName(u).toLowerCase().includes(query) || `${u.first} ${u.last}`.toLowerCase().includes(query) || (u.email || '').toLowerCase().includes(query));
+  const box = document.getElementById('leaveRecordEmpList');
+  box.innerHTML = list.length
+    ? list.map(u => `<div class="combobox-item" role="option" aria-selected="${String(u.id) === selected}" onclick="selectLeaveRecordEmp(${u.id})">${esc(displayName(u))} — ${esc(u.classification || '')}</div>`).join('')
+    : '<div class="combobox-empty">No employee found.</div>';
+  box.classList.add('show');
+  input.setAttribute('aria-expanded', 'true');
+}
+function selectLeaveRecordEmp(id) {
+  const emp = users.find(u => u.id === id);
+  document.getElementById('leaveRecordEmp').value = emp ? emp.id : '';
+  document.getElementById('leaveRecordEmpSearch').value = emp ? displayName(emp) : '';
+  closeLeaveRecordEmpList();
+}
+function onLeaveRecordEmpInput() {
+  document.getElementById('leaveRecordEmp').value = '';
+  openLeaveRecordEmpList();
+}
+function toggleLeaveRecordEmpList() {
+  if (document.getElementById('leaveRecordEmpList').classList.contains('show')) closeLeaveRecordEmpList();
+  else openLeaveRecordEmpList();
+}
+function onLeaveRecordEmpKey(e) {
+  if (e.key === 'Escape' || e.key === 'Tab') { closeLeaveRecordEmpList(); return; }
+  if (e.key === 'ArrowDown') { e.preventDefault(); openLeaveRecordEmpList(); }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const item = document.querySelector('#leaveRecordEmpList.show .combobox-item');
+    if (item) item.click();
+  }
+}
+document.addEventListener('click', function(e) {
+  const wrap = document.getElementById('leaveRecordEmpWrap');
+  if (wrap && !wrap.contains(e.target)) closeLeaveRecordEmpList();
+});
+
+function openAddLeaveRecord() {
+  selectLeaveRecordEmp(0);
+  const typeSel = document.getElementById('leaveRecordType');
+  if (typeSel) typeSel.innerHTML = LEAVE_TYPES
+    .map(t => `<option value="${t.id}">${esc(t.name)} (${t.isPaid ? 'Paid' : 'Unpaid'})</option>`).join('');
+
+  document.getElementById('leaveRecordModalTitle').textContent = 'Add Leave Record';
+  document.getElementById('leaveRecordStart').value = '';
+  document.getElementById('leaveRecordEnd').value = '';
+  document.getElementById('leaveRecordDays').value = '';
+  document.getElementById('leaveRecordErr').style.display = 'none';
+  document.getElementById('leaveRecordModal').dataset.editId = '';
+  leaveRecordDaysManuallySet = false;
+  document.getElementById('leaveRecordModal').style.display = 'flex';
+}
+
+function editLeaveRecord(id) {
+  const rec = LEAVE_RECORDS.find(r => r.id === id);
+  if (!rec) return;
+  const typeSel = document.getElementById('leaveRecordType');
+  if (typeSel) typeSel.innerHTML = LEAVE_TYPES
+    .map(t => `<option value="${t.id}">${esc(t.name)} (${t.isPaid ? 'Paid' : 'Unpaid'})</option>`).join('');
+
+  document.getElementById('leaveRecordModalTitle').textContent = 'Edit Leave Record';
+  selectLeaveRecordEmp(rec.empId);
+  document.getElementById('leaveRecordType').value = rec.typeId;
+  document.getElementById('leaveRecordStart').value = rec.startDate || '';
+  document.getElementById('leaveRecordEnd').value = rec.endDate || '';
+  document.getElementById('leaveRecordDays').value = rec.days || '';
+  document.getElementById('leaveRecordErr').style.display = 'none';
+  document.getElementById('leaveRecordModal').dataset.editId = id;
+  leaveRecordDaysManuallySet = true;
+  document.getElementById('leaveRecordModal').style.display = 'flex';
+}
+
+async function saveLeaveRecord() {
+  const empId = parseInt(document.getElementById('leaveRecordEmp').value) || 0;
+  const typeId = parseInt(document.getElementById('leaveRecordType').value) || 0;
+  const startDate = document.getElementById('leaveRecordStart').value;
+  const endDate = document.getElementById('leaveRecordEnd').value;
+  const days = parseFloat(document.getElementById('leaveRecordDays').value);
+  const err = document.getElementById('leaveRecordErr');
+  err.style.display = 'none';
+
+  if (!empId) { err.textContent = 'Please select an employee.'; err.style.display = 'block'; return; }
+  if (!typeId) { err.textContent = 'Please select a leave type.'; err.style.display = 'block'; return; }
+  if (!startDate || !endDate) { err.textContent = 'Please enter both start and end dates.'; err.style.display = 'block'; return; }
+  if (new Date(endDate) < new Date(startDate)) { err.textContent = 'End date cannot be before the start date.'; err.style.display = 'block'; return; }
+  if (!(days > 0)) { err.textContent = 'Please enter the number of days (or make sure dates are valid).'; err.style.display = 'block'; return; }
+
+  const editId = document.getElementById('leaveRecordModal').dataset.editId;
+  if (editId) {
+    const rec = LEAVE_RECORDS.find(r => r.id === parseInt(editId));
+    if (rec) { rec.empId = empId; rec.typeId = typeId; rec.startDate = startDate; rec.endDate = endDate; rec.days = days; }
+    showToast('✅', 'Leave record updated successfully!');
+  } else {
+    LEAVE_RECORDS.push({ id: nextLeaveRecordId++, empId, typeId, startDate, endDate, days });
+    showToast('✅', 'Leave record added successfully!');
+  }
+  closeModal('leaveRecordModal');
+  if (!await saveDemo()) return;
+  renderLeaveRecords();
+}
+
+function deleteLeaveRecord(id) {
+  if (confirm('Remove this leave record? This cannot be undone.')) {
+    LEAVE_RECORDS = LEAVE_RECORDS.filter(r => r.id !== id);
+    nextLeaveRecordId = LEAVE_RECORDS.reduce((m, r) => Math.max(m, r.id || 0), 0) + 1;
+    saveDemo();
+    renderLeaveRecords();
+    showToast('🗑️', 'Leave record removed.');
+  }
+}
 
 // ── USER MANAGEMENT ───────────────────────────────────────────
 const roleColor = {'System Admin':'#880E4F','Finance Officer':'#7D5A00','Employee':'#1565C0'};
@@ -132,7 +613,7 @@ function renderUserTable() {
   tbody.innerHTML = filtered.map(u=>`
     <tr>
       <td><div style="display:flex;align-items:center;gap:10px">
-        <div style="width:34px;height:34px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${initials(u.first,u.last)}</div>
+        <div style="width:34px;height:34px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0">${userPhotoMarkup(u)}</div>
         <div><div style="font-weight:600">${esc(displayName(u))} <span class="badge ${EMP_CLASS[u.classification||'Non-Teaching']?.badge||'b-gray'}" style="margin-left:6px;font-size:10px">${u.classification||'Non-Teaching'}</span></div><div style="font-size:11px;color:var(--text-muted)">#USR-00${u.id}</div></div>
       </div></td>
       <td>${esc(u.email)}</td>
@@ -140,6 +621,7 @@ function renderUserTable() {
       <td><span class="badge ${u.status==='Active'?'b-green':'b-gray'}">${u.status==='Active'?'● Active':'● Inactive'}</span></td>
       <td>${u.date}</td>
       <td><div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm btn-icon" title="Edit" onclick="openEditUserModal(${u.id})">✏️</button>
         <button class="btn btn-outline btn-sm btn-icon" title="View" onclick="viewUser(${u.id})">👁</button>
         ${u.status==='Active'
           ? `<button class="btn btn-outline btn-sm btn-icon" style="color:#C62828;border-color:#FFCDD2" title="Deactivate" onclick="confirmDeactivate(${u.id})">⏸</button>`
@@ -161,6 +643,14 @@ function updateAdminStats() {
   ['admAct','admActStat'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=act; });
   ['admInact','admInactStat'].forEach(id=>{ const el=document.getElementById(id); if(el) el.textContent=inact; });
   const bd = document.getElementById('admBreakdown'); if(bd) bd.textContent=`${adm} Admin · ${fin} Finance · ${emp} Emp`;
+  const now = new Date();
+  const nw = document.getElementById('admNew');
+  if (nw) nw.textContent = users.filter(u => {
+    const t = Date.parse(u.date);
+    if (!t) return false;
+    const d = new Date(t);
+    return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  }).length;
   ['u-admin','u-finance','u-employee','u-inactive'].forEach((id,i)=>{
     const el=document.getElementById(id); if(el) el.textContent=[adm,fin,emp,inact][i];
   });
@@ -182,6 +672,10 @@ function renderAdminRecentUsers() {
     </tr>`).join('');
 }
 
+function isAdminUserManagement() {
+  return typeof loggedInUser !== 'undefined' && loggedInUser && loggedInUser.role === 'admin';
+}
+
 function openAddUserModal() {
   editingUserId = null;
   document.getElementById('uModalTitle').textContent = 'Add New User';
@@ -196,6 +690,8 @@ function openAddUserModal() {
   document.getElementById('uDept').value   = '';
   document.getElementById('uSalary').value = '';
   document.getElementById('uHourly').value = '';
+  document.getElementById('uSchoolLevel').value = '';
+  document.getElementById('uRank').value = '0';
   document.getElementById('uHire').value   = '';
   document.getElementById('uHrsAbs').value = '';
   document.getElementById('uPassGroup').style.display = 'block';
@@ -216,8 +712,10 @@ function openEditUserModal(id) {
   document.getElementById('uStatus').value = u.status;
   document.getElementById('uClass').value  = u.classification || 'Non-Teaching';
   document.getElementById('uDept').value   = u.department || '';
-  document.getElementById('uSalary').value = u.salary || '';
-  document.getElementById('uHourly').value = u.hourlyRate || '';
+  document.getElementById('uSalary').value = isAdminUserManagement() ? '' : (u.salary || '');
+  document.getElementById('uHourly').value = isAdminUserManagement() ? '' : (u.hourlyRate || '');
+  document.getElementById('uSchoolLevel').value = u.schoolLevel || '';
+  if (!isAdminUserManagement() && typeof fillRankSelect === 'function') fillRankSelect(u.schoolLevel || '', u.rankId || 0);
   document.getElementById('uHire').value   = u.hireDate || '';
   document.getElementById('uHrsAbs').value = (u.hoursWorked || u.absenceDays || '');
   document.getElementById('uPassGroup').style.display = 'none';
@@ -228,6 +726,14 @@ function openEditUserModal(id) {
   document.getElementById('userModal').classList.add('show');
 }
 function toggleUserClassFields() {
+  const hidePay = isAdminUserManagement();
+  const compensation = document.getElementById('uCompensationFields');
+  if (compensation) compensation.hidden = hidePay;
+  if (hidePay) {
+    document.getElementById('uSalary').value = '';
+    document.getElementById('uHourly').value = '';
+    document.getElementById('uRank').innerHTML = '';
+  }
   const c = document.getElementById('uClass')?.value;
   const teaching = c === 'Teaching';
   const hg = document.getElementById('uHourlyGroup');
@@ -252,18 +758,55 @@ function toggleUserClassFields() {
   if (cap) cap.innerHTML = teaching
     ? 'Required for ALL personnel — benefits &amp; records basis. <strong>Auto-filled</strong> as Hourly Rate × Hours Worked; you may override it.'
     : 'Fixed monthly rate — used for benefits &amp; records eligibility and absence deductions.';
+  const slg = document.getElementById('uSchoolLevelGroup');
+  if (slg) slg.style.display = teaching ? 'block' : 'none';
+  const rg = document.getElementById('uRankGroup');
+  if (rg) rg.style.display = teaching ? 'block' : 'none';
+  if (teaching && !hidePay) {
+    const sl = document.getElementById('uSchoolLevel')?.value || 'College';
+    if (typeof fillRankSelect === 'function') fillRankSelect(sl, 0);
+    updateHourlyRateLabel(sl);
+  }
+}
+
+// ── Rate label helper per school level ──────────────────────────
+function updateHourlyRateLabel(sl) {
+  const lbl = document.getElementById('uHourlyLabel');
+  const hint = document.getElementById('uHourlyHint');
+  if (!lbl && !hint) return;
+  const isWorkload = sl === 'High School';
+  const isMonth = sl === 'Elementary';
+  if (lbl) lbl.textContent = isWorkload ? 'Rate per Workload (₱) *' : isMonth ? 'Rate per Month (₱) *' : 'Rate per Hour (₱) *';
+  if (hint) hint.textContent = isMonth
+    ? 'Teaching pay = Monthly Rate − Absence Deduction (÷ Working Days per Month).'
+    : isWorkload
+    ? 'Teaching pay = Rate per Workload × Workloads (1 workload = ' + ((typeof HOURS_PER_WORKLOAD !== 'undefined' && HOURS_PER_WORKLOAD) ? HOURS_PER_WORKLOAD : 3) + ' hrs).'
+    : 'Teaching pay = Rate per Hour × Hours Worked.';
 }
 
 // ── Teaching auto-suggest: Basic Salary ≈ Hourly Rate × Hours ──
 let salaryAuto = true;
 function recalcSuggestedSalary() {
+  if (isAdminUserManagement()) return;
   if (!salaryAuto) return;
-  if ((document.getElementById('uClass')?.value) !== 'Teaching') return;
+  const cls = document.getElementById('uClass')?.value;
+  if (cls !== 'Teaching') return;
+  const sl = document.getElementById('uSchoolLevel')?.value || '';
   const r = parseFloat(document.getElementById('uHourly')?.value);
   const h = parseFloat(document.getElementById('uHrsAbs')?.value);
   if ((!isNaN(r) && r > 0) && (!isNaN(h) && h > 0)) {
     const sal = document.getElementById('uSalary');
-    if (sal) sal.value = Math.round(r * h * 100) / 100;
+    if (sal) {
+      let computed;
+      if (sl === 'Elementary') {
+        computed = r; // monthly rate from rank
+      } else if (sl === 'High School') {
+        computed = Math.round(r * h / ((typeof HOURS_PER_WORKLOAD !== 'undefined' && HOURS_PER_WORKLOAD) ? HOURS_PER_WORKLOAD : 3) * 100) / 100; // rate × workloads (hrs ÷ hours-per-workload)
+      } else {
+        computed = Math.round(r * h * 100) / 100; // College/Grad: rate × hours
+      }
+      sal.value = computed;
+    }
   }
 }
 (function wirePaySetupListeners() {
@@ -274,23 +817,48 @@ function recalcSuggestedSalary() {
   const sal = document.getElementById('uSalary');
   if (sal) sal.addEventListener('input', () => { salaryAuto = false; });
 })();
-function saveUser() {
+
+function onSchoolLevelChange() {
+  const sl = document.getElementById('uSchoolLevel')?.value || '';
+  if (!isAdminUserManagement() && typeof fillRankSelect === 'function') fillRankSelect(sl, 0);
+  updateHourlyRateLabel(sl);
+}
+
+function onRankChange() {
+  if (isAdminUserManagement()) return;
+  const rankId = parseInt(document.getElementById('uRank')?.value) || 0;
+  const rankObj = rankId ? (typeof rankById === 'function' ? rankById(rankId) : null) : null;
+  if (rankObj) {
+    document.getElementById('uHourly').value = rankObj.rate;
+    salaryAuto = true;
+    recalcSuggestedSalary();
+  }
+}
+async function saveUser() {
+  const hidePay = isAdminUserManagement();
+  const existingUser = users.find(u => u.id === editingUserId);
   const first=document.getElementById('uFirst').value.trim(), last=document.getElementById('uLast').value.trim();
   const email=document.getElementById('uEmail').value.trim(), role=document.getElementById('uRole').value;
   const status=document.getElementById('uStatus').value, pass=document.getElementById('uPass').value.trim();
   const classification=document.getElementById('uClass').value;
   const department=document.getElementById('uDept').value.trim();
-  const salary=Math.max(0,parseFloat(document.getElementById('uSalary').value)||0);
-  const hourlyRate=Math.max(0,parseFloat(document.getElementById('uHourly').value)||0);
+  const salary=hidePay ? (existingUser?.salary || 0) : Math.max(0,parseFloat(document.getElementById('uSalary').value)||0);
+  const hourlyRate=hidePay ? (existingUser?.hourlyRate || 0) : Math.max(0,parseFloat(document.getElementById('uHourly').value)||0);
+  const schoolLevel=document.getElementById('uSchoolLevel')?.value || '';
+  const rankId=hidePay ? (existingUser?.rankId || 0) : (parseInt(document.getElementById('uRank')?.value)||0);
+  const rankObj = rankId ? (typeof rankById === 'function' ? rankById(rankId) : null) : null;
+  const rankName = hidePay ? (existingUser?.rankName || '') : (rankObj ? rankObj.rank : '');
+  const rateCustom = hidePay ? !!existingUser?.rateCustom : (!rankObj || (Math.abs(hourlyRate - parseFloat(rankObj.rate)) > 0.001));
   const hireDate=document.getElementById('uHire').value;
   const hrsAbs=Math.max(0,parseFloat(document.getElementById('uHrsAbs').value)||0);
   const err=document.getElementById('uErr');
   err.classList.remove('show');
   if (!first||!last) { err.textContent='Please enter first and last name.'; err.classList.add('show'); return; }
   if (!email||!email.includes('@')) { err.textContent='Please enter a valid email address.'; err.classList.add('show'); return; }
+  if (!/^[^\s@]+@rcc\.edu\.ph$/i.test(email)) { err.textContent='Only @rcc.edu.ph school emails can be registered.'; err.classList.add('show'); return; }
   if (!editingUserId&&!pass) { err.textContent='Please set an initial password.'; err.classList.add('show'); return; }
-  if (!salary||salary<=0) { err.textContent='Please enter a valid monthly basic salary (required for all personnel — benefits basis).'; err.classList.add('show'); return; }
-  if (classification==='Teaching' && (!hourlyRate||hourlyRate<=0)) { err.textContent='Teaching personnel require a valid hourly rate (pay = rate × hours worked).'; err.classList.add('show'); return; }
+  if (!hidePay && (!salary||salary<=0)) { err.textContent='Please enter a valid monthly basic salary (required for all personnel — benefits basis).'; err.classList.add('show'); return; }
+  if (!hidePay && classification==='Teaching' && (!hourlyRate||hourlyRate<=0)) { err.textContent='Teaching personnel require a valid hourly rate (pay = rate × hours worked).'; err.classList.add('show'); return; }
   // Date of hire is REQUIRED — the RA 8515 proration (and thus 13th Month Pay
   // eligibility) depends on it. It also cannot be in the future.
   if (!hireDate) { err.textContent='Please set the date of hire (required for 13th Month Pay proration).'; err.classList.add('show'); return; }
@@ -306,34 +874,40 @@ function saveUser() {
     const u=users.find(x=>x.id===editingUserId);
     u.first=first; u.last=last; u.email=email; u.role=role; u.status=status; u.salary=salary;
     u.classification=classification; u.department=department; u.hourlyRate=hourlyRate; u.hireDate=hireDate;
-    if (classification==='Teaching') u.hoursWorked=hrsAbs; else u.absenceDays=hrsAbs;
+    u.schoolLevel=schoolLevel; u.rankId=rankId; u.rankName=rankName; u.rateCustom=rateCustom;
+    if (classification==='Teaching' && schoolLevel !== 'Elementary') u.hoursWorked=hrsAbs; else u.absenceDays=hrsAbs;
     ensureAuth(u, pass);
     showToast('✅',`${first} ${last} updated successfully.`);
   } else {
     const today=new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
     const nu={id:nextUserId++,first,last,email,role,status,date:today,salary,classification,department,hireDate};
-    if (classification==='Teaching') nu.hourlyRate=hourlyRate, nu.hoursWorked=hrsAbs; else nu.absenceDays=hrsAbs;
+    if (classification==='Teaching' && schoolLevel !== 'Elementary') nu.hourlyRate=hourlyRate, nu.hoursWorked=hrsAbs; else nu.absenceDays=hrsAbs;
+    nu.schoolLevel=schoolLevel; nu.rankId=rankId; nu.rankName=rankName; nu.rateCustom=rateCustom;
     users.push(nu);
     ensureAuth(nu, pass);
     showToast('✅',`${first} ${last} added successfully.`);
   }
   closeModal('userModal');
-  saveDemo();
-  renderUserTable(); renderAdminRecentUsers();
+  if (!await saveDemo()) return;
+  renderUserTable(); renderAdminRecentUsers(); updateAdminStats();
 }
+let viewCurrentUserId = null;   // user id shown in the User Profile (view) modal
 function viewUser(id) {
   const u=users.find(x=>x.id===id); if(!u) return;
+  viewCurrentUserId = id;
   document.getElementById('viewUserBody').innerHTML = `
     <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border)">
-      <div style="width:56px;height:56px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700">${initials(u.first,u.last)}</div>
+      <div style="width:56px;height:56px;border-radius:50%;background:${roleColor[u.role]};color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700">${userPhotoMarkup(u)}</div>
       <div><div style="font-family:'Playfair Display',serif;font-size:18px;font-weight:700;color:var(--maroon-dark)">${esc(displayName(u))}</div><div style="font-size:12px;color:var(--text-muted)">#USR-00${u.id} &nbsp;·&nbsp; Added ${u.date}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       ${infoBox('✉️ Email',esc(u.email))}${infoBox('🏷️ Role',`<span class="badge ${roleBadge[u.role]}">${u.role}</span>`)}
       ${infoBox('⚡ Status',`<span class="badge ${u.status==='Active'?'b-green':'b-gray'}">${u.status==='Active'?'● Active':'● Inactive'}</span>`)}${infoBox('📅 Date Added',u.date)}
       ${infoBox('🎓 Classification',`<span class="badge ${EMP_CLASS[u.classification]?.badge||'b-gray'}">${u.classification||'Non-Teaching'}</span>`)}      ${infoBox('🏢 Department',esc(u.department||'—'))}
-      ${infoBox('💰 Monthly Base',`<strong>₱${(u.salary||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`)}${infoBox('🆔 Employee ID',`#USR-00${u.id}`)}
-      ${infoBox(u.classification==='Teaching'?'⏱ Hourly Rate':'📅 Date Hired', u.classification==='Teaching' ? '₱'+(u.hourlyRate||0).toFixed(2) : (u.hireDate||'—'))}${infoBox(u.classification==='Teaching'?'🕒 Hours Worked':'🚫 Absence Days', u.classification==='Teaching' ? (u.hoursWorked||0)+' hrs' : (u.absenceDays||0)+' days')}
+      ${u.classification==='Teaching' && u.rankName ? infoBox('🎓 Academic Rank', esc(u.rankName)) : ''}
+      ${u.classification==='Teaching' ? infoBox('🏫 School Level', esc(u.schoolLevel || '—')) : ''}
+      ${!isAdminUserManagement() ? infoBox('💰 Monthly Base',`<strong>₱${(u.salary||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</strong>`) : ''}${infoBox('🆔 Employee ID',`#USR-00${u.id}`)}
+      ${!isAdminUserManagement() && u.classification==='Teaching' ? infoBox('⏱ Hourly Rate', '₱'+(u.hourlyRate||0).toFixed(2)) : ''}${infoBox('📅 Date Hired', u.hireDate||'—')}${infoBox(u.classification==='Teaching'?'🕒 Hours Worked':'🚫 Absence Days', u.classification==='Teaching' ? (u.hoursWorked||0)+' hrs' : (u.absenceDays||0)+' days')}
     </div>`;
   // edit removed
   document.getElementById('viewUserModal').classList.add('show');
@@ -344,12 +918,12 @@ function confirmDeactivate(id) {
   document.getElementById('confirmIcon').textContent='⚠️';
   document.getElementById('confirmMsg').innerHTML=`Are you sure you want to deactivate <strong>${esc(u.first+' '+u.last)}</strong>? Their access will be suspended.`;
   document.getElementById('confirmActionBtn').textContent='Deactivate';
-  document.getElementById('confirmActionBtn').onclick=()=>{ u.status='Inactive'; ensureAuth(u); closeModal('confirmModal'); renderUserTable(); renderAdminRecentUsers(); showToast('⏸',`${u.first} ${u.last} deactivated.`); };
+  document.getElementById('confirmActionBtn').onclick=()=>{ u.status='Inactive'; ensureAuth(u); saveDemo(); closeModal('confirmModal'); renderUserTable(); renderAdminRecentUsers(); showToast('⏸',`${u.first} ${u.last} deactivated.`); };
   document.getElementById('confirmModal').classList.add('show');
 }
 function reactivateUser(id) {
   const u=users.find(x=>x.id===id); if(!u) return;
-  u.status='Active'; ensureAuth(u); renderUserTable(); renderAdminRecentUsers();
+  u.status='Active'; ensureAuth(u); saveDemo(); renderUserTable(); renderAdminRecentUsers();
   showToast('✅',`${u.first} ${u.last} reactivated.`);
 }
 
@@ -396,53 +970,20 @@ function confirmRemove(id) {
 }
 
 // ── HRIS SYNC ─────────────────────────────────────────────────
-function syncFromHris() {
+async function syncFromHris() {
   const btn = document.getElementById('hrisSyncBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing...'; }
-  fetch('/api/hris/sync')
-    .then(r => r.json())
-    .then(d => {
-      let added = 0, updated = 0;
-      (d.employees || []).forEach(h => {
-        const email = h.email.toLowerCase();
-        let u = users.find(x => x.email.toLowerCase() === email);
-        if (u) {
-          u.first = h.first; u.last = h.last; u.role = h.role; u.status = h.status;
-          u.department = h.department; u.classification = h.classification;
-          u.salary = h.salary; u.hourlyRate = h.hourlyRate; u.hireDate = h.hireDate;
-          if (h.classification === 'Teaching') u.hoursWorked = h.hoursWorked; else u.absenceDays = h.absenceDays;
-          ensureAuth(u, h.password);
-          updated++;
-        } else {
-          const nu = {id:nextUserId++, first:h.first, last:h.last, email,
-            role:h.role, status:h.status,
-            date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),
-            salary:h.salary, classification:h.classification, department:h.department, hireDate:h.hireDate};
-          if (h.classification === 'Teaching') { nu.hourlyRate = h.hourlyRate; nu.hoursWorked = h.hoursWorked; }
-          else nu.absenceDays = h.absenceDays;
-          users.push(nu);
-          ensureAuth(nu, h.password);
-          added++;
-        }
-      });
-      // Deactivate (NOT delete) any Active user missing from the HRIS pull,
-      // except the three seed accounts (one per role), so payroll history is preserved.
-      const hrisEmails = new Set((d.employees || []).map(h => (h.email || '').toLowerCase()));
-      const seedEmails = ['admin@rcc.edu.ph', 'finance@rcc.edu.ph', 'employee@rcc.edu.ph'];
-      let deactivated = 0;
-      users.forEach(u => {
-        if (u.status === 'Active' && !hrisEmails.has(u.email.toLowerCase()) && !seedEmails.includes(u.email.toLowerCase())) {
-          u.status = 'Inactive';
-          ensureAuth(u);
-          deactivated++;
-        }
-      });
-      saveDemo();
-      renderUserTable(); renderAdminRecentUsers(); updateAdminStats();
-      showToast('✅', `HRIS sync complete — ${added} added, ${updated} updated, ${deactivated} deactivated (source: ${d.source})`);
-    })
-    .catch(() => showToast('⚠️', 'HRIS sync failed. Make sure the server is running.'))
-    .finally(() => { if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync from HRIS'; } });
+  if (btn) { btn.disabled=true; btn.textContent='⏳ Syncing...'; }
+  try {
+    const response = await fetch('/api/hris/sync',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(getAuthToken() || '')},body:JSON.stringify({stateRevision:serverStateRevision})});
+    const result = await response.json();
+    if (!response.ok) { if(response.status===409)await syncDemo(); throw new Error(result.error || 'HRIS sync failed.'); }
+    localStorage.setItem(DEMO_KEY,JSON.stringify(result.state));
+    applyServerData(result.state);
+    renderUserTable();renderAdminRecentUsers();updateAdminStats();renderLeaveTypes();renderAttendance();
+    const counts=result.counts;
+    showToast('✅','HRIS sync: '+counts.added+' accounts added, '+counts.updated+' updated, '+counts.leaves+' leaves, '+counts.attendance+' attendance records.'+(counts.skipped?' '+counts.skipped+' unmatched or incomplete accounts skipped.':''));
+  } catch(error) { showToast('⚠️',error.message || 'HRIS sync failed. Please try again.'); }
+  finally { if(btn){btn.disabled=false;btn.textContent='🔄 Sync from HRIS';} }
 }
 
 // ── DEDUCTION MODAL ───────────────────────────────────────────
@@ -935,7 +1476,7 @@ function renderWorkDaysSetting() {
   const note = document.getElementById('workDaysFormula');
   if (note) note.textContent = WORK_DAYS;
 }
-function saveWorkDays() {
+async function saveWorkDays() {
   const el = document.getElementById('workDaysInput');
   if (!el) return;
   const v = Math.round(Number(el.value) * 100) / 100;
@@ -946,7 +1487,7 @@ function saveWorkDays() {
   }
   WORK_DAYS = v;
   stampDedMeta();
-  saveDemo();
+  if (!await saveDemo()) return;
   renderWorkDaysSetting();
   showToast('✅', `Working days per month set to ${WORK_DAYS}. Absence deductions will use ÷${WORK_DAYS}.`);
 }
@@ -970,7 +1511,7 @@ function renderBIRTable() {
   }).join('');
 }
 
-function saveDedModal() {
+async function saveDedModal() {
   const type = document.getElementById('dedModal').dataset.type;
 
   if (type === 'SSS' || type === 'BIR') {
@@ -984,7 +1525,7 @@ function saveDedModal() {
 
   closeModal('dedModal');
   stampDedMeta();
-  saveDemo();
+  if (!await saveDemo()) return;
   // Refresh the detail page display
   if (type === 'SSS') renderSSSTable();
   if (type === 'PhilHealth') renderPhilHealthDisplay();
