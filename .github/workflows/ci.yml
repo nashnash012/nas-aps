@@ -1,0 +1,48 @@
+
+name: RCC-APS CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  smoke-tests:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: rcc-aps
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rcc-aps/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run smoke tests
+        run: |
+          node test/admin-user-pay-visibility.smoke.js
+          node test/frontend-state.smoke.js
+          node test/google-sso.smoke.js
+          node test/incremental-state.smoke.js
+          node test/payroll-calendar-hours.smoke.js
+          node test/payroll-rank-sync.smoke.js
+          node test/payroll-workdays.smoke.js
+          node test/payslip-print.smoke.js
+          node test/payslip-view.smoke.js
+          node test/peraa.smoke.js
+          node test/profile-photo.smoke.js
+          node test/report-export.smoke.js
+          node test/teachingload.smoke.js

@@ -13,6 +13,7 @@ function getPool() {
   const mysql = require('mysql2/promise');
   pool = mysql.createPool({
     host: process.env.DB_HOST || 'localhost',
+    port: Number(process.env.DB_PORT || 4000),
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'rcc_aps',
@@ -20,8 +21,12 @@ function getPool() {
     connectionLimit: 5,
     queueLimit: 0,
     charset: 'utf8mb4',
-    dateStrings: true
+    dateStrings: true,
+    ...(process.env.TIDB_ENABLE_SSL === 'true'
+      ? { ssl: { minVersion: 'TLSv1.2' } }
+      : {})
   });
+
   return pool;
 }
 
@@ -146,13 +151,18 @@ async function assembleState() {
       min: s.min != null ? num(s.min) : null, max: s.max != null ? num(s.max) : null
     })),
     philData: {
-      rate: num(phil[0].rate), min: num(phil[0].min), max: num(phil[0].max),
-      floor: num(phil[0].floor), ceiling: num(phil[0].ceiling)
-    },
+  rate: num(phil[0]?.rate ?? 5),
+  min: num(phil[0]?.min ?? 500),
+  max: num(phil[0]?.max ?? 5000),
+  floor: num(phil[0]?.floor ?? 10000),
+  ceiling: num(phil[0]?.ceiling ?? 100000)
+},
     pagData: {
-      rate1: num(pag[0].rate1), rate2: num(pag[0].rate2),
-      empMax: num(pag[0].empMax), erMax: num(pag[0].erMax)
-    },
+  rate1: num(pag[0]?.rate1 ?? 1),
+  rate2: num(pag[0]?.rate2 ?? 2),
+  empMax: num(pag[0]?.empMax ?? 100),
+  erMax: num(pag[0]?.erMax ?? 100)
+},
     birData: bir.map(b => ({
       range: b.range, base: num(b.base), rate: num(b.rate),
       min: b.min != null ? num(b.min) : null, max: b.max != null ? num(b.max) : null
