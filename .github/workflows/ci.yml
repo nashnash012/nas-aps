@@ -32,18 +32,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run smoke tests
+            - name: Run smoke tests
         run: |
-          node test/admin-user-pay-visibility.smoke.js
-          node test/frontend-state.smoke.js
-          node test/google-sso.smoke.js
-          node test/incremental-state.smoke.js
-          node test/payroll-calendar-hours.smoke.js
-          node test/payroll-rank-sync.smoke.js
-          node test/payroll-workdays.smoke.js
-          node test/payslip-print.smoke.js
-          node test/payslip-view.smoke.js
-          node test/peraa.smoke.js
-          node test/profile-photo.smoke.js
-          node test/report-export.smoke.js
-          node test/teachingload.smoke.js
+          set -e
+          for f in \
+            test/admin-user-pay-visibility.smoke.js \
+            test/frontend-state.smoke.js \
+            test/google-sso.smoke.js \
+            test/incremental-state.smoke.js \
+            test/payroll-calendar-hours.smoke.js \
+            test/payroll-rank-sync.smoke.js \
+            test/payroll-workdays.smoke.js \
+            test/payslip-print.smoke.js \
+            test/payslip-view.smoke.js \
+            test/peraa.smoke.js \
+            test/profile-photo.smoke.js \
+            test/report-export.smoke.js \
+            test/teachingload.smoke.js
+          do
+            echo "::group::Running $f"
+            node "$f"
+            echo "PASS: $f"
+            echo "::endgroup::"
+          done
