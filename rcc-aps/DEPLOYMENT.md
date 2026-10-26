@@ -48,7 +48,9 @@ The workflow:
 4. Runs the project's smoke tests.
 5. Reports whether the tests pass or fail.
 
-The workflow runs on pushes and pull requests targeting the `main` branch.
+The workflow runs on:
+- Pushes to `main` and to `deployment/**` branches (so deployment prep work is tested before merging)
+- Pull requests targeting `main`
 
 Vercel is configured to use GitHub for deployment. Changes merged into the configured production branch can trigger a deployment. The production deployment should be verified after the build completes.
 
@@ -83,6 +85,28 @@ A successful build alone does not guarantee that login, database access, or all 
 - Use authorized accounts when testing.
 - Avoid running database initialization or migration scripts in production without reviewing their effects and backing up important data.
 
-## 8. Conclusion
+## 8. Production Deployment Notes
+
+### Environment Variables
+
+All seven environment variables listed in section 3 must be configured in the Vercel project (Settings → Environment Variables), each enabled for Production, Preview, and Development environments:
+
+- `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `TIDB_ENABLE_SSL` (TiDB connection)
+- `JWT_SECRET` (JWT signing)
+
+Missing `JWT_SECRET` causes the function to throw a clear error at startup. Without it, JWT-based authentication cannot work.
+
+### Serverless-Specific Code Notes
+
+Vercel's serverless runtime mounts the deployment as a read-only filesystem. Code must not write files at runtime. The JWT middleware (`server/middleware/jwt.js`) detects serverless environments via `process.env.VERCEL` and throws a clear error if `JWT_SECRET` is missing, instead of attempting to write a fallback file and crashing with `EROFS`. Local development still uses the lazy `.jwt-secret` file fallback.
+
+### Verified Production Endpoint
+
+- Production URL: `https://jhon-rcc-rcc-aps.vercel.app/`
+- Verified: HTTP 200 OK, login page renders, TiDB-backed user profile data loads correctly.
+
+The original `2b70212` deployment crashed with `FUNCTION_INVOCATION_FAILED` due to the EROFS error described above. The fix was landed in PR #2.
+
+## 9. Conclusion
 
 Vercel, GitHub Actions, and TiDB Cloud provide a cloud-based deployment approach for RCC-APS. GitHub Actions automates testing, while Vercel handles application deployment. TiDB Cloud provides the database service. The deployment must be tested to confirm that the application and database work correctly together.
