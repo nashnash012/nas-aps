@@ -15,7 +15,7 @@ body{font-family:"Source Sans 3",sans-serif;background:var(--bg);color:var(--tex
 .lp-content{position:relative;z-index:2;text-align:center;width:100%}
 .lp-logo{width:108px;height:108px;border-radius:50%;border:3px solid var(--gold);padding:4px;margin:0 auto 24px;box-shadow:0 0 0 6px rgba(201,168,76,0.12);background:var(--maroon-light);display:flex;align-items:center;justify-content:center;font-size:40px}
 .lp-school{font-size:11px;letter-spacing:3px;text-transform:uppercase;color:var(--gold-light);margin-bottom:6px}
-.lp-sys{font-family:"Playfair Display",serif;font-size:26px;font-weight:700;color:var(--white);line-height:1.25;margin-bottom:8px}
+.lp-sys{font-family:"Playfair Display",serif;font-size:32px;font-weight:700;color:var(--white);line-height:1.25;margin-bottom:8px}
 .lp-badge{display:inline-block;background:var(--gold);color:var(--maroon-dark);font-size:11px;font-weight:700;letter-spacing:2px;padding:4px 14px;border-radius:20px;margin-bottom:28px}
 .lp-div{width:48px;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:0 auto 22px}
 .lp-tag{font-size:13px;color:rgba(255,255,255,0.6);line-height:1.8;max-width:260px;margin:0 auto 32px}
@@ -29,7 +29,7 @@ body{font-family:"Source Sans 3",sans-serif;background:var(--bg);color:var(--tex
 .login-box{width:100%;max-width:400px;animation:fadeUp 0.6s 0.2s ease both;opacity:0}
 .w-chip{display:inline-flex;align-items:center;gap:6px;background:var(--gold-pale);border:1px solid var(--gold);border-radius:20px;padding:4px 12px;font-size:11.5px;color:var(--maroon);font-weight:600;margin-bottom:14px}
 .w-dot{width:6px;height:6px;background:var(--gold);border-radius:50%}
-.l-title{font-family:"Playfair Display",serif;font-size:30px;font-weight:700;color:var(--maroon-dark);margin-bottom:6px}
+.l-title{font-family:"Playfair Display",serif;font-size:36px;font-weight:700;color:var(--maroon-dark);margin-bottom:6px}
 .l-sub{font-size:13.5px;color:var(--text-muted);margin-bottom:24px;line-height:1.6}
 .role-sel{display:flex;gap:6px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:4px;margin-bottom:16px}
 .role-btn{flex:1;padding:9px 6px;border:none;border-radius:7px;font-family:"Source Sans 3",sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:all 0.2s;color:var(--text-muted);background:transparent;display:flex;align-items:center;justify-content:center;gap:5px}
@@ -60,7 +60,7 @@ body{font-family:"Source Sans 3",sans-serif;background:var(--bg);color:var(--tex
 .rd-screen{display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:300px}
 .rd-screen.show{display:flex}
 .rd-icon{font-size:52px;margin-bottom:16px}
-.rd-title{font-family:"Playfair Display",serif;font-size:22px;font-weight:700;color:var(--maroon-dark);margin-bottom:6px}
+.rd-title{font-family:"Playfair Display",serif;font-size:27px;font-weight:700;color:var(--maroon-dark);margin-bottom:6px}
 .rd-sub{font-size:13.5px;color:var(--text-muted);margin-bottom:20px}
 .rd-bar-wrap{width:100%;background:var(--border);border-radius:4px;height:5px;overflow:hidden;margin-bottom:12px}
 .rd-bar{height:5px;background:linear-gradient(90deg,var(--maroon),var(--gold));border-radius:4px;width:0%;transition:width 2s linear}
