@@ -4,8 +4,21 @@ const jwt = require('jsonwebtoken');
 const fs = require('fs');
 const path = require('path');
 function signingSecret() {
+  // 1. Always prefer the environment variable (production / Vercel)
   if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+
+  // 2. In a read-only filesystem (Vercel/AWS Lambda), we cannot create the
+  //    fallback file. Throw a clear, actionable error instead of crashing
+  //    with a vague EROFS stack trace.
+  const isReadOnlyFs = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME;
   const file = path.resolve(__dirname, '../../.jwt-secret');
+  if (isReadOnlyFs) {
+    throw new Error(
+      'JWT_SECRET environment variable is not set. Set it in Vercel Project Settings > Environment Variables.'
+    );
+  }
+
+  // 3. Local dev only: lazily create a persistent random secret on disk
   if (!fs.existsSync(file)) {
     try { fs.writeFileSync(file, require('crypto').randomBytes(64).toString('hex'), { flag:'wx', mode:0o600 }); }
     catch (error) { if (error.code !== 'EEXIST') throw error; }
