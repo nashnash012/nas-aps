@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Republic Central Colleges - Automated Payroll System",
   "main": "server/server.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node server/server.js",
     "dev": "node server/server.js"
