@@ -96,13 +96,13 @@ async function fetchHrisData() {
 
 // ── HEALTH & DB STATUS ───────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', service: 'RCC-APS Payroll System API', database: 'MySQL', hris: HRIS_API_URL ? 'connected' : 'mock' });
+  res.json({ status: 'ok', service: 'NAS-APS Payroll System API', database: 'PostgreSQL', revision: process.env.VERCEL_GIT_COMMIT_SHA || null, hris: HRIS_API_URL ? 'connected' : 'mock' });
 });
 
 app.get('/api/db/status', requireAuth, requireRole('admin','finance'), async (req, res) => {
   const st = await db.status();
   res.json({
-    engine: 'MySQL',
+    engine: 'PostgreSQL',
     connected: st.connected,
     host: st.host,
     database: st.database,
@@ -137,7 +137,7 @@ app.get('/api/data', requireAuth, async (req, res) => {
     res.json(visibleState(state, actorFor(state, req.user)));
   } catch (e) {
     console.error('[DB] read failed:', e.message);
-    res.status(500).json({ ok: false, error: 'Failed to read from MySQL.' });
+    res.status(500).json({ ok: false, error: 'Failed to read from PostgreSQL.' });
   }
 });
 
@@ -193,7 +193,7 @@ for (const [route,key] of [['/api/leave-types','leaveTypes'],['/api/leave-record
 async function start() {
   await init();
   const st = await db.status();
-  if (!st.connected) throw new Error('MySQL database is unavailable: ' + st.error);
+  if (!st.connected) throw new Error('PostgreSQL database is unavailable: ' + st.error);
   return app.listen(PORT, () => console.log('RCC-APS Payroll System running at http://localhost:' + PORT));
 }
 if (require.main === module) start().catch(error => { console.error('[Startup] ' + error.message); process.exitCode = 1; });

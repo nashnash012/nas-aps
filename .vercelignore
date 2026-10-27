@@ -1,0 +1,6 @@
+.env
+.env.*
+!.env.example
+.jwt-secret
+backups/
+tmp/

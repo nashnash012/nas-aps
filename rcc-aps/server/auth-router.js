@@ -63,6 +63,7 @@ router.post('/login', async (req, res) => {
     // Support both bcrypt hashes and legacy plain-text (for migration period)
     let passwordMatch = false;
     const storedPass  = authEntry.pass || '';
+    if (!storedPass) return res.status(401).json({ ok: false, error: 'Invalid email or password.' });
 
     if (storedPass.startsWith('$2b$') || storedPass.startsWith('$2a$')) {
       // bcrypt hash — secure comparison

@@ -1,0 +1,62 @@
+name: NAS-APS CI and Vercel release verification
+
+on:
+  push:
+    branches: [main, 'codex/**', 'deployment/**']
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    defaults:
+      run:
+        working-directory: rcc-aps
+    env:
+      DATABASE_TEST_URL: postgresql://postgres:ci-only-password@127.0.0.1:5432/postgres
+      JWT_SECRET: ci-only-not-a-production-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rcc-aps/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Check JavaScript syntax
+        run: npm run lint
+      - name: Test payroll, frontend, and HTTP handler
+        run: npm test
+      - name: Test PostgreSQL persistence and authentication
+        run: npm run test:integration
+
+  verify-production:
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify Vercel published this source revision
+        run: node rcc-aps/scripts/verify-production.js

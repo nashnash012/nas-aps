@@ -69,7 +69,7 @@
     "1": {
       "id": 1,
       "email": "admin@rcc.edu.ph",
-      "pass": "$2b$10$w32WHHRWRR4TZqvyGYr/eekWcV8vj124X4zwQRq.LZKHWm4YHEE.y",
+      "pass": "",
       "label": "System Admin",
       "icon": "🔧",
       "page": "adminPage",
@@ -79,7 +79,7 @@
     "2": {
       "id": 2,
       "email": "finance@rcc.edu.ph",
-      "pass": "$2b$10$BjT89PluO3C4RVfczLp1xe4lEmLiaEarDBogD.x2cCdieIB62vV7m",
+      "pass": "",
       "label": "Finance Officer",
       "icon": "💼",
       "page": "financePage",
@@ -89,7 +89,7 @@
     "3": {
       "id": 3,
       "email": "employee@rcc.edu.ph",
-      "pass": "$2b$10$7m7CSq.8PkC/onV3q4ACR.P99DT9knP6KsBJzMiDCGIJldxrqS6zG",
+      "pass": "",
       "label": "Employee",
       "icon": "👤",
       "page": "empPage",
